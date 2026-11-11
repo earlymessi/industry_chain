@@ -1,0 +1,178 @@
+{
+  "id": "REFRIGERATOR-ALIGNED-v2",
+  "name": "原系统冰箱产业链基线",
+  "production_plan_id": "693c1376a4c27d96652ad849",
+  "production_solver": "q",
+  "production_time_unit": "hours",
+  "batch_units": 5.0,
+  "calendar_days": 7,
+  "loading_seconds": 600,
+  "procurement_units_per_fridge": 1,
+  "assumptions": [
+    "原生产计划未标件数；本标准关联确认各部件为同一批5件，原工时保持整批小时口径，不缩短或按件重复放大",
+    "连续作业7天为标准模拟日历，不宣称读取了真实班次",
+    "组装每台采用原9工序/18工位；外购消耗暂按每台每种1单位，须按实际BOM确认",
+    "配送沿用已保存路线的车辆、客户、数量、路段耗时；运输日平移到全链就绪后的下一工作日08:00"
+  ],
+  "logistics": {
+    "route": {
+      "scheme": "Stage2_Balanced",
+      "day": "1",
+      "route_id": "0",
+      "vehicle_id": "14",
+      "start_depot": "3",
+      "end_depot": "3",
+      "start_time_min": "0.0",
+      "end_time_min": "232.7",
+      "start_time_clock": "08:00",
+      "end_time_clock": "11:53",
+      "customer_seq_internal": "[np.int64(36), np.int64(38)]",
+      "customer_seq_cust_id": "[36, 38]"
+    },
+    "stops": [
+      {
+        "scheme": "Stage2_Balanced",
+        "day": "1",
+        "route_id": "0",
+        "vehicle_id": "14",
+        "stop_order": "0",
+        "node_type": "depot_start",
+        "node_id": "3",
+        "cust_id": "",
+        "arrive_min": "0.0",
+        "start_service_min": "0.0",
+        "finish_min": "0.0",
+        "late_min": "0.0",
+        "cum_dist_km": "0.0",
+        "cum_load": "0.0",
+        "arrive_clock": "08:00",
+        "start_service_clock": "08:00",
+        "finish_clock": "08:00"
+      },
+      {
+        "scheme": "Stage2_Balanced",
+        "day": "1",
+        "route_id": "0",
+        "vehicle_id": "14",
+        "stop_order": "1",
+        "node_type": "customer",
+        "node_id": "36",
+        "cust_id": "36.0",
+        "arrive_min": "10.19",
+        "start_service_min": "120.0",
+        "finish_min": "160.0",
+        "late_min": "0.0",
+        "cum_dist_km": "10.3209",
+        "cum_load": "3.0",
+        "arrive_clock": "08:10",
+        "start_service_clock": "10:00",
+        "finish_clock": "10:40"
+      },
+      {
+        "scheme": "Stage2_Balanced",
+        "day": "1",
+        "route_id": "0",
+        "vehicle_id": "14",
+        "stop_order": "2",
+        "node_type": "customer",
+        "node_id": "38",
+        "cust_id": "38.0",
+        "arrive_min": "164.06333333333333",
+        "start_service_min": "164.06333333333333",
+        "finish_min": "224.06333333333333",
+        "late_min": "0.0",
+        "cum_dist_km": "13.2713",
+        "cum_load": "5.0",
+        "arrive_clock": "10:44",
+        "start_service_clock": "10:44",
+        "finish_clock": "11:44"
+      },
+      {
+        "scheme": "Stage2_Balanced",
+        "day": "1",
+        "route_id": "0",
+        "vehicle_id": "14",
+        "stop_order": "3",
+        "node_type": "depot_end",
+        "node_id": "3",
+        "cust_id": "",
+        "arrive_min": "232.7",
+        "start_service_min": "232.7",
+        "finish_min": "232.7",
+        "late_min": "0.0",
+        "cum_dist_km": "21.8345",
+        "cum_load": "5.0",
+        "arrive_clock": "11:53",
+        "start_service_clock": "11:53",
+        "finish_clock": "11:53"
+      }
+    ],
+    "customers": [
+      {
+        "cust_id": "36",
+        "lon": "120.028",
+        "lat": "36.267",
+        "demand": "3.0",
+        "service": "40.0",
+        "tw_start": "120.0",
+        "tw_end": "360.0",
+        "cust_name": "渤海湾花园"
+      },
+      {
+        "cust_id": "38",
+        "lon": "120.029",
+        "lat": "36.254",
+        "demand": "2.0",
+        "service": "60.0",
+        "tw_start": "80.0",
+        "tw_end": "200.0",
+        "cust_name": "浮翠园"
+      }
+    ],
+    "vehicle_capacity": 12.0,
+    "window_hard": false,
+    "window_late_weight": 50.0,
+    "source_files": [
+      "zhenjie/best_stage2_balanced_vehicle_route_sequence.csv",
+      "zhenjie/best_stage2_balanced_vehicle_timeline.csv",
+      "zhenjie/customers_day1.csv",
+      "zhenjie/shili_run2.py"
+    ]
+  },
+  "material_inventory_snapshot": {
+    "materials": {
+      "compressor": {
+        "on_hand": 102.0
+      },
+      "circuit_board": {
+        "on_hand": 88.0
+      },
+      "sensor": {
+        "on_hand": 150.0
+      },
+      "wire_harness": {
+        "on_hand": 60.0
+      },
+      "foam_material": {
+        "on_hand": 22.0
+      },
+      "door_gasket": {
+        "on_hand": 95.0
+      },
+      "hinge_kit": {
+        "on_hand": 70.0
+      },
+      "metal_panel": {
+        "on_hand": 80.0
+      },
+      "copper_tube": {
+        "on_hand": 55.0
+      },
+      "packing_box": {
+        "on_hand": 200.0
+      }
+    },
+    "captured_at": 1794316465.5179458,
+    "source_path": "data/integration/purchased_supply_state.json"
+  }
+}

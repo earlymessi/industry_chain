@@ -24,25 +24,12 @@ class TabuSearchSolver(BaseSolver):
             )
             return score, mkspan
 
-        job_ptr = [0] * self.problem.num_jobs
-        job_ready = [0] * self.problem.num_jobs
-        machine_ready = [0] * self.problem.num_machines
-
-        for job_idx in sequence:
-            if job_ptr[job_idx] >= self.job_counts[job_idx]:
-                continue
-            task = self.problem.jobs[job_idx].tasks[job_ptr[job_idx]]
-            start = max(machine_ready[task.machine_id], job_ready[job_idx])
-            end = start + task.duration
-            job_ready[job_idx] = end
-            machine_ready[task.machine_id] = end
-            job_ptr[job_idx] += 1
-
-        makespan = max(machine_ready) if machine_ready else 0
-        penalty = 0
-        for j in range(self.problem.num_jobs):
-            penalty += job_ready[j] * self.problem.jobs[j].priority * 5.0
-
+        gantt = self.problem.get_schedule(sequence)
+        job_ready = [0.0] * self.problem.num_jobs
+        for op in gantt:
+            job_ready[op["job_id"]] = max(job_ready[op["job_id"]], op["end"])
+        makespan = max((op["end"] for op in gantt), default=0.0)
+        penalty = sum(job_ready[j] * self.problem.jobs[j].priority * 5.0 for j in range(self.problem.num_jobs))
         return makespan + penalty, makespan
 
     def _generate_priority_initial_solution(self):
@@ -51,7 +38,7 @@ class TabuSearchSolver(BaseSolver):
         total_ops = sum(self.job_counts)
         for _ in range(total_ops):
             available = [j for j in range(len(self.job_counts)) if job_ptrs[j] < self.job_counts[j]]
-            weights = [self.problem.jobs[j].priority for j in available]
+            weights = [max(0.1, self.problem.jobs[j].priority) for j in available]
             selected = random.choices(available, weights=weights, k=1)[0]
             seq.append(selected)
             job_ptrs[selected] += 1
@@ -59,6 +46,8 @@ class TabuSearchSolver(BaseSolver):
 
     def run(self, track_history=True, weights=None, resource_config=None, **kwargs):
         start_time = time.time()
+        time_limit = kwargs.get('time_limit')
+        deadline = time.monotonic() + max(0, float(time_limit)) if time_limit is not None else None
 
         # 初始解
         curr_solution = self._generate_priority_initial_solution()
@@ -74,7 +63,9 @@ class TabuSearchSolver(BaseSolver):
         tabu_list = deque(maxlen=self.tabu_size)
         history = []
 
-        for _ in range(self.max_iterations):
+        for _ in range(self.max_iterations if len(curr_solution) > 1 else 0):
+            if deadline is not None and time.monotonic() >= deadline:
+                break
             # 生成邻域
             best_neighbor = None
             best_neighbor_weighted = float('inf')
@@ -82,6 +73,8 @@ class TabuSearchSolver(BaseSolver):
 
             # 随机采样 N 个邻居
             for _ in range(self.neighbors_sample):
+                if deadline is not None and time.monotonic() >= deadline:
+                    break
                 i, j = random.sample(range(len(curr_solution)), 2)
 
                 # 构造邻居
@@ -117,7 +110,7 @@ class TabuSearchSolver(BaseSolver):
         runtime = time.time() - start_time
         return {
             "algorithm": "Tabu Search (Priority)",
-            "best_score": int(best_makespan),
+            "best_score": float(best_makespan),
             "best_solution": best_solution,
             "runtime_sec": round(runtime, 4),
             "history": history,

@@ -1,0 +1,67 @@
+[
+  {
+    "_id": {
+      "$oid": "6a263107350e91c1c8300fd1"
+    },
+    "product_id": "PROD-1780887815",
+    "product_name": "海尔 BCD-470WDPG 十字四门冰箱",
+    "takt": 0.0018,
+    "pc": 2,
+    "pallet": 0.00167,
+    "created_at": {
+      "$date": "2026-06-08T03:03:35.482Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a263125350e91c1c8300fd2"
+    },
+    "product_id": "PROD-1780887845",
+    "product_name": "海尔 KFR-35GW/01KBB81U1 1.5匹变频空调",
+    "takt": 0.0022,
+    "pc": 1,
+    "pallet": 0.001,
+    "created_at": {
+      "$date": "2026-06-08T03:04:05.827Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a263135350e91c1c8300fd3"
+    },
+    "product_id": "PROD-1780887861",
+    "product_name": "海尔 EG10014HB939G 10kg滚筒洗衣机",
+    "takt": 0.0023,
+    "pc": 0.7,
+    "pallet": 0.001,
+    "created_at": {
+      "$date": "2026-06-08T03:04:21.575Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26315b350e91c1c8300fd4"
+    },
+    "product_id": "PROD-1780887899",
+    "product_name": "海尔 ES60H-HC3 60L储水式电热水器",
+    "takt": 0.0028,
+    "pc": 1.3,
+    "pallet": 0.00125,
+    "created_at": {
+      "$date": "2026-06-08T03:04:59.246Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26317e350e91c1c8300fd5"
+    },
+    "product_id": "PROD-1780887934",
+    "product_name": "海尔 65U1 65英寸4K智能电视",
+    "takt": 0.0012,
+    "pc": 3,
+    "pallet": 0.002,
+    "created_at": {
+      "$date": "2026-06-08T03:05:34.373Z"
+    }
+  }
+]

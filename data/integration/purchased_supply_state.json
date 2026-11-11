@@ -1,0 +1,46 @@
+{
+  "materials": {
+    "compressor": {
+      "on_hand": 102
+    },
+    "circuit_board": {
+      "on_hand": 88
+    },
+    "sensor": {
+      "on_hand": 150
+    },
+    "wire_harness": {
+      "on_hand": 60
+    },
+    "foam_material": {
+      "on_hand": 22
+    },
+    "door_gasket": {
+      "on_hand": 95
+    },
+    "hinge_kit": {
+      "on_hand": 70
+    },
+    "metal_panel": {
+      "on_hand": 80
+    },
+    "copper_tube": {
+      "on_hand": 55
+    },
+    "packing_box": {
+      "on_hand": 200
+    }
+  },
+  "deliveries": [
+    {
+      "id": "TEST_ARRIVE",
+      "supplier_name": "压缩机供应商",
+      "material_id": "compressor",
+      "quantity": 3,
+      "eta_minutes": 0,
+      "status": "arrived",
+      "priority": "normal"
+    }
+  ],
+  "updated_at": "2026-11-11T07:56:35.696166+00:00"
+}

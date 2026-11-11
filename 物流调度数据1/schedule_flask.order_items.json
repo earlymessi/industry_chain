@@ -1,0 +1,1800 @@
+[{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18231"
+  },
+  "order_items_id": "OI-1-PROD-1780887815",
+  "order_id": 1,
+  "product_id": "PROD-1780887815",
+  "quantity": 2780,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.733Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18232"
+  },
+  "order_items_id": "OI-1-PROD-1780887845",
+  "order_id": 1,
+  "product_id": "PROD-1780887845",
+  "quantity": 2060,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.733Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18233"
+  },
+  "order_items_id": "OI-1-PROD-1780887861",
+  "order_id": 1,
+  "product_id": "PROD-1780887861",
+  "quantity": 1710,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.733Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18234"
+  },
+  "order_items_id": "OI-1-PROD-1780887899",
+  "order_id": 1,
+  "product_id": "PROD-1780887899",
+  "quantity": 1150,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.733Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18235"
+  },
+  "order_items_id": "OI-1-PROD-1780887934",
+  "order_id": 1,
+  "product_id": "PROD-1780887934",
+  "quantity": 1310,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.733Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18237"
+  },
+  "order_items_id": "OI-2-PROD-1780887815",
+  "order_id": 2,
+  "product_id": "PROD-1780887815",
+  "quantity": 2220,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.735Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18238"
+  },
+  "order_items_id": "OI-2-PROD-1780887845",
+  "order_id": 2,
+  "product_id": "PROD-1780887845",
+  "quantity": 730,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.735Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18239"
+  },
+  "order_items_id": "OI-2-PROD-1780887861",
+  "order_id": 2,
+  "product_id": "PROD-1780887861",
+  "quantity": 1320,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.735Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1823a"
+  },
+  "order_items_id": "OI-2-PROD-1780887899",
+  "order_id": 2,
+  "product_id": "PROD-1780887899",
+  "quantity": 2400,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.735Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1823b"
+  },
+  "order_items_id": "OI-2-PROD-1780887934",
+  "order_id": 2,
+  "product_id": "PROD-1780887934",
+  "quantity": 750,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.735Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1823d"
+  },
+  "order_items_id": "OI-3-PROD-1780887815",
+  "order_id": 3,
+  "product_id": "PROD-1780887815",
+  "quantity": 1780,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.738Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1823e"
+  },
+  "order_items_id": "OI-3-PROD-1780887845",
+  "order_id": 3,
+  "product_id": "PROD-1780887845",
+  "quantity": 560,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.738Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1823f"
+  },
+  "order_items_id": "OI-3-PROD-1780887861",
+  "order_id": 3,
+  "product_id": "PROD-1780887861",
+  "quantity": 1410,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.738Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18240"
+  },
+  "order_items_id": "OI-3-PROD-1780887899",
+  "order_id": 3,
+  "product_id": "PROD-1780887899",
+  "quantity": 2030,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.738Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18241"
+  },
+  "order_items_id": "OI-3-PROD-1780887934",
+  "order_id": 3,
+  "product_id": "PROD-1780887934",
+  "quantity": 1500,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.738Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18243"
+  },
+  "order_items_id": "OI-4-PROD-1780887815",
+  "order_id": 4,
+  "product_id": "PROD-1780887815",
+  "quantity": 1620,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.740Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18244"
+  },
+  "order_items_id": "OI-4-PROD-1780887845",
+  "order_id": 4,
+  "product_id": "PROD-1780887845",
+  "quantity": 590,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.740Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18245"
+  },
+  "order_items_id": "OI-4-PROD-1780887861",
+  "order_id": 4,
+  "product_id": "PROD-1780887861",
+  "quantity": 420,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.740Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18246"
+  },
+  "order_items_id": "OI-4-PROD-1780887899",
+  "order_id": 4,
+  "product_id": "PROD-1780887899",
+  "quantity": 1290,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.740Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18247"
+  },
+  "order_items_id": "OI-4-PROD-1780887934",
+  "order_id": 4,
+  "product_id": "PROD-1780887934",
+  "quantity": 2910,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.740Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18249"
+  },
+  "order_items_id": "OI-5-PROD-1780887815",
+  "order_id": 5,
+  "product_id": "PROD-1780887815",
+  "quantity": 1900,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.742Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1824a"
+  },
+  "order_items_id": "OI-5-PROD-1780887845",
+  "order_id": 5,
+  "product_id": "PROD-1780887845",
+  "quantity": 1980,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.742Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1824b"
+  },
+  "order_items_id": "OI-5-PROD-1780887861",
+  "order_id": 5,
+  "product_id": "PROD-1780887861",
+  "quantity": 1140,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.742Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1824c"
+  },
+  "order_items_id": "OI-5-PROD-1780887899",
+  "order_id": 5,
+  "product_id": "PROD-1780887899",
+  "quantity": 840,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.742Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1824d"
+  },
+  "order_items_id": "OI-5-PROD-1780887934",
+  "order_id": 5,
+  "product_id": "PROD-1780887934",
+  "quantity": 1120,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.742Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1824f"
+  },
+  "order_items_id": "OI-6-PROD-1780887815",
+  "order_id": 6,
+  "product_id": "PROD-1780887815",
+  "quantity": 1650,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.744Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18250"
+  },
+  "order_items_id": "OI-6-PROD-1780887845",
+  "order_id": 6,
+  "product_id": "PROD-1780887845",
+  "quantity": 700,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.744Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18251"
+  },
+  "order_items_id": "OI-6-PROD-1780887861",
+  "order_id": 6,
+  "product_id": "PROD-1780887861",
+  "quantity": 440,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.744Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18252"
+  },
+  "order_items_id": "OI-6-PROD-1780887899",
+  "order_id": 6,
+  "product_id": "PROD-1780887899",
+  "quantity": 1570,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.744Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18253"
+  },
+  "order_items_id": "OI-6-PROD-1780887934",
+  "order_id": 6,
+  "product_id": "PROD-1780887934",
+  "quantity": 1290,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.744Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18255"
+  },
+  "order_items_id": "OI-7-PROD-1780887815",
+  "order_id": 7,
+  "product_id": "PROD-1780887815",
+  "quantity": 1070,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.746Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18256"
+  },
+  "order_items_id": "OI-7-PROD-1780887845",
+  "order_id": 7,
+  "product_id": "PROD-1780887845",
+  "quantity": 2140,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.746Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18257"
+  },
+  "order_items_id": "OI-7-PROD-1780887861",
+  "order_id": 7,
+  "product_id": "PROD-1780887861",
+  "quantity": 1560,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.746Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18258"
+  },
+  "order_items_id": "OI-7-PROD-1780887899",
+  "order_id": 7,
+  "product_id": "PROD-1780887899",
+  "quantity": 1410,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.746Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18259"
+  },
+  "order_items_id": "OI-7-PROD-1780887934",
+  "order_id": 7,
+  "product_id": "PROD-1780887934",
+  "quantity": 2050,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.746Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1825b"
+  },
+  "order_items_id": "OI-8-PROD-1780887815",
+  "order_id": 8,
+  "product_id": "PROD-1780887815",
+  "quantity": 1040,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.748Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1825c"
+  },
+  "order_items_id": "OI-8-PROD-1780887845",
+  "order_id": 8,
+  "product_id": "PROD-1780887845",
+  "quantity": 470,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.748Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1825d"
+  },
+  "order_items_id": "OI-8-PROD-1780887861",
+  "order_id": 8,
+  "product_id": "PROD-1780887861",
+  "quantity": 440,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.748Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1825e"
+  },
+  "order_items_id": "OI-8-PROD-1780887899",
+  "order_id": 8,
+  "product_id": "PROD-1780887899",
+  "quantity": 1240,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.748Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1825f"
+  },
+  "order_items_id": "OI-8-PROD-1780887934",
+  "order_id": 8,
+  "product_id": "PROD-1780887934",
+  "quantity": 1110,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.748Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18261"
+  },
+  "order_items_id": "OI-9-PROD-1780887815",
+  "order_id": 9,
+  "product_id": "PROD-1780887815",
+  "quantity": 3230,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.749Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18262"
+  },
+  "order_items_id": "OI-9-PROD-1780887845",
+  "order_id": 9,
+  "product_id": "PROD-1780887845",
+  "quantity": 1970,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.749Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18263"
+  },
+  "order_items_id": "OI-9-PROD-1780887861",
+  "order_id": 9,
+  "product_id": "PROD-1780887861",
+  "quantity": 1520,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.749Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18264"
+  },
+  "order_items_id": "OI-9-PROD-1780887899",
+  "order_id": 9,
+  "product_id": "PROD-1780887899",
+  "quantity": 1810,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.749Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18265"
+  },
+  "order_items_id": "OI-9-PROD-1780887934",
+  "order_id": 9,
+  "product_id": "PROD-1780887934",
+  "quantity": 1790,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.749Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18267"
+  },
+  "order_items_id": "OI-10-PROD-1780887815",
+  "order_id": 10,
+  "product_id": "PROD-1780887815",
+  "quantity": 930,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.751Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18268"
+  },
+  "order_items_id": "OI-10-PROD-1780887845",
+  "order_id": 10,
+  "product_id": "PROD-1780887845",
+  "quantity": 480,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.751Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18269"
+  },
+  "order_items_id": "OI-10-PROD-1780887861",
+  "order_id": 10,
+  "product_id": "PROD-1780887861",
+  "quantity": 990,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.751Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1826a"
+  },
+  "order_items_id": "OI-10-PROD-1780887899",
+  "order_id": 10,
+  "product_id": "PROD-1780887899",
+  "quantity": 1210,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.751Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1826b"
+  },
+  "order_items_id": "OI-10-PROD-1780887934",
+  "order_id": 10,
+  "product_id": "PROD-1780887934",
+  "quantity": 1000,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.751Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1826d"
+  },
+  "order_items_id": "OI-11-PROD-1780887815",
+  "order_id": 11,
+  "product_id": "PROD-1780887815",
+  "quantity": 490,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.754Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1826e"
+  },
+  "order_items_id": "OI-11-PROD-1780887845",
+  "order_id": 11,
+  "product_id": "PROD-1780887845",
+  "quantity": 1180,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.754Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1826f"
+  },
+  "order_items_id": "OI-11-PROD-1780887861",
+  "order_id": 11,
+  "product_id": "PROD-1780887861",
+  "quantity": 590,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.754Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18270"
+  },
+  "order_items_id": "OI-11-PROD-1780887899",
+  "order_id": 11,
+  "product_id": "PROD-1780887899",
+  "quantity": 1880,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.754Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18271"
+  },
+  "order_items_id": "OI-11-PROD-1780887934",
+  "order_id": 11,
+  "product_id": "PROD-1780887934",
+  "quantity": 1090,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.754Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18273"
+  },
+  "order_items_id": "OI-12-PROD-1780887815",
+  "order_id": 12,
+  "product_id": "PROD-1780887815",
+  "quantity": 1240,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.756Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18274"
+  },
+  "order_items_id": "OI-12-PROD-1780887845",
+  "order_id": 12,
+  "product_id": "PROD-1780887845",
+  "quantity": 1970,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.756Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18275"
+  },
+  "order_items_id": "OI-12-PROD-1780887861",
+  "order_id": 12,
+  "product_id": "PROD-1780887861",
+  "quantity": 990,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.756Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18276"
+  },
+  "order_items_id": "OI-12-PROD-1780887899",
+  "order_id": 12,
+  "product_id": "PROD-1780887899",
+  "quantity": 3040,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.756Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18277"
+  },
+  "order_items_id": "OI-12-PROD-1780887934",
+  "order_id": 12,
+  "product_id": "PROD-1780887934",
+  "quantity": 620,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.756Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18279"
+  },
+  "order_items_id": "OI-13-PROD-1780887815",
+  "order_id": 13,
+  "product_id": "PROD-1780887815",
+  "quantity": 1250,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.758Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1827a"
+  },
+  "order_items_id": "OI-13-PROD-1780887845",
+  "order_id": 13,
+  "product_id": "PROD-1780887845",
+  "quantity": 590,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.758Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1827b"
+  },
+  "order_items_id": "OI-13-PROD-1780887861",
+  "order_id": 13,
+  "product_id": "PROD-1780887861",
+  "quantity": 310,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.758Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1827c"
+  },
+  "order_items_id": "OI-13-PROD-1780887899",
+  "order_id": 13,
+  "product_id": "PROD-1780887899",
+  "quantity": 1920,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.758Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1827d"
+  },
+  "order_items_id": "OI-13-PROD-1780887934",
+  "order_id": 13,
+  "product_id": "PROD-1780887934",
+  "quantity": 770,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.758Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1827f"
+  },
+  "order_items_id": "OI-14-PROD-1780887815",
+  "order_id": 14,
+  "product_id": "PROD-1780887815",
+  "quantity": 1070,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.761Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18280"
+  },
+  "order_items_id": "OI-14-PROD-1780887845",
+  "order_id": 14,
+  "product_id": "PROD-1780887845",
+  "quantity": 560,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.761Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18281"
+  },
+  "order_items_id": "OI-14-PROD-1780887861",
+  "order_id": 14,
+  "product_id": "PROD-1780887861",
+  "quantity": 330,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.761Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18282"
+  },
+  "order_items_id": "OI-14-PROD-1780887899",
+  "order_id": 14,
+  "product_id": "PROD-1780887899",
+  "quantity": 1270,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.761Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18283"
+  },
+  "order_items_id": "OI-14-PROD-1780887934",
+  "order_id": 14,
+  "product_id": "PROD-1780887934",
+  "quantity": 960,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.761Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18285"
+  },
+  "order_items_id": "OI-15-PROD-1780887815",
+  "order_id": 15,
+  "product_id": "PROD-1780887815",
+  "quantity": 390,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.763Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18286"
+  },
+  "order_items_id": "OI-15-PROD-1780887845",
+  "order_id": 15,
+  "product_id": "PROD-1780887845",
+  "quantity": 3000,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.763Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18287"
+  },
+  "order_items_id": "OI-15-PROD-1780887861",
+  "order_id": 15,
+  "product_id": "PROD-1780887861",
+  "quantity": 1860,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.763Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18288"
+  },
+  "order_items_id": "OI-15-PROD-1780887899",
+  "order_id": 15,
+  "product_id": "PROD-1780887899",
+  "quantity": 1640,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.763Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18289"
+  },
+  "order_items_id": "OI-15-PROD-1780887934",
+  "order_id": 15,
+  "product_id": "PROD-1780887934",
+  "quantity": 1960,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.763Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1828b"
+  },
+  "order_items_id": "OI-16-PROD-1780887815",
+  "order_id": 16,
+  "product_id": "PROD-1780887815",
+  "quantity": 570,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.764Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1828c"
+  },
+  "order_items_id": "OI-16-PROD-1780887845",
+  "order_id": 16,
+  "product_id": "PROD-1780887845",
+  "quantity": 1950,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.764Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1828d"
+  },
+  "order_items_id": "OI-16-PROD-1780887861",
+  "order_id": 16,
+  "product_id": "PROD-1780887861",
+  "quantity": 1110,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.764Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1828e"
+  },
+  "order_items_id": "OI-16-PROD-1780887899",
+  "order_id": 16,
+  "product_id": "PROD-1780887899",
+  "quantity": 1430,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.764Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1828f"
+  },
+  "order_items_id": "OI-16-PROD-1780887934",
+  "order_id": 16,
+  "product_id": "PROD-1780887934",
+  "quantity": 2740,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.764Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18291"
+  },
+  "order_items_id": "OI-17-PROD-1780887815",
+  "order_id": 17,
+  "product_id": "PROD-1780887815",
+  "quantity": 1320,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.766Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18292"
+  },
+  "order_items_id": "OI-17-PROD-1780887845",
+  "order_id": 17,
+  "product_id": "PROD-1780887845",
+  "quantity": 570,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.766Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18293"
+  },
+  "order_items_id": "OI-17-PROD-1780887861",
+  "order_id": 17,
+  "product_id": "PROD-1780887861",
+  "quantity": 1400,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.766Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18294"
+  },
+  "order_items_id": "OI-17-PROD-1780887899",
+  "order_id": 17,
+  "product_id": "PROD-1780887899",
+  "quantity": 1320,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.766Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18295"
+  },
+  "order_items_id": "OI-17-PROD-1780887934",
+  "order_id": 17,
+  "product_id": "PROD-1780887934",
+  "quantity": 570,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.766Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18297"
+  },
+  "order_items_id": "OI-18-PROD-1780887815",
+  "order_id": 18,
+  "product_id": "PROD-1780887815",
+  "quantity": 2050,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.767Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18298"
+  },
+  "order_items_id": "OI-18-PROD-1780887845",
+  "order_id": 18,
+  "product_id": "PROD-1780887845",
+  "quantity": 1650,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.767Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e18299"
+  },
+  "order_items_id": "OI-18-PROD-1780887861",
+  "order_id": 18,
+  "product_id": "PROD-1780887861",
+  "quantity": 1880,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.767Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1829a"
+  },
+  "order_items_id": "OI-18-PROD-1780887899",
+  "order_id": 18,
+  "product_id": "PROD-1780887899",
+  "quantity": 580,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.767Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1829b"
+  },
+  "order_items_id": "OI-18-PROD-1780887934",
+  "order_id": 18,
+  "product_id": "PROD-1780887934",
+  "quantity": 840,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.767Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1829d"
+  },
+  "order_items_id": "OI-19-PROD-1780887815",
+  "order_id": 19,
+  "product_id": "PROD-1780887815",
+  "quantity": 1660,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.770Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1829e"
+  },
+  "order_items_id": "OI-19-PROD-1780887845",
+  "order_id": 19,
+  "product_id": "PROD-1780887845",
+  "quantity": 640,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.770Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e1829f"
+  },
+  "order_items_id": "OI-19-PROD-1780887861",
+  "order_id": 19,
+  "product_id": "PROD-1780887861",
+  "quantity": 1180,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.770Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182a0"
+  },
+  "order_items_id": "OI-19-PROD-1780887899",
+  "order_id": 19,
+  "product_id": "PROD-1780887899",
+  "quantity": 2220,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.770Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182a1"
+  },
+  "order_items_id": "OI-19-PROD-1780887934",
+  "order_id": 19,
+  "product_id": "PROD-1780887934",
+  "quantity": 1170,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.770Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182a3"
+  },
+  "order_items_id": "OI-20-PROD-1780887815",
+  "order_id": 20,
+  "product_id": "PROD-1780887815",
+  "quantity": 2330,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.772Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182a4"
+  },
+  "order_items_id": "OI-20-PROD-1780887845",
+  "order_id": 20,
+  "product_id": "PROD-1780887845",
+  "quantity": 1710,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.772Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182a5"
+  },
+  "order_items_id": "OI-20-PROD-1780887861",
+  "order_id": 20,
+  "product_id": "PROD-1780887861",
+  "quantity": 1550,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.772Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182a6"
+  },
+  "order_items_id": "OI-20-PROD-1780887899",
+  "order_id": 20,
+  "product_id": "PROD-1780887899",
+  "quantity": 960,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.772Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182a7"
+  },
+  "order_items_id": "OI-20-PROD-1780887934",
+  "order_id": 20,
+  "product_id": "PROD-1780887934",
+  "quantity": 1380,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.772Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182a9"
+  },
+  "order_items_id": "OI-21-PROD-1780887815",
+  "order_id": 21,
+  "product_id": "PROD-1780887815",
+  "quantity": 580,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.774Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182aa"
+  },
+  "order_items_id": "OI-21-PROD-1780887845",
+  "order_id": 21,
+  "product_id": "PROD-1780887845",
+  "quantity": 2420,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.774Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182ab"
+  },
+  "order_items_id": "OI-21-PROD-1780887861",
+  "order_id": 21,
+  "product_id": "PROD-1780887861",
+  "quantity": 1680,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.774Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182ac"
+  },
+  "order_items_id": "OI-21-PROD-1780887899",
+  "order_id": 21,
+  "product_id": "PROD-1780887899",
+  "quantity": 1580,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.774Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182ad"
+  },
+  "order_items_id": "OI-21-PROD-1780887934",
+  "order_id": 21,
+  "product_id": "PROD-1780887934",
+  "quantity": 770,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.774Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182af"
+  },
+  "order_items_id": "OI-22-PROD-1780887815",
+  "order_id": 22,
+  "product_id": "PROD-1780887815",
+  "quantity": 860,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.775Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182b0"
+  },
+  "order_items_id": "OI-22-PROD-1780887845",
+  "order_id": 22,
+  "product_id": "PROD-1780887845",
+  "quantity": 2160,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.775Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182b1"
+  },
+  "order_items_id": "OI-22-PROD-1780887861",
+  "order_id": 22,
+  "product_id": "PROD-1780887861",
+  "quantity": 2170,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.775Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182b2"
+  },
+  "order_items_id": "OI-22-PROD-1780887899",
+  "order_id": 22,
+  "product_id": "PROD-1780887899",
+  "quantity": 1080,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.775Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182b3"
+  },
+  "order_items_id": "OI-22-PROD-1780887934",
+  "order_id": 22,
+  "product_id": "PROD-1780887934",
+  "quantity": 1690,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.775Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182b5"
+  },
+  "order_items_id": "OI-23-PROD-1780887815",
+  "order_id": 23,
+  "product_id": "PROD-1780887815",
+  "quantity": 1900,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.777Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182b6"
+  },
+  "order_items_id": "OI-23-PROD-1780887845",
+  "order_id": 23,
+  "product_id": "PROD-1780887845",
+  "quantity": 2030,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.777Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182b7"
+  },
+  "order_items_id": "OI-23-PROD-1780887861",
+  "order_id": 23,
+  "product_id": "PROD-1780887861",
+  "quantity": 1480,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.777Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182b8"
+  },
+  "order_items_id": "OI-23-PROD-1780887899",
+  "order_id": 23,
+  "product_id": "PROD-1780887899",
+  "quantity": 1060,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.777Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182b9"
+  },
+  "order_items_id": "OI-23-PROD-1780887934",
+  "order_id": 23,
+  "product_id": "PROD-1780887934",
+  "quantity": 3020,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.777Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182bb"
+  },
+  "order_items_id": "OI-24-PROD-1780887815",
+  "order_id": 24,
+  "product_id": "PROD-1780887815",
+  "quantity": 700,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.778Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182bc"
+  },
+  "order_items_id": "OI-24-PROD-1780887845",
+  "order_id": 24,
+  "product_id": "PROD-1780887845",
+  "quantity": 2460,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.778Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182bd"
+  },
+  "order_items_id": "OI-24-PROD-1780887861",
+  "order_id": 24,
+  "product_id": "PROD-1780887861",
+  "quantity": 2410,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.778Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182be"
+  },
+  "order_items_id": "OI-24-PROD-1780887899",
+  "order_id": 24,
+  "product_id": "PROD-1780887899",
+  "quantity": 1600,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.778Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182bf"
+  },
+  "order_items_id": "OI-24-PROD-1780887934",
+  "order_id": 24,
+  "product_id": "PROD-1780887934",
+  "quantity": 1560,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.778Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182c1"
+  },
+  "order_items_id": "OI-25-PROD-1780887815",
+  "order_id": 25,
+  "product_id": "PROD-1780887815",
+  "quantity": 2030,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.780Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182c2"
+  },
+  "order_items_id": "OI-25-PROD-1780887845",
+  "order_id": 25,
+  "product_id": "PROD-1780887845",
+  "quantity": 1050,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.780Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182c3"
+  },
+  "order_items_id": "OI-25-PROD-1780887861",
+  "order_id": 25,
+  "product_id": "PROD-1780887861",
+  "quantity": 1020,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.780Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182c4"
+  },
+  "order_items_id": "OI-25-PROD-1780887899",
+  "order_id": 25,
+  "product_id": "PROD-1780887899",
+  "quantity": 2320,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.780Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182c5"
+  },
+  "order_items_id": "OI-25-PROD-1780887934",
+  "order_id": 25,
+  "product_id": "PROD-1780887934",
+  "quantity": 490,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.780Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182c7"
+  },
+  "order_items_id": "OI-26-PROD-1780887815",
+  "order_id": 26,
+  "product_id": "PROD-1780887815",
+  "quantity": 650,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.782Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182c8"
+  },
+  "order_items_id": "OI-26-PROD-1780887845",
+  "order_id": 26,
+  "product_id": "PROD-1780887845",
+  "quantity": 2750,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.782Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182c9"
+  },
+  "order_items_id": "OI-26-PROD-1780887861",
+  "order_id": 26,
+  "product_id": "PROD-1780887861",
+  "quantity": 950,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.782Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182ca"
+  },
+  "order_items_id": "OI-26-PROD-1780887899",
+  "order_id": 26,
+  "product_id": "PROD-1780887899",
+  "quantity": 1350,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.782Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182cb"
+  },
+  "order_items_id": "OI-26-PROD-1780887934",
+  "order_id": 26,
+  "product_id": "PROD-1780887934",
+  "quantity": 1060,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.782Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182cd"
+  },
+  "order_items_id": "OI-27-PROD-1780887815",
+  "order_id": 27,
+  "product_id": "PROD-1780887815",
+  "quantity": 2010,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.783Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182ce"
+  },
+  "order_items_id": "OI-27-PROD-1780887845",
+  "order_id": 27,
+  "product_id": "PROD-1780887845",
+  "quantity": 1160,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.783Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182cf"
+  },
+  "order_items_id": "OI-27-PROD-1780887861",
+  "order_id": 27,
+  "product_id": "PROD-1780887861",
+  "quantity": 2700,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.783Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182d0"
+  },
+  "order_items_id": "OI-27-PROD-1780887899",
+  "order_id": 27,
+  "product_id": "PROD-1780887899",
+  "quantity": 820,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.783Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182d1"
+  },
+  "order_items_id": "OI-27-PROD-1780887934",
+  "order_id": 27,
+  "product_id": "PROD-1780887934",
+  "quantity": 360,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.783Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182d3"
+  },
+  "order_items_id": "OI-28-PROD-1780887815",
+  "order_id": 28,
+  "product_id": "PROD-1780887815",
+  "quantity": 1630,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.784Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182d4"
+  },
+  "order_items_id": "OI-28-PROD-1780887845",
+  "order_id": 28,
+  "product_id": "PROD-1780887845",
+  "quantity": 1050,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.784Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182d5"
+  },
+  "order_items_id": "OI-28-PROD-1780887861",
+  "order_id": 28,
+  "product_id": "PROD-1780887861",
+  "quantity": 490,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.784Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182d6"
+  },
+  "order_items_id": "OI-28-PROD-1780887899",
+  "order_id": 28,
+  "product_id": "PROD-1780887899",
+  "quantity": 790,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.784Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182d7"
+  },
+  "order_items_id": "OI-28-PROD-1780887934",
+  "order_id": 28,
+  "product_id": "PROD-1780887934",
+  "quantity": 1320,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.784Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182d9"
+  },
+  "order_items_id": "OI-29-PROD-1780887815",
+  "order_id": 29,
+  "product_id": "PROD-1780887815",
+  "quantity": 790,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.788Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182da"
+  },
+  "order_items_id": "OI-29-PROD-1780887845",
+  "order_id": 29,
+  "product_id": "PROD-1780887845",
+  "quantity": 630,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.788Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182db"
+  },
+  "order_items_id": "OI-29-PROD-1780887861",
+  "order_id": 29,
+  "product_id": "PROD-1780887861",
+  "quantity": 1000,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.788Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182dc"
+  },
+  "order_items_id": "OI-29-PROD-1780887899",
+  "order_id": 29,
+  "product_id": "PROD-1780887899",
+  "quantity": 960,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.788Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182dd"
+  },
+  "order_items_id": "OI-29-PROD-1780887934",
+  "order_id": 29,
+  "product_id": "PROD-1780887934",
+  "quantity": 1140,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.788Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182df"
+  },
+  "order_items_id": "OI-30-PROD-1780887815",
+  "order_id": 30,
+  "product_id": "PROD-1780887815",
+  "quantity": 3510,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.790Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182e0"
+  },
+  "order_items_id": "OI-30-PROD-1780887845",
+  "order_id": 30,
+  "product_id": "PROD-1780887845",
+  "quantity": 670,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.790Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182e1"
+  },
+  "order_items_id": "OI-30-PROD-1780887861",
+  "order_id": 30,
+  "product_id": "PROD-1780887861",
+  "quantity": 1920,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.790Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182e2"
+  },
+  "order_items_id": "OI-30-PROD-1780887899",
+  "order_id": 30,
+  "product_id": "PROD-1780887899",
+  "quantity": 870,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.790Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26371fddcdfbbdb0e182e3"
+  },
+  "order_items_id": "OI-30-PROD-1780887934",
+  "order_id": 30,
+  "product_id": "PROD-1780887934",
+  "quantity": 590,
+  "created_at": {
+    "$date": "2026-06-08T11:29:35.790Z"
+  }
+}]

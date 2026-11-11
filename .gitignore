@@ -1,5 +1,6 @@
 # Byte-compiled / cache
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *.so
 
@@ -26,6 +27,13 @@ Thumbs.db
 # Local secrets
 .env
 .env.local
+
+# Generated runtime artifacts
+.integration/
+MASA-QMIX/evaluate_response.json
+MASA-QMIX/my_data_and_graph/historydata/
+MASA-QMIX/visual_outputs/
+MASA-QMIX/result/
 
 # IDEs
 .vscode/

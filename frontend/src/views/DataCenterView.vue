@@ -59,6 +59,7 @@ import { api } from '../api/client'
 import { useWorkContextStore } from '../stores/useWorkContextStore'
 import { useAssistantStore } from '../stores/useAssistantStore'
 import { useResultsStore } from '../stores/useResultsStore'
+import { productionPath } from '../utils/productionRoutes'
 import {
   hasPlanSchedule,
   hydrateResultsStoreFromPlan,
@@ -118,7 +119,7 @@ function loadToAPS(order) {
   } else {
     ElMessage.success('已导入工单到排程中心（该计划尚无排程快照）')
   }
-  router.push('/aps')
+  router.push(productionPath('aps'))
 }
 
 function openReports(order) {
@@ -132,7 +133,7 @@ function openReports(order) {
     ElMessage.warning('该计划暂无排程结果，请先在排程中心或智能助手执行排程')
     return
   }
-  router.push('/reports')
+  router.push(productionPath('reports'))
 }
 
 function openAssistant(order) {

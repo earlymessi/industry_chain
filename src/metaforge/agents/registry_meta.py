@@ -22,6 +22,8 @@ AGENT_REGISTRY: List[Dict[str, Any]] = [
 
         "scenario": "排程",
 
+        "replaced_by": "planning_collab",
+
         "endpoint": "/api/agents/scheduling/run",
 
         "allowed_tools": [
@@ -80,6 +82,8 @@ AGENT_REGISTRY: List[Dict[str, Any]] = [
 
         "scenario": "A",
 
+        "replaced_by": "events_collab",
+
         "endpoint": "/api/agents/events/run",
 
         "allowed_tools": [
@@ -118,6 +122,8 @@ AGENT_REGISTRY: List[Dict[str, Any]] = [
 
         "scenario": "B",
 
+        "replaced_by": "kitting_collab",
+
         "endpoint": "/api/agents/kitting/run",
 
         "allowed_tools": [
@@ -150,6 +156,8 @@ AGENT_REGISTRY: List[Dict[str, Any]] = [
 
         "scenario": "C",
 
+        "replaced_by": "commitment_collab",
+
         "endpoint": "/api/agents/commitment/run",
 
         "allowed_tools": [
@@ -177,6 +185,8 @@ AGENT_REGISTRY: List[Dict[str, Any]] = [
         "intent": "whatif",
 
         "scenario": "D",
+
+        "replaced_by": "whatif_collab",
 
         "endpoint": "/api/agents/whatif/run",
 
@@ -207,6 +217,8 @@ AGENT_REGISTRY: List[Dict[str, Any]] = [
         "intent": "plans",
 
         "scenario": "F",
+
+        "replaced_by": "plans_collab",
 
         "endpoint": "/api/agents/plans/run",
 

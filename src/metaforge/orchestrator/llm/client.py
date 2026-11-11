@@ -23,9 +23,17 @@ class LlmClient:
 
     @classmethod
     def from_env(cls) -> LlmClient:
+        deepseek_key = (os.getenv("DEEPSEEK_API_KEY") or "").strip()
+        if deepseek_key:
+            return cls(
+                api_key=deepseek_key,
+                model=os.getenv("DEEPSEEK_MODEL", "deepseek-v4-pro"),
+                timeout_sec=float(os.getenv("LLM_TIMEOUT_SEC", "30")),
+                base_url=(os.getenv("DEEPSEEK_BASE_URL") or "https://api.deepseek.com").rstrip("/"),
+            )
         key = (os.getenv("ZHIPU_API_KEY") or "").strip()
         if not key:
-            raise LlmClientError("ZHIPU_API_KEY not set")
+            raise LlmClientError("DEEPSEEK_API_KEY or ZHIPU_API_KEY not set")
         return cls(
             api_key=key,
             model=os.getenv("ZHIPU_MODEL", "glm-4.5-air"),

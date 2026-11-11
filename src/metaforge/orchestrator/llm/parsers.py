@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from metaforge.agent.scheduling_agent import _STRATEGY_BY_ID
 from metaforge.agents.base import PlanStep
+from metaforge.orchestrator.llm_config import llm_display_label
 from metaforge.events.normalize_envelope import (
     build_event_envelope,
     coerce_hours,
@@ -42,6 +43,20 @@ def parse_router(raw: Dict[str, Any], *, message: str = "") -> Dict[str, Any]:
     intent = str(raw.get("intent") or "schedule").strip().lower()
     if intent == "pipeline":
         intent = "schedule"
+
+    if intent == "unsupported":
+        from metaforge.services.router_scope import build_out_of_scope_route
+
+        steps = raw.get("reasoning_steps")
+        rs = [str(s)[:120] for s in steps[:6]] if isinstance(steps, list) else None
+        return build_out_of_scope_route(
+            str(raw.get("scope_category") or "general").strip(),
+            router="llm",
+            reason_zh=str(raw.get("reason_zh") or "")[:200] or None,
+            guidance_zh=str(raw.get("guidance_zh") or "")[:800] or None,
+            reasoning_steps=rs,
+        )
+
     if intent not in _VALID_INTENTS:
         intent = "schedule"
     out = {
@@ -130,7 +145,7 @@ def parse_scheduling(raw: Dict[str, Any], *, message: str = "") -> Dict[str, Any
         "strategy_name": str(raw.get("strategy_name") or tpl["name"]),
         "enforce_material": bool(raw.get("enforce_material", False)),
         "benchmark_file": bench,
-        "solver_match_notes": list(raw.get("solver_match_notes") or ["由 GLM 解析"]),
+        "solver_match_notes": list(raw.get("solver_match_notes") or [f"由 {llm_display_label()} 解析"]),
         "strategy_match_note": str(raw.get("strategy_match_note") or f"匹配策略 {sid}"),
         "summary_zh": str(raw.get("summary_zh") or f"已按{tpl['name']}选择算法。")[:200],
         "planner": "llm",

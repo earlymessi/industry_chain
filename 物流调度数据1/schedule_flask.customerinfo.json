@@ -1,0 +1,377 @@
+[
+  {
+    "_id": {
+      "$oid": "69dda534a0b252b6cf432d29"
+    },
+    "customer_id": 0,
+    "customer_name": "海尔胶州智慧物流园",
+    "address_X": 112.83233,
+    "address_Y": 28.30264,
+    "created_at": {
+      "$date": "2026-04-14T02:23:48.028Z"
+    },
+    "updated_at": {
+      "$date": "2026-06-08T10:59:56.917Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece49d"
+    },
+    "customer_id": 1,
+    "customer_name": "京东家电（长沙五一广场店）",
+    "address_X": 113.092127,
+    "address_Y": 28.231744,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.921Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece49e"
+    },
+    "customer_id": 2,
+    "customer_name": "苏宁易购（浏阳旗舰店）",
+    "address_X": 113.633155,
+    "address_Y": 28.168243,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.927Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece49f"
+    },
+    "customer_id": 3,
+    "customer_name": "国美电器（宁乡金凤路店）",
+    "address_X": 112.568411,
+    "address_Y": 28.281294,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.931Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4a0"
+    },
+    "customer_id": 4,
+    "customer_name": "海尔智家体验中心（怀化迎丰店）",
+    "address_X": 109.990117,
+    "address_Y": 27.547235,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.934Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4a1"
+    },
+    "customer_id": 5,
+    "customer_name": "京东家电（衡阳解放路店）",
+    "address_X": 112.615259,
+    "address_Y": 26.901624,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.937Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4a2"
+    },
+    "customer_id": 6,
+    "customer_name": "苏宁易购（常宁青阳路店）",
+    "address_X": 112.390124,
+    "address_Y": 26.414101,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.941Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4a3"
+    },
+    "customer_id": 7,
+    "customer_name": "国美电器（岳阳巴陵中路店）",
+    "address_X": 113.137384,
+    "address_Y": 29.377603,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.944Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4a4"
+    },
+    "customer_id": 8,
+    "customer_name": "海尔专卖店（华容店）",
+    "address_X": 112.541996,
+    "address_Y": 29.534275,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.948Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4a5"
+    },
+    "customer_id": 9,
+    "customer_name": "京东家电（湘潭万达广场店）",
+    "address_X": 112.912832,
+    "address_Y": 27.868054,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.951Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4a6"
+    },
+    "customer_id": 10,
+    "customer_name": "苏宁易购（常德武陵大道店）",
+    "address_X": 111.721529,
+    "address_Y": 29.036343,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.953Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4a7"
+    },
+    "customer_id": 11,
+    "customer_name": "海尔智家（桃源漳江店）",
+    "address_X": 111.486806,
+    "address_Y": 28.898988,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.956Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4a8"
+    },
+    "customer_id": 12,
+    "customer_name": "国美电器（株洲中心广场店）",
+    "address_X": 113.130763,
+    "address_Y": 27.842323,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.960Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4a9"
+    },
+    "customer_id": 13,
+    "customer_name": "京东家电（益阳桃花仑店）",
+    "address_X": 112.378146,
+    "address_Y": 28.562254,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.964Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4aa"
+    },
+    "customer_id": 14,
+    "customer_name": "苏宁易购（郴州国庆北路店）",
+    "address_X": 113.031825,
+    "address_Y": 25.785383,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.967Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4ab"
+    },
+    "customer_id": 15,
+    "customer_name": "海尔专卖店（娄底涟钢店）",
+    "address_X": 111.982784,
+    "address_Y": 27.731742,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.970Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4ac"
+    },
+    "customer_id": 16,
+    "customer_name": "国美电器（邵阳红旗路店）",
+    "address_X": 111.463868,
+    "address_Y": 27.230146,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.974Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4ad"
+    },
+    "customer_id": 17,
+    "customer_name": "京东家电（张家界永定店）",
+    "address_X": 110.458916,
+    "address_Y": 29.15134,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.978Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4ae"
+    },
+    "customer_id": 18,
+    "customer_name": "苏宁易购（吉首人民中路店）",
+    "address_X": 109.705021,
+    "address_Y": 28.262148,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.981Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4af"
+    },
+    "customer_id": 19,
+    "customer_name": "海尔智家体验中心（永州冷水滩店）",
+    "address_X": 111.616579,
+    "address_Y": 26.442428,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.984Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4b0"
+    },
+    "customer_id": 20,
+    "customer_name": "国美电器（宁远文庙店）",
+    "address_X": 111.948999,
+    "address_Y": 25.577865,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.987Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4b1"
+    },
+    "customer_id": 21,
+    "customer_name": "京东家电（溆浦迎宾路店）",
+    "address_X": 110.601467,
+    "address_Y": 27.909072,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.991Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4b2"
+    },
+    "customer_id": 22,
+    "customer_name": "苏宁易购（耒阳五一东路店）",
+    "address_X": 112.858206,
+    "address_Y": 26.418552,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.996Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302c06bb0c8d00ece4b3"
+    },
+    "customer_id": 23,
+    "customer_name": "海尔专卖店（平江店）",
+    "address_X": 113.594638,
+    "address_Y": 28.708817,
+    "created_at": {
+      "$date": "2026-06-08T10:59:56.999Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302d06bb0c8d00ece4b4"
+    },
+    "customer_id": 24,
+    "customer_name": "国美电器（汉寿龙阳店）",
+    "address_X": 111.962693,
+    "address_Y": 28.90936,
+    "created_at": {
+      "$date": "2026-06-08T10:59:57.002Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302d06bb0c8d00ece4b5"
+    },
+    "customer_id": 25,
+    "customer_name": "京东家电（攸县湘东店）",
+    "address_X": 113.348943,
+    "address_Y": 27.009172,
+    "created_at": {
+      "$date": "2026-06-08T10:59:57.006Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302d06bb0c8d00ece4b6"
+    },
+    "customer_id": 26,
+    "customer_name": "苏宁易购（宜章文明南路店）",
+    "address_X": 112.956367,
+    "address_Y": 25.401779,
+    "created_at": {
+      "$date": "2026-06-08T10:59:57.009Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302d06bb0c8d00ece4b7"
+    },
+    "customer_id": 27,
+    "customer_name": "海尔专卖店（新化店）",
+    "address_X": 111.324738,
+    "address_Y": 27.728317,
+    "created_at": {
+      "$date": "2026-06-08T10:59:57.012Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302d06bb0c8d00ece4b8"
+    },
+    "customer_id": 28,
+    "customer_name": "国美电器（邵东红岭路店）",
+    "address_X": 111.744427,
+    "address_Y": 27.264576,
+    "created_at": {
+      "$date": "2026-06-08T10:59:57.015Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302d06bb0c8d00ece4b9"
+    },
+    "customer_id": 29,
+    "customer_name": "京东家电（湘西凤凰古城店）",
+    "address_X": 109.595428,
+    "address_Y": 27.965238,
+    "created_at": {
+      "$date": "2026-06-08T10:59:57.017Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a26302d06bb0c8d00ece4ba"
+    },
+    "customer_id": 30,
+    "customer_name": "苏宁易购（祁阳人民东路店）",
+    "address_X": 111.847813,
+    "address_Y": 26.585114,
+    "created_at": {
+      "$date": "2026-06-08T10:59:57.020Z"
+    }
+  }
+]

@@ -1,0 +1,349 @@
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, Tuple
+
+from metaforge.strategy.adapters import strategy_to_solver_inputs
+from metaforge.strategy.evaluator import evaluate_candidates
+from metaforge.strategy.generator import generate_strategy
+from metaforge.strategy.models import SchedulingStrategy, SolverPolicy
+from metaforge.strategy.presets import strategy_from_preset
+from metaforge.strategy.problem_resolve import (
+    enrich_completion_aliases,
+    resolve_planning_problem,
+)
+from metaforge.strategy.run_state import create_run, get_run, update_run
+from metaforge.strategy.solver_policy import build_solver_policy
+from metaforge.strategy.trace import build_strategy_trace
+
+
+def _apply_primary_solvers(strategy: SchedulingStrategy, primary_solvers: Any) -> SchedulingStrategy:
+    """Override strategy.solver_preferences with UI-selected solvers."""
+    if not primary_solvers:
+        return strategy
+    if isinstance(primary_solvers, str):
+        names = [primary_solvers]
+    else:
+        names = [str(x).strip() for x in primary_solvers if str(x).strip()]
+    if not names:
+        return strategy
+    prefs = dict(strategy.solver_preferences or {})
+    prefs["primary_solvers"] = names
+    prefs["max_candidates"] = max(len(names), int(prefs.get("max_candidates") or 0) or len(names))
+    strategy.solver_preferences = prefs
+    return strategy
+
+
+def _policy_to_dict(policy: SolverPolicy) -> Dict[str, Any]:
+    return {
+        "primary_solvers": list(policy.primary_solvers),
+        "fallback_solver": policy.fallback_solver,
+        "time_budget_seconds": policy.time_budget_seconds,
+        "max_candidates": policy.max_candidates,
+        "reason": policy.reason,
+    }
+
+
+def _completion_from_gantt(gantt: List[Dict[str, Any]]) -> Dict[str, float]:
+    completion: Dict[str, float] = {}
+    for op in gantt or []:
+        if not isinstance(op, dict):
+            continue
+        jid = op.get("job_id", op.get("job"))
+        if jid is None:
+            continue
+        end = op.get("end", op.get("finish"))
+        if end is None:
+            continue
+        key = str(jid)
+        completion[key] = max(completion.get(key, 0.0), float(end))
+    return completion
+
+
+def _solve_one(
+    solver_id: str,
+    problem: Any,
+    *,
+    weights: Dict[str, float],
+    resource_config: Optional[Dict[str, Any]],
+    solver_params: Any,
+    job_aliases: Optional[Dict[str, List[str]]],
+) -> Dict[str, Any]:
+    from metaforge.utils.compare_solvers import run_single_solver
+
+    sr = run_single_solver(
+        solver_id,
+        problem,
+        weights=weights,
+        resource_config=resource_config,
+        solver_params=solver_params,
+    )
+    gantt = list(sr.gantt_data or [])
+    completion = enrich_completion_aliases(_completion_from_gantt(gantt), job_aliases)
+    return {
+        "schedule_id": sr.solver_id,
+        "solver": sr.solver_id,
+        "metrics": dict(sr.metrics or {}),
+        "gantt_data": gantt,
+        "completion_by_job": completion,
+        "composite_score": getattr(sr, "composite_score", None),
+    }
+
+
+def _solve_candidates_internal(
+    strategy: SchedulingStrategy,
+    problem: Any,
+    policy: SolverPolicy,
+    *,
+    job_aliases: Optional[Dict[str, List[str]]] = None,
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    if problem is None:
+        return [], []
+
+    weights, hints = strategy_to_solver_inputs(strategy)
+    resource_config = hints.get("resource_config_patch")
+
+    candidates: List[Dict[str, Any]] = []
+    failed: List[Dict[str, Any]] = []
+    tried: List[str] = []
+
+    for solver_id in policy.primary_solvers:
+        tried.append(solver_id)
+        params = (policy.parameters or {}).get(solver_id)
+        try:
+            candidates.append(
+                _solve_one(
+                    solver_id,
+                    problem,
+                    weights=weights,
+                    resource_config=resource_config,
+                    solver_params=params,
+                    job_aliases=job_aliases,
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            failed.append({"solver": solver_id, "error": str(exc)})
+
+    # Fallback when no successful primary candidate
+    fb = policy.fallback_solver
+    if not candidates and fb and fb not in tried:
+        try:
+            candidates.append(
+                _solve_one(
+                    fb,
+                    problem,
+                    weights=weights,
+                    resource_config=resource_config,
+                    solver_params=(policy.parameters or {}).get(fb),
+                    job_aliases=job_aliases,
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            failed.append({"solver": fb, "error": str(exc), "role": "fallback"})
+
+    return candidates, failed
+
+
+def solve_candidates(
+    strategy: SchedulingStrategy,
+    problem: Any,
+    policy: SolverPolicy,
+) -> List[Dict[str, Any]]:
+    """Run primary solvers (+ fallback if needed); return [] when problem is None."""
+    candidates, _ = _solve_candidates_internal(strategy, problem, policy)
+    return candidates
+
+
+def _finish_planning(
+    run_id: str,
+    *,
+    strategy: SchedulingStrategy,
+    jobs: Any,
+    problem: Any,
+) -> Dict[str, Any]:
+    run = get_run(run_id)
+    if run is None:
+        raise KeyError(f"run not found: {run_id!r}")
+
+    weights, hints = strategy_to_solver_inputs(strategy)
+    resolved, problem_meta = resolve_planning_problem(
+        jobs,
+        problem=problem,
+        resource_config=hints.get("resource_config_patch"),
+    )
+
+    warnings = list(run.get("warnings") or [])
+    warnings.extend(problem_meta.get("warnings") or [])
+    if resolved is None:
+        warnings.append("no solvable problem; returning empty recommendation")
+
+    policy = build_solver_policy(strategy, n_jobs=len(list(jobs or [])))
+    policy_dict = _policy_to_dict(policy)
+
+    candidates, failed_solvers = _solve_candidates_internal(
+        strategy,
+        resolved,
+        policy,
+        job_aliases=problem_meta.get("job_aliases"),
+    )
+    evaluation = evaluate_candidates(
+        strategy,
+        candidates,
+        jobs=jobs,
+    )
+    warnings.extend(evaluation.get("warnings") or [])
+
+    package = {
+        "recommended_schedule_id": evaluation["recommended_schedule_id"],
+        "evaluation": evaluation,
+        "failed_solvers": failed_solvers,
+        "strategy": strategy.to_dict(),
+        "problem_meta": {
+            "built_from_jobs": problem_meta.get("built_from_jobs"),
+            "job_name_map": problem_meta.get("job_name_map"),
+        },
+    }
+
+    run = update_run(
+        run_id,
+        stage="done",
+        status="COMPLETED",
+        candidate_schedules=candidates,
+        evaluation=evaluation,
+        package=package,
+        solver_policy=policy_dict,
+        failed_solvers=failed_solvers,
+        warnings=warnings,
+        stages=["generate", "validate", "solve", "evaluate"],
+    )
+
+    trace = build_strategy_trace(run)
+    return update_run(run_id, strategy_trace=trace, execution_trace=trace)
+
+
+def run_planning(
+    *,
+    user_goal: str,
+    jobs: Any,
+    machines: Any,
+    skip_strategy_hitl: bool = False,
+    llm_client: Any = None,
+    problem: Any = None,
+    workers: Any = None,
+    tools: Any = None,
+    allow_simulated: bool = True,
+    order_analysis: Any = None,
+    constraint_analysis: Any = None,
+    resource_analysis: Any = None,
+    preset_id: Optional[str] = None,
+    strategy: Any = None,
+    primary_solvers: Any = None,
+    **kwargs: Any,
+) -> Dict[str, Any]:
+    run = create_run(
+        user_goal=user_goal,
+        jobs=list(jobs or []),
+        machines=list(machines or []),
+        stage="generate",
+        status="RUNNING",
+    )
+
+    if strategy is not None:
+        if isinstance(strategy, SchedulingStrategy):
+            pass
+        elif isinstance(strategy, dict):
+            strategy = SchedulingStrategy.from_dict(strategy)
+        else:
+            raise ValueError(
+                f"strategy must be SchedulingStrategy or dict, got {type(strategy)!r}"
+            )
+        gen_meta = {
+            "generated_by": strategy.generated_by,
+            "fallback": False,
+            "source": "strategy",
+        }
+    elif preset_id:
+        strategy = strategy_from_preset(preset_id)
+        gen_meta = {
+            "generated_by": "preset",
+            "preset_id": preset_id,
+            "fallback": False,
+        }
+    else:
+        strategy, gen_meta = generate_strategy(
+            user_goal=user_goal,
+            jobs=jobs,
+            machines=machines,
+            llm_client=llm_client,
+            workers=workers,
+            tools=tools,
+            allow_simulated=allow_simulated,
+            order_analysis=order_analysis,
+            constraint_analysis=constraint_analysis,
+            resource_analysis=resource_analysis,
+        )
+
+    # UI 勾选算法覆盖策略默认 primary（与 APS「开始排程」同一套）
+    solvers = primary_solvers if primary_solvers is not None else kwargs.get("solvers")
+    strategy = _apply_primary_solvers(strategy, solvers)
+
+    warnings = list(run.get("warnings") or [])
+    if gen_meta.get("fallback"):
+        warnings.append("strategy generated via rule_fallback")
+
+    strategy_dict = strategy.to_dict()
+
+    update_run(
+        run["run_id"],
+        stage="generate",
+        strategy_draft=strategy_dict,
+        generation_meta=gen_meta,
+        warnings=warnings,
+    )
+
+    if not skip_strategy_hitl:
+        return update_run(
+            run["run_id"],
+            status="WAITING_APPROVAL",
+            stage="hitl_strategy",
+            strategy_draft=strategy_dict,
+            stages=["generate", "validate", "hitl_strategy"],
+        )
+
+    update_run(
+        run["run_id"],
+        strategy_approved=strategy_dict,
+        stage="solve",
+        status="RUNNING",
+    )
+
+    return _finish_planning(
+        run["run_id"],
+        strategy=strategy,
+        jobs=jobs,
+        problem=problem,
+    )
+
+
+def resume_planning(run_id: str, *, problem: Any = None) -> Dict[str, Any]:
+    run = get_run(run_id)
+    if run is None:
+        raise KeyError(f"run not found: {run_id!r}")
+
+    approved = run.get("strategy_approved")
+    if not approved:
+        return update_run(
+            run_id,
+            status="FAILED",
+            error="no strategy_approved; approve before resume",
+        )
+
+    strategy = SchedulingStrategy.from_dict(approved)
+    jobs = run.get("jobs") or []
+
+    update_run(run_id, stage="solve", status="RUNNING")
+    return _finish_planning(
+        run_id,
+        strategy=strategy,
+        jobs=jobs,
+        problem=problem,
+    )

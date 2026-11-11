@@ -1,0 +1,999 @@
+{
+  "id": "693c1376a4c27d96652ad849",
+  "plan_name": "冰箱部件生产计划-2025/1213",
+  "jobs": [
+    {
+      "name": "订单103-散热背板",
+      "priority": 100,
+      "tasks": [
+        {
+          "machine_id": 0,
+          "duration": 5,
+          "name": "激光下料"
+        },
+        {
+          "machine_id": 2,
+          "duration": 4,
+          "name": "多孔冲压"
+        },
+        {
+          "machine_id": 5,
+          "duration": 4,
+          "name": "背板喷涂"
+        }
+      ]
+    },
+    {
+      "name": "订单104-门体加强筋",
+      "priority": 100,
+      "tasks": [
+        {
+          "machine_id": 2,
+          "duration": 6,
+          "name": "卷料冲压"
+        },
+        {
+          "machine_id": 1,
+          "duration": 4,
+          "name": "U型折弯"
+        },
+        {
+          "machine_id": 4,
+          "duration": 3,
+          "name": "点焊加固"
+        }
+      ]
+    },
+    {
+      "name": "订单101-压缩机底座",
+      "priority": 10,
+      "tasks": [
+        {
+          "machine_id": 0,
+          "duration": 4,
+          "name": "激光下料"
+        },
+        {
+          "machine_id": 1,
+          "duration": 5,
+          "name": "折弯成型"
+        },
+        {
+          "machine_id": 3,
+          "duration": 2,
+          "name": "去毛刺"
+        },
+        {
+          "machine_id": 5,
+          "duration": 3,
+          "name": "防锈喷涂"
+        }
+      ]
+    },
+    {
+      "name": "订单102-门体铰链",
+      "priority": 10,
+      "tasks": [
+        {
+          "machine_id": 2,
+          "duration": 3,
+          "name": "精密冲压"
+        },
+        {
+          "machine_id": 3,
+          "duration": 4,
+          "name": "表面磨削"
+        },
+        {
+          "machine_id": 1,
+          "duration": 2,
+          "name": "微调折弯"
+        },
+        {
+          "machine_id": 7,
+          "duration": 1,
+          "name": "强度质检"
+        }
+      ]
+    },
+    {
+      "name": "订单105-蒸发器护罩",
+      "priority": 10,
+      "tasks": [
+        {
+          "machine_id": 0,
+          "duration": 2,
+          "name": "激光下料"
+        },
+        {
+          "machine_id": 1,
+          "duration": 6,
+          "name": "复杂折弯"
+        },
+        {
+          "machine_id": 3,
+          "duration": 2,
+          "name": "边缘打磨"
+        }
+      ]
+    },
+    {
+      "name": "订单106-冷凝器支架",
+      "priority": 10,
+      "tasks": [
+        {
+          "machine_id": 2,
+          "duration": 3,
+          "name": "冲压开孔"
+        },
+        {
+          "machine_id": 0,
+          "duration": 3,
+          "name": "激光切割轮廓"
+        },
+        {
+          "machine_id": 1,
+          "duration": 3,
+          "name": "角度折弯"
+        },
+        {
+          "machine_id": 4,
+          "duration": 4,
+          "name": "支架焊接"
+        }
+      ]
+    },
+    {
+      "name": "订单107-冰箱外门壳",
+      "priority": 10,
+      "tasks": [
+        {
+          "machine_id": 0,
+          "duration": 6,
+          "name": "大幅面激光切割"
+        },
+        {
+          "machine_id": 2,
+          "duration": 3,
+          "name": "V-Cut刨槽"
+        },
+        {
+          "machine_id": 1,
+          "duration": 5,
+          "name": "箱体折弯"
+        },
+        {
+          "machine_id": 5,
+          "duration": 6,
+          "name": "面漆喷涂"
+        },
+        {
+          "machine_id": 7,
+          "duration": 2,
+          "name": "外观质检"
+        }
+      ]
+    },
+    {
+      "name": "订单108-不锈钢把手",
+      "priority": 10,
+      "tasks": [
+        {
+          "machine_id": 0,
+          "duration": 2,
+          "name": "管材切割"
+        },
+        {
+          "machine_id": 1,
+          "duration": 3,
+          "name": "弧度折弯"
+        },
+        {
+          "machine_id": 3,
+          "duration": 5,
+          "name": "精细抛光"
+        },
+        {
+          "machine_id": 6,
+          "duration": 3,
+          "name": "组件组装"
+        }
+      ]
+    },
+    {
+      "name": "订单109-内部层架",
+      "priority": 10,
+      "tasks": [
+        {
+          "machine_id": 2,
+          "duration": 7,
+          "name": "网格冲压"
+        },
+        {
+          "machine_id": 4,
+          "duration": 5,
+          "name": "边框焊接"
+        },
+        {
+          "machine_id": 5,
+          "duration": 4,
+          "name": "浸塑处理"
+        }
+      ]
+    },
+    {
+      "name": "订单110-电控盒组件",
+      "priority": 10,
+      "tasks": [
+        {
+          "machine_id": 0,
+          "duration": 2,
+          "name": "激光下料"
+        },
+        {
+          "machine_id": 1,
+          "duration": 4,
+          "name": "多道折弯"
+        },
+        {
+          "machine_id": 6,
+          "duration": 3,
+          "name": "铆接组装"
+        },
+        {
+          "machine_id": 7,
+          "duration": 3,
+          "name": "功能测试"
+        }
+      ]
+    },
+    {
+      "name": "订单111-底部横梁",
+      "priority": 10,
+      "tasks": [
+        {
+          "machine_id": 2,
+          "duration": 4,
+          "name": "厚板冲压"
+        },
+        {
+          "machine_id": 4,
+          "duration": 4,
+          "name": "加固焊接"
+        },
+        {
+          "machine_id": 3,
+          "duration": 2,
+          "name": "去焊渣"
+        }
+      ]
+    },
+    {
+      "name": "订单112-制冰机支架",
+      "priority": 10,
+      "tasks": [
+        {
+          "machine_id": 0,
+          "duration": 3,
+          "name": "激光精切"
+        },
+        {
+          "machine_id": 3,
+          "duration": 1,
+          "name": "去毛刺"
+        },
+        {
+          "machine_id": 1,
+          "duration": 2,
+          "name": "精密折弯"
+        },
+        {
+          "machine_id": 6,
+          "duration": 2,
+          "name": "配件组装"
+        }
+      ]
+    }
+  ],
+  "schedule_results": {
+    "q": {
+      "solver_id": "q",
+      "gantt_data": [
+        {
+          "job_id": 1,
+          "priority": 100,
+          "operation_id": 0,
+          "operation_name": "卷料冲压",
+          "machine_id": 2,
+          "start": 0,
+          "end": 6,
+          "job_name": "订单104-门体加强筋"
+        },
+        {
+          "job_id": 7,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "管材切割",
+          "machine_id": 0,
+          "start": 0,
+          "end": 2,
+          "job_name": "订单108-不锈钢把手"
+        },
+        {
+          "job_id": 1,
+          "priority": 100,
+          "operation_id": 0,
+          "operation_name": "U型折弯",
+          "machine_id": 1,
+          "machine_options": [
+            1
+          ],
+          "machine_group": null,
+          "start": 6,
+          "end": 10,
+          "job_name": "订单104-门体加强筋"
+        },
+        {
+          "job_id": 10,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "厚板冲压",
+          "machine_id": 2,
+          "machine_options": [
+            2
+          ],
+          "machine_group": null,
+          "start": 6,
+          "end": 10,
+          "job_name": "订单111-底部横梁"
+        },
+        {
+          "job_id": 2,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "激光下料",
+          "machine_id": 0,
+          "machine_options": [
+            0
+          ],
+          "machine_group": null,
+          "start": 8,
+          "end": 12,
+          "job_name": "订单101-压缩机底座"
+        },
+        {
+          "job_id": 1,
+          "priority": 100,
+          "operation_id": 1,
+          "operation_name": "点焊加固",
+          "machine_id": 4,
+          "machine_options": [
+            4
+          ],
+          "machine_group": null,
+          "start": 10,
+          "end": 13,
+          "job_name": "订单104-门体加强筋"
+        },
+        {
+          "job_id": 0,
+          "priority": 100,
+          "operation_id": 0,
+          "operation_name": "激光下料",
+          "machine_id": 0,
+          "machine_options": [
+            0
+          ],
+          "machine_group": null,
+          "start": 12,
+          "end": 17,
+          "job_name": "订单103-散热背板"
+        },
+        {
+          "job_id": 2,
+          "priority": 10,
+          "operation_id": 1,
+          "operation_name": "折弯成型",
+          "machine_id": 1,
+          "machine_options": [
+            1
+          ],
+          "machine_group": null,
+          "start": 12,
+          "end": 17,
+          "job_name": "订单101-压缩机底座"
+        },
+        {
+          "job_id": 10,
+          "priority": 10,
+          "operation_id": 1,
+          "operation_name": "加固焊接",
+          "machine_id": 4,
+          "machine_options": [
+            4
+          ],
+          "machine_group": null,
+          "start": 13,
+          "end": 17,
+          "job_name": "订单111-底部横梁"
+        },
+        {
+          "job_id": 0,
+          "priority": 100,
+          "operation_id": 1,
+          "operation_name": "多孔冲压",
+          "machine_id": 2,
+          "machine_options": [
+            2
+          ],
+          "machine_group": null,
+          "start": 17,
+          "end": 21,
+          "job_name": "订单103-散热背板"
+        },
+        {
+          "job_id": 2,
+          "priority": 10,
+          "operation_id": 2,
+          "operation_name": "去毛刺",
+          "machine_id": 3,
+          "machine_options": [
+            3
+          ],
+          "machine_group": null,
+          "start": 17,
+          "end": 19,
+          "job_name": "订单101-压缩机底座"
+        },
+        {
+          "job_id": 4,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "激光下料",
+          "machine_id": 0,
+          "machine_options": [
+            0
+          ],
+          "machine_group": null,
+          "start": 17,
+          "end": 19,
+          "job_name": "订单105-蒸发器护罩"
+        },
+        {
+          "job_id": 7,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "弧度折弯",
+          "machine_id": 1,
+          "machine_options": [
+            1
+          ],
+          "machine_group": null,
+          "start": 17,
+          "end": 20,
+          "job_name": "订单108-不锈钢把手"
+        },
+        {
+          "job_id": 6,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "大幅面激光切割",
+          "machine_id": 0,
+          "machine_options": [
+            0
+          ],
+          "machine_group": null,
+          "start": 19,
+          "end": 25,
+          "job_name": "订单107-冰箱外门壳"
+        },
+        {
+          "job_id": 4,
+          "priority": 10,
+          "operation_id": 1,
+          "operation_name": "复杂折弯",
+          "machine_id": 1,
+          "machine_options": [
+            1
+          ],
+          "machine_group": null,
+          "start": 20,
+          "end": 26,
+          "job_name": "订单105-蒸发器护罩"
+        },
+        {
+          "job_id": 0,
+          "priority": 100,
+          "operation_id": 2,
+          "operation_name": "背板喷涂",
+          "machine_id": 5,
+          "machine_options": [
+            5
+          ],
+          "machine_group": null,
+          "start": 21,
+          "end": 25,
+          "job_name": "订单103-散热背板"
+        },
+        {
+          "job_id": 3,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "精密冲压",
+          "machine_id": 2,
+          "machine_options": [
+            2
+          ],
+          "machine_group": null,
+          "start": 21,
+          "end": 24,
+          "job_name": "订单102-门体铰链"
+        },
+        {
+          "job_id": 3,
+          "priority": 10,
+          "operation_id": 1,
+          "operation_name": "表面磨削",
+          "machine_id": 3,
+          "machine_options": [
+            3
+          ],
+          "machine_group": null,
+          "start": 24,
+          "end": 28,
+          "job_name": "订单102-门体铰链"
+        },
+        {
+          "job_id": 5,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "冲压开孔",
+          "machine_id": 2,
+          "machine_options": [
+            2
+          ],
+          "machine_group": null,
+          "start": 24,
+          "end": 27,
+          "job_name": "订单106-冷凝器支架"
+        },
+        {
+          "job_id": 2,
+          "priority": 10,
+          "operation_id": 3,
+          "operation_name": "防锈喷涂",
+          "machine_id": 5,
+          "machine_options": [
+            5
+          ],
+          "machine_group": null,
+          "start": 25,
+          "end": 28,
+          "job_name": "订单101-压缩机底座"
+        },
+        {
+          "job_id": 5,
+          "priority": 10,
+          "operation_id": 1,
+          "operation_name": "激光切割轮廓",
+          "machine_id": 0,
+          "machine_options": [
+            0
+          ],
+          "machine_group": null,
+          "start": 27,
+          "end": 30,
+          "job_name": "订单106-冷凝器支架"
+        },
+        {
+          "job_id": 6,
+          "priority": 10,
+          "operation_id": 1,
+          "operation_name": "V-Cut刨槽",
+          "machine_id": 2,
+          "machine_options": [
+            2
+          ],
+          "machine_group": null,
+          "start": 27,
+          "end": 30,
+          "job_name": "订单107-冰箱外门壳"
+        },
+        {
+          "job_id": 3,
+          "priority": 10,
+          "operation_id": 2,
+          "operation_name": "微调折弯",
+          "machine_id": 1,
+          "machine_options": [
+            1
+          ],
+          "machine_group": null,
+          "start": 28,
+          "end": 30,
+          "job_name": "订单102-门体铰链"
+        },
+        {
+          "job_id": 4,
+          "priority": 10,
+          "operation_id": 2,
+          "operation_name": "边缘打磨",
+          "machine_id": 3,
+          "machine_options": [
+            3
+          ],
+          "machine_group": null,
+          "start": 28,
+          "end": 30,
+          "job_name": "订单105-蒸发器护罩"
+        },
+        {
+          "job_id": 3,
+          "priority": 10,
+          "operation_id": 3,
+          "operation_name": "强度质检",
+          "machine_id": 7,
+          "machine_options": [
+            7
+          ],
+          "machine_group": null,
+          "start": 30,
+          "end": 31,
+          "job_name": "订单102-门体铰链"
+        },
+        {
+          "job_id": 5,
+          "priority": 10,
+          "operation_id": 2,
+          "operation_name": "角度折弯",
+          "machine_id": 1,
+          "machine_options": [
+            1
+          ],
+          "machine_group": null,
+          "start": 30,
+          "end": 33,
+          "job_name": "订单106-冷凝器支架"
+        },
+        {
+          "job_id": 7,
+          "priority": 10,
+          "operation_id": 1,
+          "operation_name": "精细抛光",
+          "machine_id": 3,
+          "machine_options": [
+            3
+          ],
+          "machine_group": null,
+          "start": 30,
+          "end": 35,
+          "job_name": "订单108-不锈钢把手"
+        },
+        {
+          "job_id": 8,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "网格冲压",
+          "machine_id": 2,
+          "machine_options": [
+            2
+          ],
+          "machine_group": null,
+          "start": 30,
+          "end": 37,
+          "job_name": "订单109-内部层架"
+        },
+        {
+          "job_id": 9,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "激光下料",
+          "machine_id": 0,
+          "machine_options": [
+            0
+          ],
+          "machine_group": null,
+          "start": 30,
+          "end": 32,
+          "job_name": "订单110-电控盒组件"
+        },
+        {
+          "job_id": 11,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "激光精切",
+          "machine_id": 0,
+          "machine_options": [
+            0
+          ],
+          "machine_group": null,
+          "start": 32,
+          "end": 35,
+          "job_name": "订单112-制冰机支架"
+        },
+        {
+          "job_id": 5,
+          "priority": 10,
+          "operation_id": 3,
+          "operation_name": "支架焊接",
+          "machine_id": 4,
+          "machine_options": [
+            4
+          ],
+          "machine_group": null,
+          "start": 33,
+          "end": 37,
+          "job_name": "订单106-冷凝器支架"
+        },
+        {
+          "job_id": 6,
+          "priority": 10,
+          "operation_id": 2,
+          "operation_name": "箱体折弯",
+          "machine_id": 1,
+          "machine_options": [
+            1
+          ],
+          "machine_group": null,
+          "start": 33,
+          "end": 38,
+          "job_name": "订单107-冰箱外门壳"
+        },
+        {
+          "job_id": 7,
+          "priority": 10,
+          "operation_id": 2,
+          "operation_name": "组件组装",
+          "machine_id": 6,
+          "machine_options": [
+            6
+          ],
+          "machine_group": null,
+          "start": 35,
+          "end": 38,
+          "job_name": "订单108-不锈钢把手"
+        },
+        {
+          "job_id": 10,
+          "priority": 10,
+          "operation_id": 2,
+          "operation_name": "去焊渣",
+          "machine_id": 3,
+          "machine_options": [
+            3
+          ],
+          "machine_group": null,
+          "start": 35,
+          "end": 37,
+          "job_name": "订单111-底部横梁"
+        },
+        {
+          "job_id": 8,
+          "priority": 10,
+          "operation_id": 1,
+          "operation_name": "边框焊接",
+          "machine_id": 4,
+          "machine_options": [
+            4
+          ],
+          "machine_group": null,
+          "start": 37,
+          "end": 42,
+          "job_name": "订单109-内部层架"
+        },
+        {
+          "job_id": 11,
+          "priority": 10,
+          "operation_id": 1,
+          "operation_name": "去毛刺",
+          "machine_id": 3,
+          "machine_options": [
+            3
+          ],
+          "machine_group": null,
+          "start": 37,
+          "end": 38,
+          "job_name": "订单112-制冰机支架"
+        },
+        {
+          "job_id": 6,
+          "priority": 10,
+          "operation_id": 3,
+          "operation_name": "面漆喷涂",
+          "machine_id": 5,
+          "machine_options": [
+            5
+          ],
+          "machine_group": null,
+          "start": 38,
+          "end": 44,
+          "job_name": "订单107-冰箱外门壳"
+        },
+        {
+          "job_id": 9,
+          "priority": 10,
+          "operation_id": 1,
+          "operation_name": "多道折弯",
+          "machine_id": 1,
+          "machine_options": [
+            1
+          ],
+          "machine_group": null,
+          "start": 38,
+          "end": 42,
+          "job_name": "订单110-电控盒组件"
+        },
+        {
+          "job_id": 9,
+          "priority": 10,
+          "operation_id": 2,
+          "operation_name": "铆接组装",
+          "machine_id": 6,
+          "machine_options": [
+            6
+          ],
+          "machine_group": null,
+          "start": 42,
+          "end": 45,
+          "job_name": "订单110-电控盒组件"
+        },
+        {
+          "job_id": 11,
+          "priority": 10,
+          "operation_id": 2,
+          "operation_name": "精密折弯",
+          "machine_id": 1,
+          "machine_options": [
+            1
+          ],
+          "machine_group": null,
+          "start": 42,
+          "end": 44,
+          "job_name": "订单112-制冰机支架"
+        },
+        {
+          "job_id": 6,
+          "priority": 10,
+          "operation_id": 4,
+          "operation_name": "外观质检",
+          "machine_id": 7,
+          "machine_options": [
+            7
+          ],
+          "machine_group": null,
+          "start": 44,
+          "end": 46,
+          "job_name": "订单107-冰箱外门壳"
+        },
+        {
+          "job_id": 8,
+          "priority": 10,
+          "operation_id": 2,
+          "operation_name": "浸塑处理",
+          "machine_id": 5,
+          "machine_options": [
+            5
+          ],
+          "machine_group": null,
+          "start": 44,
+          "end": 48,
+          "job_name": "订单109-内部层架"
+        },
+        {
+          "job_id": 11,
+          "priority": 10,
+          "operation_id": 3,
+          "operation_name": "配件组装",
+          "machine_id": 6,
+          "machine_options": [
+            6
+          ],
+          "machine_group": null,
+          "start": 45,
+          "end": 47,
+          "job_name": "订单112-制冰机支架"
+        },
+        {
+          "job_id": 9,
+          "priority": 10,
+          "operation_id": 3,
+          "operation_name": "功能测试",
+          "machine_id": 7,
+          "machine_options": [
+            7
+          ],
+          "machine_group": null,
+          "start": 46,
+          "end": 49,
+          "job_name": "订单110-电控盒组件"
+        }
+      ]
+    }
+  },
+  "machines": [
+    {
+      "id": 0,
+      "name": "Machine-0",
+      "x": -125.0,
+      "y": 7.5,
+      "z": -50.0
+    },
+    {
+      "id": 1,
+      "name": "Machine-1",
+      "x": -75.0,
+      "y": 7.5,
+      "z": -50.0
+    },
+    {
+      "id": 2,
+      "name": "Machine-2",
+      "x": -25.0,
+      "y": 7.5,
+      "z": -50.0
+    },
+    {
+      "id": 3,
+      "name": "Machine-3",
+      "x": 25.0,
+      "y": 7.5,
+      "z": -50.0
+    },
+    {
+      "id": 4,
+      "name": "Machine-4",
+      "x": 75.0,
+      "y": 7.5,
+      "z": -50.0
+    },
+    {
+      "id": 5,
+      "name": "Machine-5",
+      "x": 125.0,
+      "y": 7.5,
+      "z": -50.0
+    },
+    {
+      "id": 6,
+      "name": "Machine-6",
+      "x": -125.0,
+      "y": 7.5,
+      "z": 50.0
+    },
+    {
+      "id": 7,
+      "name": "Machine-7",
+      "x": -75.0,
+      "y": 7.5,
+      "z": 50.0
+    },
+    {
+      "id": 8,
+      "name": "Machine-8",
+      "x": -25.0,
+      "y": 7.5,
+      "z": 50.0
+    },
+    {
+      "id": 9,
+      "name": "Machine-9",
+      "x": 25.0,
+      "y": 7.5,
+      "z": 50.0
+    },
+    {
+      "id": 10,
+      "name": "Machine-10",
+      "x": 75.0,
+      "y": 7.5,
+      "z": 50.0
+    },
+    {
+      "id": 11,
+      "name": "Machine-11",
+      "x": 125.0,
+      "y": 7.5,
+      "z": 50.0
+    }
+  ]
+}

@@ -56,6 +56,25 @@ async def iter_orchestrator_sse(
     preview_trace.append(route_block)
     yield sse_event({"event": "trace_block", "block": route_block})
 
+    if route.get("out_of_scope"):
+        from metaforge.orchestrator.execution_trace import build_scope_guidance_trace
+
+        scope_block = build_scope_guidance_trace(route)
+        preview_trace.append(scope_block)
+        yield sse_event({"event": "trace_block", "block": scope_block})
+        out = {
+            "status": "out_of_scope",
+            "agent_id": None,
+            "summary_zh": route.get("guidance_zh") or "",
+            "scope_category": route.get("scope_category"),
+            "execution_trace": preview_trace,
+            "router_planner": route.get("router"),
+            "router_intent": route.get("intent"),
+            "router_reason_zh": route.get("reason_zh"),
+        }
+        yield sse_event({"event": "done", "data": to_bson_safe(out)})
+        return
+
     yield sse_event({"event": "status", "text": "正在生成执行计划…"})
     agent, areq, _steps, plan_planner, plan_block = await asyncio.to_thread(
         resolve_plan_phase,
@@ -149,8 +168,8 @@ async def iter_orchestrator_sse(
             out["router_intent"] = route["intent"]
         if route.get("llm_error"):
             out["router_llm_error"] = route["llm_error"]
-        if plan_planner:
-            out["plan_planner"] = plan_planner
+        # Prefer agent response planner (e.g. events_collab) over preview cache.
+        out["plan_planner"] = out.get("plan_planner") or plan_planner
         reason = route.get("reason_zh") or route.get("rule_reason_zh")
         if reason:
             out["router_reason_zh"] = reason

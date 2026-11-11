@@ -1,9 +1,10 @@
 import numpy as np
 import random
+import math
 
 
 class Task:
-    def __init__(self, machine_id, duration, id=None, name=None, machine_options=None, machine_group=None):
+    def __init__(self, machine_id, duration, id=None, name=None, machine_options=None, machine_group=None, duration_by_machine=None):
         """
         工序类
         :param machine_id: 机器ID
@@ -13,6 +14,7 @@ class Task:
         """
         self.machine_id = machine_id
         self.duration = duration
+        self.duration_by_machine = {int(k): float(v) for k, v in (duration_by_machine or {}).items()}
         self.id = id
         self.machine_group = machine_group
         self.machine_options = machine_options[:] if machine_options else (
@@ -20,6 +22,12 @@ class Task:
         )
         # 如果没有提供名字，默认叫 "Op-{id}"
         self.name = name if name else f"Op-{id}" if id is not None else "Operation"
+
+    def duration_on(self, machine_id):
+        value = float(self.duration_by_machine.get(int(machine_id), self.duration))
+        if not math.isfinite(value) or value < 0:
+            raise ValueError("工序时间必须为有限非负数")
+        return value
 
     def candidate_machines(self):
         """返回该工序可选机台列表（用于设备组/替代机台建模）。"""
@@ -131,7 +139,7 @@ class JobShopProblem:
                     best_machine = mid
         return best_machine
 
-    def _earliest_feasible_start(self, machine_id: int, earliest: float) -> float:
+    def _earliest_feasible_start(self, machine_id: int, earliest: float, duration: float = 0.0) -> float:
         """
         考虑机台 maintenance / calendar 停机窗口，返回不早于 earliest 的最早可开工时刻。
         窗口格式: {"start": float, "end": float}
@@ -154,82 +162,54 @@ class JobShopProblem:
         while changed:
             changed = False
             for start, end in blocks:
-                if start <= t < end:
+                if end > start and ((start <= t < end) or (duration > 0 and t < end and t + duration > start)):
                     t = end
                     changed = True
         return t
+
+    def iter_schedule(self, operation_order):
+        """One timing decoder shared by search, displayed Gantt and metrics."""
+        job_ptr = [0] * self.num_jobs
+        machine_ready = self.initial_machine_ready[:]
+        job_ready = [float(getattr(j, "arrival_time", 0) or 0) for j in self.jobs]
+        for jid in operation_order:
+            if not isinstance(jid, (int, np.integer)) or not 0 <= jid < self.num_jobs:
+                raise ValueError("工序序列包含无效工单索引")
+            job = self.jobs[jid]
+            oid = job_ptr[jid]
+            if oid >= len(job):
+                continue
+            task = job.tasks[oid]
+            choices = []
+            for mid in task.candidate_machines():
+                if not 0 <= mid < self.num_machines:
+                    raise ValueError("工序引用不存在的机台")
+                duration = task.duration_on(mid)
+                start = self._earliest_feasible_start(mid, max(machine_ready[mid], job_ready[jid]), duration)
+                choices.append((start + duration, mid != task.machine_id, mid, start))
+            if not choices:
+                raise ValueError("工序没有可用候选机台")
+            end, _, mid, start = min(choices)
+            machine_ready[mid] = end
+            job_ready[jid] = end
+            job_ptr[jid] += 1
+            yield {"job_id": int(jid), "priority": job.priority, "operation_id": oid,
+                   "operation_name": task.name, "machine_id": mid,
+                   "machine_options": task.candidate_machines(), "machine_group": task.machine_group,
+                   "start": start, "end": end}
 
     def evaluate(self, operation_order):
         """
         计算 Makespan (最大完工时间)
         :param operation_order: 工件索引的序列 (e.g., [0, 1, 0, 2, ...])
         """
-        job_ptr = [0] * self.num_jobs
-        machine_ready_time = self.initial_machine_ready[:]
-        job_ready_time = [float(getattr(job, "arrival_time", 0) or 0) for job in self.jobs]
-
-        for job_idx in operation_order:
-            job = self.jobs[job_idx]
-            op_idx = job_ptr[job_idx]
-
-            if op_idx >= len(job):
-                continue
-
-            task = job.tasks[op_idx]
-            selected_machine = self._select_machine_for_task(
-                task, machine_ready_time, preferred_machine=task.machine_id
-            )
-            start_time = max(machine_ready_time[selected_machine], job_ready_time[job_idx])
-            start_time = self._earliest_feasible_start(selected_machine, start_time)
-            end_time = start_time + task.duration
-
-            machine_ready_time[selected_machine] = end_time
-            job_ready_time[job_idx] = end_time
-            job_ptr[job_idx] += 1
-
-        return max(job_ready_time) if job_ready_time else 0
+        return max((op["end"] for op in self.iter_schedule(operation_order)), default=0.0)
 
     def get_schedule(self, operation_order):
         """
         生成详细的调度时间表 (用于前端画甘特图)
         """
-        job_ptr = [0] * self.num_jobs
-        machine_ready_time = self.initial_machine_ready[:]
-        job_ready_time = [float(getattr(job, "arrival_time", 0) or 0) for job in self.jobs]
-        schedule = []
-
-        for job_idx in operation_order:
-            job = self.jobs[job_idx]
-            op_idx = job_ptr[job_idx]
-
-            if op_idx >= len(job):
-                continue
-
-            task = job.tasks[op_idx]
-            selected_machine = self._select_machine_for_task(
-                task, machine_ready_time, preferred_machine=task.machine_id
-            )
-            start_time = max(machine_ready_time[selected_machine], job_ready_time[job_idx])
-            start_time = self._earliest_feasible_start(selected_machine, start_time)
-            end_time = start_time + task.duration
-
-            schedule.append({
-                "job_id": job_idx,
-                "priority": job.priority,  # [新增] 将优先级传递给前端
-                "operation_id": op_idx,
-                "operation_name": task.name,  # <--- 关键：传递工序名称
-                "machine_id": selected_machine,
-                "machine_options": task.candidate_machines(),
-                "machine_group": task.machine_group,
-                "start": start_time,
-                "end": end_time
-            })
-
-            machine_ready_time[selected_machine] = end_time
-            job_ready_time[job_idx] = end_time
-            job_ptr[job_idx] += 1
-
-        return schedule
+        return list(self.iter_schedule(operation_order))
 
     def generate_random_solution(self):
         """生成一个随机的可行解序列"""

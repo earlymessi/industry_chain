@@ -51,7 +51,7 @@
       class="mb12"
       title="插单 / 设备故障 / 改交期等异常重排已移至「生产看板」，请先开始 MES 执行后再操作。"
     >
-      <router-link to="/dashboard">前往生产看板 →</router-link>
+      <router-link :to="productionPath('dashboard')">前往生产看板 →</router-link>
     </el-alert>
 
     <div v-if="hasReportData">
@@ -335,6 +335,7 @@ import { buildShortageMarkPoints, shortageJobIdSet } from '../utils/ganttMateria
 import { materialAlertStats } from '../utils/materialAlerts'
 import { useAssistantStore } from '../stores/useAssistantStore'
 import { SORT_METRICS, DEFAULT_REPORT_SORT_KEY } from '../utils/strategySort'
+import { productionPath } from '../utils/productionRoutes'
 
 const route = useRoute()
 const store = useResultsStore()
@@ -408,12 +409,24 @@ const rescheduleResults = computed(() => store.activeRescheduleResults)
 const recoveryScenarioRows = computed(() => {
   const sc = impactIr.value?.scenarios
   if (!sc) return []
-  return ['r0', 'r1', 'r2'].map((k) => ({
-    key: k,
-    label: sc[k]?.label || k,
-    makespan: sc[k]?.makespan,
-    weighted_tardiness_total: sc[k]?.weighted_tardiness_total,
-  }))
+  const ganttByKey = {
+    r0: impactIr.value?.r0_gantt,
+    r1: impactR1Gantt.value,
+    r2: impactR2Gantt.value,
+  }
+  const msFromGantt = (gantt) => {
+    if (!Array.isArray(gantt) || !gantt.length) return null
+    return Math.max(...gantt.map((op) => Number(op.end) || 0))
+  }
+  return ['r0', 'r1', 'r2'].map((k) => {
+    const fromGantt = msFromGantt(ganttByKey[k])
+    return {
+      key: k,
+      label: sc[k]?.label || k,
+      makespan: fromGantt != null ? Number(fromGantt.toFixed(4)) : sc[k]?.makespan,
+      weighted_tardiness_total: sc[k]?.weighted_tardiness_total,
+    }
+  })
 })
 
 const impactRows = computed(() => {
@@ -749,19 +762,20 @@ function renderGantt() {
       : null
   )
   if (bw && bw.machine_id != null) {
-    const yIdx = machines.indexOf(Number(bw.machine_id))
-    if (yIdx >= 0) {
+    const mid = Number(bw.machine_id)
+    if (machines.map(Number).includes(mid)) {
+      const y = `M-${mid}`
       markAreas.push([
-        { xAxis: bw.start, yAxis: yIdx - 0.4, itemStyle: { color: 'rgba(245,108,108,0.35)' } },
-        { xAxis: bw.end, yAxis: yIdx + 0.4 },
+        { xAxis: bw.start, yAxis: y, itemStyle: { color: 'rgba(245,108,108,0.45)' } },
+        { xAxis: bw.end, yAxis: y },
       ])
     }
   }
   const freezeT = layers?.freeze_time ?? store.impactReport?.freeze_time
-  if (freezeT != null && Number(freezeT) > 0) {
+  if (freezeT != null && Number(freezeT) > 0 && machines.length) {
     markAreas.push([
-      { xAxis: 0, yAxis: -0.5, itemStyle: { color: 'rgba(144,147,153,0.18)' } },
-      { xAxis: freezeT, yAxis: machines.length - 0.5 },
+      { xAxis: 0, yAxis: `M-${machines[0]}`, itemStyle: { color: 'rgba(144,147,153,0.18)' } },
+      { xAxis: freezeT, yAxis: `M-${machines[machines.length - 1]}` },
     ])
   }
   if (markAreas.length) {
@@ -770,6 +784,8 @@ function renderGantt() {
       type: 'line',
       data: [],
       markArea: { silent: true, data: markAreas },
+      tooltip: { show: false },
+      legendHoverLink: false,
     })
   }
 
@@ -955,7 +971,7 @@ onMounted(async () => {
 watch(
   () => route.path,
   async (path) => {
-    if (path !== '/reports') return
+    if (path !== productionPath('reports') && path !== '/reports') return
     const ok = await hydrateReportsOnEnter()
     if (ok) {
       await nextTick()

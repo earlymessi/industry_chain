@@ -1,0 +1,69 @@
+{
+  "rules": [
+    {
+      "keywords": ["钣金", "外框", "外门", "门壳", "加强筋", "背板", "横梁"],
+      "parts": [
+        { "id": "metal_panel", "name": "金属面板" },
+        { "id": "door_frame", "name": "门框总成" }
+      ],
+      "workstation": "钣金成型"
+    },
+    {
+      "keywords": ["铰链", "把手"],
+      "parts": [{ "id": "hinge_set", "name": "门体铰链件" }],
+      "workstation": "总装合箱"
+    },
+    {
+      "keywords": ["门体", "门板"],
+      "parts": [
+        { "id": "door_frame", "name": "门体总成" },
+        { "id": "door_gasket", "name": "门体密封条" }
+      ],
+      "workstation": "总装合箱"
+    },
+    {
+      "keywords": ["内胆", "吸塑", "层架"],
+      "parts": [{ "id": "inner_liner", "name": "内胆/层架总成" }],
+      "workstation": "内胆吸塑"
+    },
+    {
+      "keywords": ["发泡", "保温"],
+      "parts": [
+        { "id": "foam_material", "name": "发泡料" },
+        { "id": "sealant", "name": "密封剂" }
+      ],
+      "workstation": "发泡填充"
+    },
+    {
+      "keywords": ["压缩机", "底座"],
+      "parts": [{ "id": "compressor_mount", "name": "压缩机支架" }],
+      "workstation": "压缩机安装"
+    },
+    {
+      "keywords": ["冷凝器", "蒸发器", "护罩", "管路"],
+      "parts": [
+        { "id": "heat_exchanger", "name": "换热组件" },
+        { "id": "copper_tube", "name": "铜管组件" }
+      ],
+      "workstation": "管路焊接"
+    },
+    {
+      "keywords": ["线束", "电气", "电路", "传感器", "电控"],
+      "parts": [
+        { "id": "wire_harness", "name": "线束" },
+        { "id": "circuit_board", "name": "电路板" }
+      ],
+      "workstation": "电气元件装配"
+    },
+    {
+      "keywords": ["支架", "制冰"],
+      "parts": [{ "id": "mount_bracket", "name": "安装支架" }],
+      "workstation": "零件缓存区"
+    }
+  ],
+  "fallback": {
+    "parts": [{ "id": "parts_buffer", "name": "自制零件（缓存）" }],
+    "workstation": "零件缓存区"
+  },
+  "max_product_units": 8
+}

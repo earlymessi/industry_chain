@@ -143,12 +143,10 @@ def _apply_llm_env(*, react: bool, reflect: bool) -> None:
     os.environ["LLM_ROUTER"] = "glm"
     os.environ.setdefault("LLM_FALLBACK", "rule")
     os.environ.setdefault("LLM_PLAN_ENABLED", "1")
-    os.environ.setdefault(
-        "LLM_PLAN_AGENTS", "scheduling,events,kitting,commitment,whatif"
-    )
+    os.environ.setdefault("LLM_PLAN_AGENTS", "scheduling")
     if react:
         os.environ["LLM_REACT_ENABLED"] = "1"
-        os.environ.setdefault("LLM_REACT_AGENTS", "scheduling,events")
+        os.environ.setdefault("LLM_REACT_AGENTS", "scheduling")
     else:
         os.environ["LLM_REACT_ENABLED"] = "0"
     if reflect:

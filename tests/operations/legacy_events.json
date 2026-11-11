@@ -1,0 +1,8 @@
+[
+  {"name":"生产工序变慢","type":"duration_change","target_id":"O-A-T1","data":{"resource_id":"M1","duration_mode":"per_unit","value":180}},
+  {"name":"生产机台停用","type":"resource_unavailable","target_id":"M1","data":{"expected_recovery_at":null}},
+  {"name":"供给延迟","type":"supply_delay","target_id":"SUP-COMP-01","data":{"offset_from_start_seconds":7200}},
+  {"name":"组装工位停用","type":"resource_unavailable","target_id":"S1","data":{"expected_recovery_at":null}},
+  {"name":"车辆缺失且备用车容量不足","type":"resource_unavailable","target_id":"V1","data":{"expected_recovery_at":null}},
+  {"name":"配送路段耗时增加","type":"travel_change","target_id":"D|CA","data":{"from_node":"D","to_node":"CA","seconds":1800}}
+]

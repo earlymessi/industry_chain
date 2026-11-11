@@ -4,12 +4,17 @@ import vue from '@vitejs/plugin-vue'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
-  server: {
+    server: {
     port: 5173,
     strictPort: true,
     proxy: {
       // 前端开发时，API 走后端（避免 CORS、保持路径一致）
       '/api': process.env.VITE_API_PROXY || 'http://127.0.0.1:8008', // 与 METAFORGE_PORT 一致
+      '/scheduletool': process.env.VITE_API_PROXY || 'http://127.0.0.1:8008',
+      '/schedulePage': process.env.VITE_API_PROXY || 'http://127.0.0.1:8008',
+      '/get_gantt_image': process.env.VITE_API_PROXY || 'http://127.0.0.1:8008',
+      '/masa-qmix': process.env.VITE_API_PROXY || 'http://127.0.0.1:8008',
+      '/logistics-vrp': process.env.VITE_API_PROXY || 'http://127.0.0.1:8008',
     },
   },
   build: {

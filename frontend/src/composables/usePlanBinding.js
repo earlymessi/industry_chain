@@ -5,6 +5,7 @@ import { api } from '../api/client'
 import { useWorkContextStore } from '../stores/useWorkContextStore'
 import { findPlanByQuery, parsePlanNlCommand } from '../utils/planNlCommands'
 import { stashPlanLoadPayload } from '../utils/planScheduleSync'
+import { productionPath } from '../utils/productionRoutes'
 
 export function usePlanBinding() {
   const router = useRouter()
@@ -43,7 +44,7 @@ export function usePlanBinding() {
   function goToAps(order) {
     stashPlanLoadPayload(order || { jobs: [] })
     bindOrder(order)
-    router.push('/aps')
+    router.push(productionPath('aps'))
   }
 
   async function fetchPlans() {
@@ -190,7 +191,7 @@ export function usePlanBinding() {
         goToAps(row)
         return { handled: true, reply: '已打开排程中心。' }
       }
-      router.push('/aps')
+      router.push(productionPath('aps'))
       return { handled: true, reply: '已打开排程中心；请先新建或加载计划。' }
     }
     if (cmd.type === 'create') {

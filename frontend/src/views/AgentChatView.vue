@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAssistantStore } from '../stores/useAssistantStore'
+import { productionPath } from '../utils/productionRoutes'
 
 const router = useRouter()
 const assistantStore = useAssistantStore()
@@ -9,7 +10,7 @@ const assistantStore = useAssistantStore()
 /** 旧链接 /assistant：打开顶栏全局助手并回到看板 */
 onMounted(() => {
   assistantStore.open()
-  router.replace('/dashboard')
+  router.replace(productionPath('dashboard'))
 })
 </script>
 

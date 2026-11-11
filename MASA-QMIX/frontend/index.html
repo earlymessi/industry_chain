@@ -1,0 +1,2446 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>组装车间 · MASA-QMIX</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body,#app{height:100%;font-family:"PingFang SC","Microsoft YaHei",Arial,sans-serif;background:#f0f2f5;color:#303133}
+    
+    .app-container{min-height:100vh;display:flex;flex-direction:column}
+    .app-container.embed-mode{height:100vh;min-height:100vh;overflow:hidden}
+    
+    /* Header - 与生产车间顶栏一致 */
+    .header{height:55px;background:#fff;padding:0 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #dcdfe6;box-shadow:0 1px 4px rgba(0,21,41,0.08)}
+    .header-left{display:flex;align-items:center;gap:12px}
+    .header-title h1{font-size:15px;font-weight:700;color:#303133}
+    .header-title span{font-size:12px;color:#909399}
+    .header-right{display:flex;gap:18px;align-items:center;font-size:13px;color:#606266}
+    .time-display{font-size:13px;color:#909399;display:flex;align-items:center;gap:6px}
+    .user-avatar{width:28px;height:28px;border-radius:50%;background:#409eff;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+    
+    /* Main Content */
+    .main-content{flex:1;display:flex;overflow:hidden}
+    .embed-mode .main-content{height:calc(100vh - 0px)}
+    
+    /* Sidebar - 与生产车间侧栏一致 */
+    .sidebar{width:240px;background:#202d3d;color:#bfcbd9;border-right:none;padding:0;overflow-y:auto;display:flex;flex-direction:column}
+    .embed-mode .sidebar{width:240px;background:#fff;border-right:1px solid #dcdfe6;color:#303133;padding:16px}
+    .brand{min-height:65px;padding:12px 16px;display:flex;align-items:center;justify-content:center;text-align:center;background:#002140;color:#fff;border-bottom:1px solid #2c3b4e}
+    .brand-line{font-size:13px;font-weight:700;line-height:1.35;letter-spacing:0.5px}
+    .sidebar-inner{flex:1;padding:10px 0;overflow-y:auto}
+    .embed-mode .brand,.embed-mode .sidebar-inner .nav-section{display:none}
+    .sidebar-section{margin-bottom:8px;padding:0 0 12px}
+    .embed-mode .sidebar-section{margin-bottom:16px;padding:0}
+    .sidebar-title{font-size:12px;color:#758091;padding:15px 20px 5px;font-weight:bold}
+    .embed-mode .sidebar-title{color:#909399;padding:0 0 8px;font-size:12px}
+    .nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;cursor:pointer;color:#bfcbd9;transition:all 0.2s;font-size:14px;margin-bottom:0;border-left:4px solid transparent;text-decoration:none}
+    .nav-item:hover{background:#263445;color:#fff}
+    .nav-item.active{background:#1890ff;color:#fff;border-left-color:#1890ff;font-weight:500}
+    .nav-item.back-home{border-bottom:1px solid #34495e;margin-bottom:4px}
+    .nav-item svg{width:16px;height:16px;flex-shrink:0}
+    
+    /* Control Panel */
+    .control-group{margin-bottom:14px}
+    .control-label{font-size:12px;color:#909399;margin-bottom:6px}
+    .embed-mode .control-label{color:#909399}
+    .control-input{width:100%;padding:8px 12px;border:1px solid #dcdfe6;border-radius:4px;font-size:13px;transition:border-color 0.2s;color:#606266}
+    .control-input:focus{outline:none;border-color:#1890ff}
+    .control-select{width:100%;padding:8px 12px;border:1px solid #dcdfe6;border-radius:4px;font-size:13px;background:#fff;color:#606266}
+    .embed-mode .control-select,.embed-mode .control-input{background:#fff}
+    
+    /* Main Area */
+    .main-area{flex:1;padding:12px;overflow-y:auto;background:#f0f2f5}
+    
+    /* Dashboard Cards */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px}
+    .stat-card{background:#fff;border-radius:4px;padding:16px;border:1px solid #ebeef5;box-shadow:none}
+    .stat-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .stat-card-title{font-size:13px;color:#6b7280}
+    .stat-card-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+    .stat-card-value{font-size:28px;font-weight:700;color:#111827;margin-bottom:4px}
+    .stat-card-label{font-size:12px;color:#6b7280}
+    .stat-card-trend{display:inline-flex;align-items:center;gap:2px;font-size:12px;padding:2px 6px;border-radius:4px}
+    .stat-card-trend.up{color:#059669;background:#d1fae5}
+    .stat-card-trend.down{color:#dc2626;background:#fee2e2}
+    
+    /* Content Panels */
+    .panel{background:#fff;border-radius:4px;border:1px solid #ebeef5;margin-bottom:12px;overflow:hidden;box-shadow:none}
+    .panel-header{padding:14px 16px;border-bottom:1px solid #ebeef5;display:flex;justify-content:space-between;align-items:center;background:#fff}
+    .panel-title{font-size:14px;font-weight:700;color:#303133;display:flex;align-items:center;gap:8px}
+    .panel-body{padding:16px}
+    
+    /* Grid Layout */
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+    
+    /* Factory Visualization */
+    .factory-container{position:relative;width:100%;height:320px;background:#fafbfc;border-radius:8px;overflow:hidden}
+    .factory-svg{width:100%;height:100%}
+    
+    /* AGV Status Cards */
+    .agv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    .agv-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;transition:all 0.2s}
+    .agv-card:hover{border-color:#3b82f6;box-shadow:0 2px 8px rgba(59,130,246,0.1)}
+    .agv-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .agv-name{font-weight:600;font-size:14px;color:#111827}
+    .agv-badge{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+    .agv-badge.idle{background:#d1fae5;color:#059669}
+    .agv-badge.moving{background:#dbeafe;color:#2563eb}
+    .agv-badge.loading{background:#fef3c7;color:#d97706}
+    .agv-badge.charging{background:#ede9fe;color:#7c3aed}
+    .agv-badge.error{background:#fee2e2;color:#dc2626}
+    .agv-info{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#6b7280}
+    .agv-info-item{display:flex;flex-direction:column;gap:2px}
+    .agv-info-label{font-size:11px;color:#9ca3af}
+    .agv-battery{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;margin-top:8px}
+    .agv-battery-fill{height:100%;border-radius:3px;transition:width 0.3s}
+    .agv-progress{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;margin-top:8px}
+    .agv-progress-fill{height:100%;background:#2563eb;border-radius:3px;transition:width 0.3s}
+    
+    /* Workstation Status */
+    .workstation-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .workstation-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;text-align:center}
+    .workstation-card.active{border-color:#22c55e;background:#f0fdf4}
+    .workstation-card.busy{border-color:#f59e0b;background:#fffbeb}
+    .workstation-card.idle{border-color:#d1d5db;background:#f9fafb}
+    .workstation-name{font-weight:600;font-size:13px;color:#111827;margin-bottom:4px}
+    .workstation-status{font-size:11px;color:#6b7280}
+    .workstation-status.active{color:#059669}
+    .workstation-status.busy{color:#d97706}
+    .workstation-util{font-size:11px;color:#9ca3af;margin-top:4px}
+    
+    /* Material Stock */
+    .material-list{display:flex;flex-direction:column;gap:8px}
+    .material-item{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f3f4f6}
+    .material-item:last-child{border-bottom:none}
+    .material-name{font-size:13px;color:#374151;flex:1}
+    .material-stock{display:flex;align-items:center;gap:8px}
+    .material-bar{width:60px;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden}
+    .material-bar-fill{height:100%;border-radius:3px}
+    .material-value{font-size:12px;font-weight:500;min-width:40px;text-align:right}
+    .material-value.high{color:#059669}
+    .material-value.medium{color:#d97706}
+    .material-value.low{color:#dc2626}
+    
+    /* Charts */
+    .chart-container{height:250px;position:relative}
+    
+    /* Gantt Chart */
+    .gantt-container{width:100%;overflow-x:auto}
+    .gantt-svg-container{width:100%;min-height:400px}
+    .gantt svg{width:100%;height:auto;display:block}
+    
+    /* Table */
+    .data-table{width:100%;border-collapse:collapse}
+    .data-table th,.data-table td{padding:10px 12px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:13px}
+    .data-table th{background:#f9fafb;font-weight:600;color:#374151;font-size:12px;text-transform:uppercase}
+    .data-table tr:hover{background:#f9fafb}
+    .data-table .num{font-variant-numeric:tabular-nums;text-align:right}
+    
+    /* Buttons */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;border:none}
+    .btn-primary{background:#1890ff;color:#fff}
+    .btn-primary:hover{background:#40a9ff}
+    .btn-primary:disabled{background:#a0cfff;cursor:not-allowed}
+    .btn-secondary{background:#fff;color:#606266;border:1px solid #dcdfe6}
+    .btn-secondary:hover{background:#f5f7fa}
+    .btn-sm{padding:6px 12px;font-size:12px}
+    
+    /* Status indicators */
+    .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+    .status-dot.online{background:#22c55e}
+    .status-dot.offline{background:#ef4444}
+    .status-dot.warning{background:#f59e0b}
+    
+    /* Loading */
+    .loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;z-index:10}
+    .loading-spinner{width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:#2563eb;border-radius:50%;animation:spin 0.8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    
+    /* Empty state */
+    .empty-state{padding:40px;text-align:center;color:#9ca3af}
+    .empty-state svg{width:48px;height:48px;margin-bottom:12px;opacity:0.5}
+    
+    /* Legend */
+    .legend{display:flex;flex-wrap:wrap;gap:16px;padding:12px;background:#f9fafb;border-radius:6px}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#6b7280}
+    .legend-color{width:12px;height:12px;border-radius:3px}
+    
+    /* Tab Navigation */
+    .tab-nav{display:flex;gap:4px;border-bottom:1px solid #e5e7eb;margin-bottom:16px}
+    .tab-btn{padding:10px 16px;border:none;background:none;cursor:pointer;font-size:14px;color:#6b7280;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.2s}
+    .tab-btn:hover{color:#374151}
+    .tab-btn.active{color:#1890ff;border-bottom-color:#1890ff;font-weight:500}
+    
+    /* Responsive */
+    @media (max-width:1024px){
+      .sidebar{width:220px}
+      .grid-2,.grid-3{grid-template-columns:1fr}
+      .workstation-grid{grid-template-columns:repeat(2,1fr)}
+    }
+    @media (max-width:768px){
+      .sidebar{display:none}
+      .header{flex-direction:column;gap:12px}
+      .stats-grid{grid-template-columns:repeat(2,1fr)}
+    }
+    
+    /* Alert */
+    .alert{padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:12px}
+    .alert-error{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
+    .alert-success{background:#d1fae5;color:#065f46;border:1px solid #a7f3d0}
+    .alert-warning{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+    
+    /* Dynamic Visualization */
+    .dynamic-controls{display:flex;gap:8px;align-items:center;padding:12px;background:#f9fafb;border-radius:8px}
+    .dynamic-controls .btn{width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center}
+    .speed-control{display:flex;align-items:center;gap:6px;margin-left:16px}
+    .time-display{font-size:14px;font-weight:500;color:#111827}
+    .current-time{color:#2563eb;font-weight:700}
+    .timeline-container{position:relative;height:8px;background:#e5e7eb;border-radius:4px;margin-top:12px;overflow:hidden}
+    .timeline-slider{position:absolute;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2}
+    .timeline-progress{position:absolute;height:100%;background:#2563eb;border-radius:4px;transition:width 0.1s}
+    
+    /* Process Flow */
+    .process-flow-container{overflow-x:auto;padding:8px 0}
+    .process-flow{display:flex;align-items:flex-start;gap:4px;min-width:max-content}
+    .process-stage{display:flex;flex-direction:column;align-items:center}
+    .stage-connector{display:flex;align-items:center;margin-top:20px;margin-right:4px}
+    .stage-boxes{display:flex;flex-direction:column;gap:4px}
+    .process-box{position:relative;padding:8px 12px;border-radius:6px;color:#fff;text-align:center;min-width:70px;transition:all 0.3s}
+    .process-box.active{transform:scale(1.05);box-shadow:0 0 12px rgba(0,0,0,0.3)}
+    .process-box.completed{opacity:0.6}
+    .process-name{font-size:11px;font-weight:600}
+    .process-time{font-size:9px;opacity:0.8;margin-top:2px}
+    .process-indicator{position:absolute;top:2px;right:2px}
+    .stage-label{font-size:10px;color:#9ca3af;margin-top:6px}
+    
+    /* Factory Dynamic */
+    .factory-dynamic-container{width:100%;height:280px;background:#fafbfc;border-radius:8px;overflow:hidden}
+    .factory-dynamic-svg{width:100%;height:100%}
+    .workstation-group{transition:all 0.3s}
+    .workstation-group rect.busy{filter:drop-shadow(0 0 4px rgba(5,150,105,0.5))}
+    .job-animation{transition:all 0.5s}
+    
+    /* Gantt Dynamic */
+    .gantt-dynamic-container{width:100%;overflow-x:auto;min-height:200px}
+    .gantt-dynamic-container svg{width:100%;height:auto;display:block}
+    
+    /* Jobs Grid */
+    .jobs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+    .job-card{background:#f9fafb;border:1px solid #e5e7eb;border-left:4px solid #3b82f6;border-radius:8px;padding:12px;transition:all 0.2s}
+    .job-card:hover{border-color:#3b82f6;box-shadow:0 2px 8px rgba(59,130,246,0.1)}
+    .job-card.completed{background:#f0fdf4;border-color:#22c55e}
+    .job-card.processing{background:#eff6ff;border-color:#2563eb}
+    .job-card.waiting{background:#fafafa}
+    .job-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .job-name{font-weight:600;font-size:14px;color:#111827}
+    .job-status-badge{padding:2px 6px;border-radius:4px;font-size:10px;color:#fff}
+    .job-progress{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+    .progress-bar{flex:1;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}
+    .progress-fill{height:100%;border-radius:4px;transition:width 0.3s}
+    .progress-text{font-size:12px;color:#6b7280;min-width:30px}
+    .job-process{display:flex;align-items:center;gap:4px;font-size:12px;color:#6b7280}
+    .job-process.completed{color:#059669}
+    .job-process.waiting{color:#9ca3af}
+    
+    /* Stats Inline */
+    .stats-inline{display:flex;gap:8px}
+    .stat-badge{padding:4px 8px;border-radius:4px;font-size:11px;font-weight:500}
+    .stat-badge.completed{background:#d1fae5;color:#059669}
+    .stat-badge.processing{background:#dbeafe;color:#2563eb}
+    .stat-badge.waiting{background:#f3f4f6;color:#6b7280}
+    
+    /* Supply Chain Visualization */
+    .supply-chain-container{position:relative;width:100%;height:320px;background:#fafbfc;border-radius:8px;overflow:hidden}
+    .supply-chain-svg{width:100%;height:100%}
+    .supply-chain-svg text{user-select:none}
+    
+    /* Process Dependency */
+    .process-dependency-container{width:100%;overflow-x:auto}
+    .process-dependency-svg{width:100%;height:150px}
+    
+    /* Supplier Cards */
+    .supplier-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+    .supplier-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;transition:all 0.2s}
+    .supplier-card:hover{border-color:#3b82f6;box-shadow:0 2px 8px rgba(59,130,246,0.1)}
+    .supplier-card.warning{border-color:#f59e0b;background:#fffbeb}
+    .supplier-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .supplier-name{font-weight:600;font-size:14px;color:#111827}
+    .supplier-status{font-size:14px}
+    .supplier-info{display:flex;flex-direction:column;gap:4px}
+    .supplier-item{display:flex;justify-content:space-between;font-size:12px}
+    .supplier-item .label{color:#6b7280}
+    .entry-url-style{font-size:12px;color:#606266}
+    .readiness-banner{background:#fff;border:1px solid #ebeef5;border-radius:4px;padding:12px 16px;margin-bottom:12px}
+    .readiness-banner h3{font-size:14px;font-weight:700;color:#303133;margin-bottom:8px}
+    .readiness-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .readiness-col h4{font-size:12px;color:#909399;margin-bottom:6px;font-weight:600}
+    .readiness-table{width:100%;border-collapse:collapse;font-size:12px}
+    .readiness-table th,.readiness-table td{padding:6px 8px;border-bottom:1px solid #f0f2f5;text-align:left}
+    .readiness-table th{color:#909399;font-weight:600}
+    .readiness-empty{font-size:12px;color:#909399;padding:8px 0}
+    .supplier-item .value{font-weight:500;color:#111827}
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="app-container" :class="{ 'embed-mode': embedMode }">
+    <!-- Header -->
+    <header class="header" v-if="!embedMode">
+      <div class="header-left">
+        <div class="header-title">
+          <h1>组装车间</h1>
+          <span>MASA-QMIX 多智能体强化学习调度</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="time-display">{{ currentTime }}</span>
+        <span class="status-dot" :class="connectionStatus === 'connected' ? 'online' : 'offline'"></span>
+        <span>{{ connectionStatus === 'connected' ? '模块在线' : '连接断开' }}</span>
+        <div class="user-avatar">OP</div>
+      </div>
+    </header>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="brand" v-if="!embedMode">
+          <div class="brand-line">产业链分布式资源</div>
+          <div class="brand-line">适配与调度管控系统</div>
+        </div>
+        <div class="sidebar-inner">
+          <div class="sidebar-section nav-section" v-if="!embedMode">
+            <a class="nav-item back-home" href="/new-ui/home">返回产业链主控台</a>
+          </div>
+
+          <div class="sidebar-section control-section">
+            <div class="sidebar-title">评估控制</div>
+          <div class="control-group">
+            <div class="control-label">场景模式</div>
+            <select class="control-select" v-model="form.scene_mode">
+              <option value="assembly">冰箱组装</option>
+              <option value="joint">联合场景</option>
+            </select>
+          </div>
+          <!-- AGV数量选择器，仅联合场景显示 -->
+          <div class="control-group" v-if="form.scene_mode === 'joint'">
+            <div class="control-label">AGV数量</div>
+            <select class="control-select" v-model.number="form.n_agvs">
+              <option :value="4">4</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <div class="control-label">智能体数量</div>
+            <select class="control-select" v-model.number="form.n_agents" @change="onAgentsChange">
+              <option :value="6">6</option>
+              <option :value="8">8</option>
+              <option :value="10">10</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <div class="control-label">模型编号</div>
+            <select class="control-select" v-model="form.model_num">
+              <option v-for="m in modelOptions" :key="m" :value="m">{{ m }}</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <div class="control-label">评估轮数</div>
+            <input type="number" class="control-input" v-model.number="form.evaluate_epoch" min="1">
+          </div>
+          <button class="btn btn-primary" style="width:100%;margin-top:8px" @click="submit" :disabled="loading">
+            {{ loading ? '评估中...' : '开始评估' }}
+          </button>
+          <div v-if="error" class="alert alert-error" style="margin-top:12px">{{ error }}</div>
+          </div>
+        
+        <div class="sidebar-section nav-section" v-if="!embedMode">
+          <div class="sidebar-title">功能导航</div>
+          <div class="nav-item" :class="{active:activeTab==='dashboard'}" @click="activeTab='dashboard'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+            仪表盘
+          </div>
+          <div class="nav-item" :class="{active:activeTab==='materials'}" @click="activeTab='materials'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            物料管理
+          </div>
+          <div class="nav-item" :class="{active:activeTab==='gantt'}" @click="activeTab='gantt'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3zM3 9h18v4H3zM3 15h12v4H3z"/></svg>
+            甘特图
+          </div>
+          <div class="nav-item" :class="{active:activeTab==='charts'}" @click="activeTab='charts'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-3 3"/></svg>
+            数据统计
+          </div>
+          <div class="nav-item" :class="{active:activeTab==='dynamic'}" @click="activeTab='dynamic'; initDynamicView()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            动态演示
+          </div>
+        </div>
+        </div>
+      </aside>
+      
+      <!-- Main Area -->
+      <main class="main-area">
+        <div class="readiness-banner" v-if="embedMode">
+          <h3>跨车间齐套 · 本批组装输入</h3>
+          <div v-if="readinessData" class="readiness-grid">
+            <div class="readiness-col">
+              <h4>自制件（生产车间 MES）</h4>
+              <table class="readiness-table">
+                <thead><tr><th>生产工件</th><th>组装物料</th><th>工位</th></tr></thead>
+                <tbody>
+                  <tr v-for="(p, idx) in readinessData.self_made_parts" :key="'rp-'+idx">
+                    <td>{{ p.job_name }}</td>
+                    <td>{{ p.mapped_part_name }}</td>
+                    <td>{{ p.mapped_workstation }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style="margin-top:8px;font-size:12px;color:#606266">
+                计划：{{ readinessData.plan_name }} · {{ readinessData.product_units }} 台 · 状态：{{ readinessData.status === 'ready' ? '待组装' : '已消费' }}
+              </div>
+            </div>
+            <div class="readiness-col">
+              <h4>外购/外协件（供应链）</h4>
+              <div class="readiness-empty" v-if="!purchasedPartsOverview.length">加载供应链物料…</div>
+              <table v-else class="readiness-table">
+                <thead><tr><th>物料</th><th>类型</th><th>供应商</th><th>目标工位</th><th>在途</th><th>状态</th></tr></thead>
+                <tbody>
+                  <tr v-for="p in purchasedPartsOverview" :key="'pp-'+p._key">
+                    <td>{{ p.name }}</td>
+                    <td>{{ p.category }}</td>
+                    <td>{{ p.transit_supplier || p.supplier }}</td>
+                    <td>{{ p.workstation }}</td>
+                    <td>{{ p.in_transit_qty || '—' }}</td>
+                    <td>{{ p.stock_status }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div v-if="supplySummary" style="margin-top:8px;font-size:12px;color:#606266">
+                供应商 {{ supplySummary.total_suppliers || 0 }} 家 · 在途 {{ supplySummary.active_deliveries || 0 }} 批 · 缺料预警 {{ supplySummary.shortage_alerts || 0 }} 项
+              </div>
+            </div>
+          </div>
+          <div v-else class="readiness-empty">
+            暂无组装就绪批次。请先在<strong>生产车间</strong>完成计划 MES 整单执行，再返回此处评估。
+          </div>
+        </div>
+        <!-- Dashboard Tab -->
+        <div v-if="activeTab==='dashboard'">
+          <!-- Stats Grid -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">今日产量</span>
+                <div class="stat-card-icon" style="background:#dbeafe">📦</div>
+              </div>
+              <div class="stat-card-value">{{ stats.todayOutput }}</div>
+              <div class="stat-card-label">台</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">平均Makespan</span>
+                <div class="stat-card-icon" style="background:#fef3c7">⏱️</div>
+              </div>
+              <div class="stat-card-value">{{ stats.avgMakespan }}</div>
+              <div class="stat-card-label">时间单位</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">AGV利用率</span>
+                <div class="stat-card-icon" style="background:#d1fae5">🚚</div>
+              </div>
+              <div class="stat-card-value">{{ stats.agvUtilization }}%</div>
+              <div class="stat-card-label">活跃AGV: {{ stats.activeAgv }}/{{ stats.totalAgv }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">物料充足率</span>
+                <div class="stat-card-icon" style="background:#ede9fe">📊</div>
+              </div>
+              <div class="stat-card-value">{{ stats.materialRate }}%</div>
+              <div class="stat-card-label">库存状态良好</div>
+            </div>
+          </div>
+          
+          <!-- Quick Overview -->
+          <div class="grid-2">
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                  产线状态
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="workstation-grid">
+                  <div v-for="ws in workstations" :key="ws.id" class="workstation-card" :class="ws.status">
+                    <div class="workstation-name">{{ ws.name }}</div>
+                    <div class="workstation-status" :class="ws.status">{{ ws.statusText }}</div>
+                    <div class="workstation-util">利用率 {{ ws.utilization }}%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                  AGV状态概览
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="agv-grid">
+                  <div v-for="agv in agvStates.slice(0,4)" :key="agv.id" class="agv-card">
+                    <div class="agv-header">
+                      <span class="agv-name">{{ agv.name }}</span>
+                      <span class="agv-badge" :class="agv.status_name.toLowerCase()">{{ agv.status_name }}</span>
+                    </div>
+                    <div class="agv-info">
+                      <div class="agv-info-item">
+                        <span class="agv-info-label">电量</span>
+                        <span>{{ agv.battery_level.toFixed(0) }}%</span>
+                      </div>
+                      <div class="agv-info-item">
+                        <span class="agv-info-label">载重</span>
+                        <span>{{ agv.current_load }}/{{ agv.max_capacity }}kg</span>
+                      </div>
+                    </div>
+                    <div class="agv-battery">
+                      <div class="agv-battery-fill" :style="{width:agv.battery_level+'%',background:agv.battery_level>50?'#22c55e':agv.battery_level>20?'#f59e0b':'#ef4444'}"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Recent Evaluation Results -->
+          <div class="panel" v-if="result">
+            <div class="panel-header">
+              <div class="panel-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                最近评估结果
+              </div>
+              <div style="font-size:12px;color:#6b7280">智能体: {{ result.n_agents }} | 模型: {{ result.model_num }} | 轮数: {{ result.evaluate_epoch }}</div>
+            </div>
+            <div class="panel-body">
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <div class="stat-card-value">{{ fmt(result.avg_reward) }}</div>
+                  <div class="stat-card-label">平均奖励</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-card-value">{{ result.win_rate ? (result.win_rate * 100).toFixed(1) + '%' : '-' }}</div>
+                  <div class="stat-card-label">胜率</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-card-value">{{ episodeCount }}</div>
+                  <div class="stat-card-label">Episode数</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-card-value">{{ stats.avgMakespan }}</div>
+                  <div class="stat-card-label">平均Makespan</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- AGV Tab -->
+        <div v-if="activeTab==='agv'">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">AGV总数</span>
+                <div class="stat-card-icon" style="background:#dbeafe">🚚</div>
+              </div>
+              <div class="stat-card-value">{{ stats.totalAgv }}</div>
+              <div class="stat-card-label">台</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">活跃AGV</span>
+                <div class="stat-card-icon" style="background:#d1fae5">✓</div>
+              </div>
+              <div class="stat-card-value">{{ stats.activeAgv }}</div>
+              <div class="stat-card-label">正在执行任务</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">平均电量</span>
+                <div class="stat-card-icon" style="background:#fef3c7">🔋</div>
+              </div>
+              <div class="stat-card-value">{{ stats.avgBattery }}%</div>
+              <div class="stat-card-label">整体电量状态</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">利用率</span>
+                <div class="stat-card-icon" style="background:#ede9fe">📈</div>
+              </div>
+              <div class="stat-card-value">{{ stats.agvUtilization }}%</div>
+              <div class="stat-card-label">设备利用率</div>
+            </div>
+          </div>
+          
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">AGV车队状态</div>
+              <button class="btn btn-secondary btn-sm" @click="refreshAGV">刷新</button>
+            </div>
+            <div class="panel-body">
+              <div class="agv-grid">
+                <div v-for="agv in agvStates" :key="agv.id" class="agv-card">
+                  <div class="agv-header">
+                    <span class="agv-name">{{ agv.name }}</span>
+                    <span class="agv-badge" :class="agv.status_name.toLowerCase()">{{ agv.status_name }}</span>
+                  </div>
+                  <div class="agv-info">
+                    <div class="agv-info-item">
+                      <span class="agv-info-label">电量</span>
+                      <span>{{ agv.battery_level.toFixed(1) }}%</span>
+                    </div>
+                    <div class="agv-info-item">
+                      <span class="agv-info-label">载重</span>
+                      <span>{{ agv.current_load }}/{{ agv.max_capacity }}kg</span>
+                    </div>
+                    <div class="agv-info-item">
+                      <span class="agv-info-label">位置</span>
+                      <span>[{{ agv.position[0].toFixed(0) }}, {{ agv.position[1].toFixed(0) }}]</span>
+                    </div>
+                    <div class="agv-info-item">
+                      <span class="agv-info-label">类型</span>
+                      <span>{{ agv.type }}</span>
+                    </div>
+                  </div>
+                  <div class="agv-battery">
+                    <div class="agv-battery-fill" :style="{width:agv.battery_level+'%',background:agv.battery_level>50?'#22c55e':agv.battery_level>20?'#f59e0b':'#ef4444'}"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- AGV Task List -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">任务列表</div>
+            </div>
+            <div class="panel-body" style="padding:0">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>任务ID</th>
+                    <th>物料类型</th>
+                    <th>起点</th>
+                    <th>终点</th>
+                    <th>AGV</th>
+                    <th>状态</th>
+                    <th>进度</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="task in tasks" :key="task.id">
+                    <td>#{{ task.id }}</td>
+                    <td>{{ task.material_type }}</td>
+                    <td>{{ task.from }}</td>
+                    <td>{{ task.to }}</td>
+                    <td>{{ task.agv_id }}</td>
+                    <td><span class="agv-badge" :class="task.status.toLowerCase()">{{ task.status }}</span></td>
+                    <td>
+                      <div class="agv-progress" style="width:80px;display:inline-block">
+                        <div class="agv-progress-fill" :style="{width:task.progress+'%'}"></div>
+                      </div>
+                      {{ task.progress }}%
+                    </td>
+                  </tr>
+                  <tr v-if="tasks.length === 0">
+                    <td colspan="7" style="text-align:center;color:#9ca3af;padding:30px">暂无任务数据</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Materials Tab -->
+        <div v-if="activeTab==='materials'">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">齐套物料种类</span>
+                <div class="stat-card-icon" style="background:#dbeafe">📦</div>
+              </div>
+              <div class="stat-card-value">{{ displayMaterialStats.types }}</div>
+              <div class="stat-card-label">自制 {{ displayMaterialStats.selfMadeCount }} + 外购 {{ displayMaterialStats.purchasedCount }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">外购库存充足率</span>
+                <div class="stat-card-icon" style="background:#d1fae5">✓</div>
+              </div>
+              <div class="stat-card-value">{{ displayMaterialStats.sufficientRate }}%</div>
+              <div class="stat-card-label">供应链状态</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">缺料/紧张</span>
+                <div class="stat-card-icon" style="background:#fee2e2">⚠️</div>
+              </div>
+              <div class="stat-card-value">{{ displayMaterialStats.lowStock }}</div>
+              <div class="stat-card-label">外购/外协件</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">在途配送</span>
+                <div class="stat-card-icon" style="background:#fef3c7">🚚</div>
+              </div>
+              <div class="stat-card-value">{{ displayMaterialStats.todayDelivery }}</div>
+              <div class="stat-card-label">批</div>
+            </div>
+          </div>
+
+          <div v-if="selfMadePartsOverview.length || purchasedPartsOverview.length">
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">自制件（生产车间 MES 完工）</div>
+              </div>
+              <div class="panel-body" style="padding:0">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>生产工件</th><th>组装物料</th><th>工位</th><th>来源</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, idx) in selfMadePartsOverview" :key="'sm-'+idx">
+                      <td>{{ row.job_name }}</td>
+                      <td>{{ row.mapped_part_name }}</td>
+                      <td>{{ row.workstation }}</td>
+                      <td>{{ row.source }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">外购/外协件（供应链）</div>
+              </div>
+              <div class="panel-body" style="padding:0">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>物料</th><th>类型</th><th>供应商</th><th>目标工位</th><th>在途数量</th><th>库存状态</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="p in purchasedPartsOverview" :key="'po-'+p._key">
+                      <td>{{ p.name }}</td>
+                      <td>{{ p.category }}</td>
+                      <td>{{ p.transit_supplier || p.supplier }}</td>
+                      <td>{{ p.workstation }}</td>
+                      <td class="num">{{ p.in_transit_qty || '—' }}</td>
+                      <td>{{ p.stock_status }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <template v-else>
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">物料库存</div>
+              </div>
+              <div class="panel-body">
+                <div class="material-list">
+                  <div v-for="mat in materials" :key="mat.id" class="material-item">
+                    <span class="material-name">{{ mat.name }}</span>
+                    <div class="material-stock">
+                      <div class="material-bar">
+                        <div class="material-bar-fill" :style="{width:mat.percent+'%',background:mat.percent>60?'#22c55e':mat.percent>30?'#f59e0b':'#ef4444'}"></div>
+                      </div>
+                      <span class="material-value" :class="mat.percent>60?'high':mat.percent>30?'medium':'low'">{{ mat.quantity }}/{{ mat.capacity }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">物料配送记录</div>
+              </div>
+              <div class="panel-body" style="padding:0">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>时间</th>
+                      <th>物料类型</th>
+                      <th>数量</th>
+                      <th>目的地</th>
+                      <th>AGV</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="record in deliveryRecords" :key="record.id">
+                      <td>{{ record.time }}</td>
+                      <td>{{ record.material }}</td>
+                      <td class="num">{{ record.quantity }}</td>
+                      <td>{{ record.destination }}</td>
+                      <td>{{ record.agv }}</td>
+                    </tr>
+                    <tr v-if="deliveryRecords.length === 0">
+                      <td colspan="5" style="text-align:center;color:#9ca3af;padding:30px">暂无配送记录</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </template>
+        </div>
+        
+        <!-- Gantt Tab -->
+        <div v-if="activeTab==='gantt'">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">甘特图</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <select class="control-select" style="width:120px" v-model.number="selectedEpisode" @change="loadGantt">
+                  <option v-for="i in episodeCount" :key="i" :value="i">Episode {{ i }}</option>
+                </select>
+                <button class="btn btn-secondary btn-sm" @click="downloadSvg">导出SVG</button>
+                <button class="btn btn-secondary btn-sm" @click="downloadPdf">导出PDF</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="gantt-container">
+                <div v-html="ganttSvg" class="gantt-svg-container"></div>
+              </div>
+              <div v-if="ganttLegend" v-html="ganttLegend" style="margin-top:16px"></div>
+              <div v-if="ganttError" class="alert alert-warning">{{ ganttError }}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Charts Tab -->
+        <div v-if="activeTab==='charts'">
+          <div class="grid-2">
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">Makespan曲线</div>
+              </div>
+              <div class="panel-body">
+                <div class="chart-container">
+                  <canvas ref="makespanCanvas"></canvas>
+                </div>
+              </div>
+            </div>
+            
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">奖励曲线</div>
+              </div>
+              <div class="panel-body">
+                <div class="chart-container">
+                  <canvas ref="rewardCanvas"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Data Table -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">评估数据详情</div>
+              <button class="btn btn-secondary btn-sm" @click="exportCSV">导出CSV</button>
+            </div>
+            <div class="panel-body" style="padding:0">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Episode</th>
+                    <th>Makespan</th>
+                    <th>奖励</th>
+                    <th>状态</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(ms, idx) in makespans.slice(0,20)" :key="idx">
+                    <td>{{ idx + 1 }}</td>
+                    <td class="num">{{ ms }}</td>
+                    <td class="num">{{ rewards[idx] ? rewards[idx].toFixed(3) : '-' }}</td>
+                    <td><span class="status-dot" :class="ms < stats.avgMakespan ? 'online' : 'warning'"></span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Dynamic Visualization Tab -->
+        <div v-if="activeTab==='dynamic'">
+          <!-- Dynamic Controls -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                动态演示控制
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button class="btn btn-secondary btn-sm" @click="initDemoData" :disabled="dynamicLoading">
+                  {{ dynamicLoading ? '加载中...' : '加载演示数据' }}
+                </button>
+                <select class="control-select" style="width:100px" v-model.number="selectedEpisode" @change="loadDynamicGantt">
+                  <option v-for="i in episodeCount" :key="i" :value="i">Episode {{ i }}</option>
+                </select>
+              </div>
+            </div>
+            <div class="panel-body">
+              <!-- Playback Controls -->
+              <div class="dynamic-controls">
+                <button class="btn btn-secondary btn-sm" @click="dynamicStop" title="停止">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+                </button>
+                <button class="btn btn-secondary btn-sm" @click="dynamicStepBack" title="后退">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>
+                </button>
+                <button v-if="!dynamicPlaying" class="btn btn-primary btn-sm" @click="dynamicPlay" title="播放">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button v-else class="btn btn-primary btn-sm" @click="dynamicPause" title="暂停">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                </button>
+                <button class="btn btn-secondary btn-sm" @click="dynamicStepForward" title="前进">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>
+                </button>
+                <div class="speed-control">
+                  <span style="font-size:12px;color:#6b7280">速度:</span>
+                  <select class="control-select" style="width:80px" v-model.number="dynamicSpeed" @change="setDynamicSpeed">
+                    <option :value="0.5">0.5x</option>
+                    <option :value="1">1x</option>
+                    <option :value="2">2x</option>
+                    <option :value="5">5x</option>
+                    <option :value="10">10x</option>
+                  </select>
+                </div>
+                <div class="time-display" style="margin-left:auto">
+                  <span class="current-time">{{ dynamicCurrentTime.toFixed(1) }}</span>
+                  <span style="color:#9ca3af"> / {{ dynamicMaxTime.toFixed(1) }}</span>
+                </div>
+              </div>
+              
+              <!-- Timeline Slider -->
+              <div class="timeline-container">
+                <input type="range" class="timeline-slider" 
+                  :min="0" :max="dynamicMaxTime" :step="0.5"
+                  v-model.number="dynamicCurrentTime"
+                  @input="seekDynamicTime">
+                <div class="timeline-progress" :style="{width: dynamicProgress + '%'}"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Process Flow -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">工序流程图</div>
+              <span style="font-size:12px;color:#6b7280">9道工序 | 18个工位 | 8个并发冰箱</span>
+            </div>
+            <div class="panel-body">
+              <div class="process-flow-container">
+                <div class="process-flow">
+                  <div v-for="(stage, sIdx) in processFlow" :key="sIdx" class="process-stage">
+                    <div class="stage-connector" v-if="sIdx > 0">
+                      <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path d="M2 10 L18 10 M12 5 L18 10 L12 15" stroke="#d1d5db" stroke-width="2" fill="none"/>
+                      </svg>
+                    </div>
+                    <div class="stage-boxes">
+                      <div v-for="proc in stage.processes" :key="proc.id" 
+                           class="process-box" 
+                           :style="{backgroundColor: proc.color}"
+                           :class="{active: currentProcessId === proc.id, completed: completedProcessIds.includes(proc.id)}">
+                        <div class="process-name">{{ proc.name }}</div>
+                        <div class="process-time">{{ getProcessStandardTime(proc.id) }}min</div>
+                        <div class="process-indicator" v-if="stage.is_parallel">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6 L16 6 M8 12 L16 12 M8 18 L16 18"/></svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="stage-label">阶段{{ sIdx + 1 }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Factory Layout with Animation -->
+          <div class="grid-2">
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">工厂布局 (18工位)</div>
+                <span style="font-size:12px;color:#6b7280">T={{ dynamicCurrentTime.toFixed(1) }}</span>
+              </div>
+              <div class="panel-body">
+                <div class="factory-dynamic-container">
+                  <svg class="factory-dynamic-svg" viewBox="-10 -10 420 130" preserveAspectRatio="xMidYMid meet">
+                    <!-- Grid Background -->
+                    <defs>
+                      <pattern id="dynamicGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" stroke-width="0.5"/>
+                      </pattern>
+                      <pattern id="workstationPattern" width="36" height="30" patternUnits="userSpaceOnUse">
+                        <rect width="36" height="30" fill="transparent"/>
+                      </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#dynamicGrid)"/>
+                    
+                    <!-- Warehouse -->
+                    <g class="warehouse">
+                      <rect x="-12" y="-12" width="24" height="24" fill="#6366f1" rx="4"/>
+                      <text x="0" y="4" font-size="9" fill="#fff" text-anchor="middle" font-weight="bold">仓</text>
+                    </g>
+                    
+                    <!-- Workstations Row 1 (0-8) -->
+                    <g v-for="ws in dynamicWorkstations.slice(0, 9)" :key="'ws1-'+ws.id"
+                       :transform="'translate(' + ws.position[0] + ',' + ws.position[1] + ')'"
+                       class="workstation-group">
+                      <rect x="-16" y="-12" width="32" height="24" 
+                            :fill="ws.color" rx="4"
+                            :class="{busy: ws.status === 'busy', idle: ws.status === 'idle'}"
+                            :stroke="ws.status === 'busy' ? '#059669' : '#d1d5db'"
+                            stroke-width="2"/>
+                      <text x="0" y="-2" font-size="9" fill="#fff" text-anchor="middle" font-weight="bold">W{{ ws.id }}</text>
+                      <text x="0" y="8" font-size="7" fill="#fff" text-anchor="middle" opacity="0.8">{{ ws.process_name.substring(0, 3) }}</text>
+                      <!-- Job indicator -->
+                      <circle v-if="ws.current_job_id !== null" :cx="0" cy="20" r="5" :fill="getJobColor(ws.current_job_id)"/>
+                      <text v-if="ws.current_job_id !== null" y="23" font-size="7" fill="#fff" text-anchor="middle" font-weight="bold">{{ ws.current_job_id + 1 }}</text>
+                      <!-- Remaining time -->
+                      <text v-if="ws.remaining_time > 0" x="0" y="-16" font-size="8" fill="#059669" text-anchor="middle">{{ ws.remaining_time.toFixed(0) }}s</text>
+                    </g>
+                    
+                    <!-- Workstations Row 2 (9-17) -->
+                    <g v-for="ws in dynamicWorkstations.slice(9, 18)" :key="'ws2-'+ws.id"
+                       :transform="'translate(' + ws.position[0] + ',' + ws.position[1] + ')'"
+                       class="workstation-group">
+                      <rect x="-16" y="-12" width="32" height="24" 
+                            :fill="ws.color" rx="4"
+                            :class="{busy: ws.status === 'busy', idle: ws.status === 'idle'}"
+                            :stroke="ws.status === 'busy' ? '#059669' : '#d1d5db'"
+                            stroke-width="2"/>
+                      <text x="0" y="-2" font-size="9" fill="#fff" text-anchor="middle" font-weight="bold">W{{ ws.id }}</text>
+                      <text x="0" y="8" font-size="7" fill="#fff" text-anchor="middle" opacity="0.8">{{ ws.process_name.substring(0, 3) }}</text>
+                      <!-- Job indicator -->
+                      <circle v-if="ws.current_job_id !== null" :cx="0" cy="20" r="5" :fill="getJobColor(ws.current_job_id)"/>
+                      <text v-if="ws.current_job_id !== null" y="23" font-size="7" fill="#fff" text-anchor="middle" font-weight="bold">{{ ws.current_job_id + 1 }}</text>
+                      <!-- Remaining time -->
+                      <text v-if="ws.remaining_time > 0" x="0" y="-16" font-size="8" fill="#059669" text-anchor="middle">{{ ws.remaining_time.toFixed(0) }}s</text>
+                    </g>
+                    
+                    <!-- Refrigerator Jobs Animation -->
+                    <g v-for="job in dynamicJobs" :key="'job-'+job.id"
+                       :transform="'translate(' + job.position[0] + ',' + job.position[1] + ')'"
+                       class="job-animation"
+                       v-show="job.status !== 'completed'">
+                      <rect x="-10" y="-8" width="20" height="16" :fill="getJobColor(job.id)" rx="3" opacity="0.9"/>
+                      <text y="3" font-size="9" fill="#fff" text-anchor="middle" font-weight="bold">{{ job.id + 1 }}</text>
+                      <text y="20" font-size="7" fill="#6b7280" text-anchor="middle">{{ job.current_process !== null ? 'P' + job.current_process : '等待' }}</text>
+                    </g>
+                    
+                    <!-- Animation Trail -->
+                    <circle v-for="(trail, idx) in jobTrails" :key="'trail-'+idx"
+                            :cx="trail.x" :cy="trail.y" r="2" 
+                            :fill="getJobColor(trail.jobId)" opacity="0.3"/>
+                  </svg>
+                </div>
+                
+                <!-- Legend -->
+                <div class="legend" style="margin-top:12px">
+                  <div class="legend-item" v-for="(proc, pid) in processDefinitions" :key="'leg-'+pid">
+                    <div class="legend-color" :style="{backgroundColor: proc.color}"></div>
+                    <span>{{ proc.name }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Gantt Chart -->
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">甘特图</div>
+                <span style="font-size:12px;color:#6b7280">同步可视化</span>
+              </div>
+              <div class="panel-body" style="padding:8px">
+                <div class="gantt-dynamic-container" v-html="dynamicGanttSvg"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Jobs Status -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">冰箱作业状态 (8台)</div>
+              <div class="stats-inline">
+                <span class="stat-badge completed">{{ completedJobCount }} 已完成</span>
+                <span class="stat-badge processing">{{ processingJobCount }} 加工中</span>
+                <span class="stat-badge waiting">{{ waitingJobCount }} 等待</span>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="jobs-grid">
+                <div v-for="job in dynamicJobs" :key="'job-st-'+job.id" 
+                     class="job-card" 
+                     :class="job.status"
+                     :style="{borderLeftColor: getJobColor(job.id)}">
+                  <div class="job-header">
+                    <span class="job-name">{{ job.name }}</span>
+                    <span class="job-status-badge" :style="{backgroundColor: getStatusColor(job.status)}">
+                      {{ getStatusText(job.status) }}
+                    </span>
+                  </div>
+                  <div class="job-progress">
+                    <div class="progress-bar">
+                      <div class="progress-fill" :style="{width: (job.completion_rate * 100) + '%', backgroundColor: getJobColor(job.id)}"></div>
+                    </div>
+                    <span class="progress-text">{{ job.completed_count }}/9</span>
+                  </div>
+                  <div class="job-process" v-if="job.current_process !== null">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    正在: {{ getProcessName(job.current_process) }}
+                  </div>
+                  <div class="job-process completed" v-else-if="job.completed_count === 9">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+                    全部完成
+                  </div>
+                  <div class="job-process waiting" v-else>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    等待中
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Statistics -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">完成率</span>
+                <div class="stat-card-icon" style="background:#dbeafe">%</div>
+              </div>
+              <div class="stat-card-value">{{ (completionRate * 100).toFixed(1) }}%</div>
+              <div class="stat-card-label">{{ completedJobCount }}/8 台</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">工位利用率</span>
+                <div class="stat-card-icon" style="background:#d1fae5">⚙</div>
+              </div>
+              <div class="stat-card-value">{{ (workstationUtilization * 100).toFixed(1) }}%</div>
+              <div class="stat-card-label">{{ busyWorkstationCount }}/18 工位</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">吞吐量</span>
+                <div class="stat-card-icon" style="background:#fef3c7">📦</div>
+              </div>
+              <div class="stat-card-value">{{ throughput.toFixed(2) }}</div>
+              <div class="stat-card-label">台/10时间</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-header">
+                <span class="stat-card-title">平均进度</span>
+                <div class="stat-card-icon" style="background:#ede9fe">📊</div>
+              </div>
+              <div class="stat-card-value">{{ (avgJobProgress * 100).toFixed(1) }}%</div>
+              <div class="stat-card-label">{{ processingJobCount }} 加工中</div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, computed, reactive, ref, nextTick, onMounted, onUnmounted, watch } = Vue;
+createApp({
+  setup() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const embedMode = ref(urlParams.get('embed') === '1');
+    const validTabs = ['dashboard', 'materials', 'gantt', 'charts', 'dynamic'];
+    const readinessData = ref(null);
+    const supplySummary = ref(null);
+    const purchasedPartsCatalog = ref({ parts: [] });
+    const supplyInTransit = ref([]);
+    const integrationMaterialsOverview = ref([]);
+
+    // State
+    const apiBase = ref('/masa-qmix');
+    const form = reactive({ scene_mode: 'assembly', n_agents: 10, n_agvs: 4, model_num: '10', evaluate_epoch: 20 });
+    const loading = ref(false);
+    const error = ref('');
+    const result = ref(null);
+    const makespans = ref([]);
+    const rewards = ref([]);
+    const episodeCount = ref(0);
+    const selectedEpisode = ref(1);
+    const ganttSvg = ref('');
+    const ganttLegend = ref('');
+    const ganttError = ref('');
+    const ganttData = ref([]);
+    const activeTab = ref('dashboard');
+    const initialTab = urlParams.get('tab');
+    if (initialTab && validTabs.includes(initialTab)) {
+      activeTab.value = initialTab;
+    }
+    const currentTime = ref('');
+    const connectionStatus = ref('disconnected');
+    const makespanCanvas = ref(null);
+    const rewardCanvas = ref(null);
+    let makespanChart = null;
+    let rewardChart = null;
+    
+    // Factory data
+    const factoryLayout = ref({ workstations: [], paths: [], charging_stations: [] });
+    const agvStates = ref([]);
+    const materialFlows = ref([]);
+    const showMaterialFlow = ref(true);
+    const workstationStatus = ref({});
+    
+    // Computed
+    const modelOptions = computed(() => {
+      if (form.n_agents === 6) return ['6'];
+      if (form.n_agents === 8) return ['8'];
+      return ['10'];
+    });
+    const isValid = computed(() => {
+      if (form.n_agents === 6) return form.model_num === '6';
+      if (form.n_agents === 8) return form.model_num === '8';
+      if (form.n_agents === 10) return form.model_num === '10';
+      return false;
+    });
+    
+    // Stats
+    const agvUtilization = ref(0);  // 存储联合评估的AGV利用率
+    const stats = computed(() => {
+      // 优先使用联合评估返回的makespans计算平均时长
+      const avgMs = makespans.value.length ? (makespans.value.reduce((a,b)=>a+b,0)/makespans.value.length) : 0;
+      
+      // AGV利用率处理：
+      // 1. 如果利用率 > 1，说明已经是百分比形式（70表示70%），直接取整
+      // 2. 如果利用率在 0-1 之间，说明是小数形式，需要 *100
+      let utilization = agvUtilization.value;
+      if (utilization > 1) {
+        utilization = Math.round(utilization);
+      } else if (utilization > 0) {
+        utilization = Math.round(utilization * 100);
+      } else {
+        // 如果没有联合评估数据，使用agvStates计算
+        const activeAgv = agvStates.value.filter(a => a.status_name !== 'IDLE' && a.status_name !== 'CHARGING').length;
+        utilization = agvStates.value.length ? Math.round(activeAgv/agvStates.value.length*100) : 75;
+      }
+      
+      const avgBattery = agvStates.value.length ? agvStates.value.reduce((a,b)=>a+b.battery_level,0)/agvStates.value.length : 0;
+      const activeAgvCount = agvStates.value.filter(a => a.status_name !== 'IDLE' && a.status_name !== 'CHARGING').length;
+      
+      return {
+        todayOutput: result.value ? result.value.evaluate_epoch : 0,
+        avgMakespan: avgMs.toFixed(1),
+        agvUtilization: utilization,
+        materialRate: 92,
+        totalAgv: result.value?.agv_total_count || agvStates.value.length || 4,
+        activeAgv: result.value?.agv_busy_count || activeAgvCount,
+        avgBattery: avgBattery.toFixed(0)
+      };
+    });
+    
+    // Workstations
+    const workstations = computed(() => {
+      const wsNames = ['钣金成型','内胆吸塑','发泡填充','压缩机安装','管路焊接','电气元件','总装合箱','检测打包'];
+      return wsNames.map((name, id) => {
+        const status = workstationStatus.value[id] || {};
+        // 优先使用API返回的occupied字段，如果没有则根据remaining_time判断
+        const isOccupied = status.occupied === true || status.occupied === false ? status.occupied : (status.remaining_time > 0);
+        const isProcessing = status.remaining_time > 0;
+        
+        // 状态判断逻辑：
+        // 1. 如果occupied=true且有剩余时间，说明正在工作中
+        // 2. 如果occupied=false但有剩余时间，说明在等待物料（工位有任务但缺料）
+        // 3. 如果都没有，说明工位空闲
+        const statusClass = isOccupied ? 'active' : (isProcessing ? 'busy' : 'idle');
+        const statusText = isOccupied ? '工作中' : (isProcessing ? '等待物料' : '空闲');
+        
+        // 工位利用率：工作状态时70-95%，等待物料时40-60%，空闲时0%
+        const utilization = isOccupied ? (70 + Math.floor(Math.random() * 25)) : (isProcessing ? (40 + Math.floor(Math.random() * 20)) : 0);
+        
+        return {
+          id,
+          name,
+          status: statusClass,
+          statusText: statusText,
+          utilization: utilization
+        };
+      });
+    });
+    
+    // Materials
+    const materials = ref([
+      {id:1,name:'钣金件',quantity:450,capacity:500,percent:90},
+      {id:2,name:'内胆件',quantity:320,capacity:400,percent:80},
+      {id:3,name:'发泡料',quantity:180,capacity:300,percent:60},
+      {id:4,name:'压缩机',quantity:95,capacity:100,percent:95},
+      {id:5,name:'铜管',quantity:280,capacity:400,percent:70},
+      {id:6,name:'电气元件',quantity:520,capacity:600,percent:87},
+      {id:7,name:'包装材料',quantity:380,capacity:500,percent:76},
+      {id:8,name:'检测设备',quantity:45,capacity:50,percent:90}
+    ]);
+    const materialStats = computed(() => ({
+      types: materials.value.length,
+      sufficientRate: Math.round(materials.value.filter(m=>m.percent>30).length/materials.value.length*100),
+      lowStock: materials.value.filter(m=>m.percent<=30).length,
+      todayDelivery: Math.floor(Math.random()*20)+10
+    }));
+
+    const selfMadePartsOverview = computed(() => {
+      const parts = readinessData.value?.self_made_parts || [];
+      if (!parts.length) return [];
+      const byJob = {};
+      parts.forEach((p) => {
+        const name = p.job_name || '未知工件';
+        if (!byJob[name]) {
+          byJob[name] = { job_name: name, parts: [], workstation: p.mapped_workstation, source: '生产车间 MES' };
+        }
+        byJob[name].parts.push(p.mapped_part_name);
+      });
+      return Object.values(byJob).map((row) => ({
+        ...row,
+        mapped_part_name: row.parts.join('、'),
+      }));
+    });
+
+    const purchasedPartsOverview = computed(() => {
+      if (integrationMaterialsOverview.value?.length) {
+        return integrationMaterialsOverview.value.map((part, idx) => ({
+          ...part,
+          transit_supplier: part.supplier,
+          _key: part.id || idx,
+        }));
+      }
+      const catalog = purchasedPartsCatalog.value?.parts?.length
+        ? purchasedPartsCatalog.value.parts
+        : (readinessData.value?.purchased_parts || []);
+      const inTransit = supplyInTransit.value || [];
+      const shortages = (supplyChainData.value?.shortages || []).reduce((acc, s) => {
+        acc[s.material] = s;
+        return acc;
+      }, {});
+      const transitByMaterial = {};
+      inTransit.forEach((item) => {
+        const key = item.material;
+        if (!transitByMaterial[key]) {
+          transitByMaterial[key] = { qty: 0, supplier: item.supplier_name, status: item.status };
+        }
+        transitByMaterial[key].qty += item.quantity || 0;
+      });
+      return catalog.map((part, idx) => {
+        const transit = transitByMaterial[part.id] || {};
+        const shortage = shortages[part.id];
+        let stockStatus = '充足';
+        if (shortage) stockStatus = shortage.severity === 'high' ? '缺料' : '紧张';
+        else if (transit.qty) stockStatus = '在途';
+        return {
+          ...part,
+          in_transit_qty: transit.qty || 0,
+          transit_supplier: transit.supplier || part.supplier,
+          transit_status: transit.status || '',
+          stock_status: stockStatus,
+          _key: part.id || idx,
+        };
+      });
+    });
+
+    const kittingMaterialStats = computed(() => {
+      const selfCount = selfMadePartsOverview.value.length;
+      const purchasedCount = purchasedPartsOverview.value.length;
+      const lowStock = purchasedPartsOverview.value.filter(
+        (p) => p.stock_status === '缺料' || p.stock_status === '紧张'
+      ).length;
+      const inTransit = purchasedPartsOverview.value.filter((p) => p.in_transit_qty > 0).length;
+      return {
+        types: selfCount + purchasedCount,
+        selfMadeCount: selfCount,
+        purchasedCount,
+        sufficientRate: purchasedCount ? Math.round(((purchasedCount - lowStock) / purchasedCount) * 100) : 100,
+        lowStock,
+        todayDelivery: inTransit,
+      };
+    });
+
+    const displayMaterialStats = computed(() => {
+      if (selfMadePartsOverview.value.length || purchasedPartsOverview.value.length) {
+        return kittingMaterialStats.value;
+      }
+      return {
+        types: materialStats.value.types,
+        selfMadeCount: 0,
+        purchasedCount: materialStats.value.types,
+        sufficientRate: materialStats.value.sufficientRate,
+        lowStock: materialStats.value.lowStock,
+        todayDelivery: materialStats.value.todayDelivery,
+      };
+    });
+    const tasks = ref([]);
+    const deliveryRecords = ref([]);
+    
+    // Methods
+    const updateTime = () => {
+      const now = new Date();
+      currentTime.value = now.toLocaleString('zh-CN', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    };
+    
+    const onAgentsChange = () => {
+      if (form.n_agents === 6 && form.model_num !== '6') form.model_num = '6';
+      if (form.n_agents === 8 && form.model_num !== '8') form.model_num = '8';
+      if (form.n_agents === 10 && form.model_num !== '10') form.model_num = '10';
+    };
+    
+    const loadFactoryData = async () => {
+      try {
+        const layoutResp = await axios.get(`${apiBase.value}/api/factory/layout`, {timeout:5000});
+        if (layoutResp.data.ok) {
+          factoryLayout.value = layoutResp.data.data;
+        }
+        const simResp = await axios.get(`${apiBase.value}/api/factory/simulation`, {timeout:5000});
+        if (simResp.data.ok && simResp.data.data) {
+          const data = simResp.data.data;
+          agvStates.value = data.agvs || [];
+          if (data.workstations) {
+            data.workstations.forEach(ws => {
+              workstationStatus.value[ws.id] = ws;
+            });
+          }
+          generateMaterialFlows();
+        }
+        connectionStatus.value = 'connected';
+      } catch (e) {
+        connectionStatus.value = 'disconnected';
+        if (!factoryLayout.value.workstations.length) {
+          factoryLayout.value = getDefaultLayout();
+          agvStates.value = getDefaultAGV();
+        }
+      }
+    };
+    
+    const getDefaultLayout = () => ({
+      workstations: [
+        {id:0,name:'钣金成型',position:[60,0],buffer_position:[55,5],process_name:'钣金成型'},
+        {id:1,name:'内胆吸塑',position:[120,0],buffer_position:[115,5],process_name:'内胆吸塑'},
+        {id:2,name:'发泡填充',position:[180,0],buffer_position:[175,5],process_name:'发泡填充'},
+        {id:3,name:'压缩机',position:[240,0],buffer_position:[235,5],process_name:'压缩机安装'},
+        {id:4,name:'管路焊接',position:[240,30],buffer_position:[235,35],process_name:'管路焊接'},
+        {id:5,name:'电气元件',position:[300,0],buffer_position:[295,5],process_name:'电气元件装配'},
+        {id:6,name:'总装合箱',position:[360,0],buffer_position:[355,5],process_name:'总装合箱'},
+        {id:7,name:'检测打包',position:[400,0],buffer_position:[395,5],process_name:'检测打包'}
+      ],
+      paths: [
+        {from:[0,0],to:[60,0]},{from:[60,0],to:[120,0]},{from:[120,0],to:[180,0]},
+        {from:[180,0],to:[240,0]},{from:[240,0],to:[300,0]},{from:[300,0],to:[360,0]},
+        {from:[360,0],to:[400,0]},{from:[240,0],to:[240,30]},{from:[0,0],to:[0,50]},
+        {from:[60,0],to:[60,50]},{from:[120,0],to:[120,50]},{from:[180,0],to:[180,50]}
+      ],
+      charging_stations: [
+        {id:0,position:[0,0]},{id:1,position:[60,50]},{id:2,position:[120,50]},{id:3,position:[180,50]}
+      ]
+    });
+    
+    const getDefaultAGV = () => [
+      {id:0,name:'AGV0',type:'重型',status_name:'MOVING',position:[90,25],battery_level:85.5,current_load:150,max_capacity:500},
+      {id:1,name:'AGV1',type:'轻型',status_name:'IDLE',position:[150,50],battery_level:100,current_load:0,max_capacity:100},
+      {id:2,name:'AGV2',type:'流体',status_name:'LOADING',position:[210,15],battery_level:72.3,current_load:200,max_capacity:200},
+      {id:3,name:'AGV3',type:'通用',status_name:'CHARGING',position:[30,50],battery_level:45.0,current_load:0,max_capacity:150}
+    ];
+    
+    const generateMaterialFlows = () => {
+      const flows = [];
+      const colors = ['#6366f1','#3b82f6','#10b981','#f59e0b'];
+      factoryLayout.value.paths.forEach((path, idx) => {
+        for (let i = 1; i < 4; i++) {
+          const t = i / 4;
+          flows.push({
+            x: path.from[0] + (path.to[0] - path.from[0]) * t,
+            y: path.from[1] + (path.to[1] - path.from[1]) * t,
+            color: colors[idx % colors.length]
+          });
+        }
+      });
+      materialFlows.value = flows;
+    };
+    
+    const getAgvColor = (statusName) => {
+      const colors = {'IDLE':'#10b981','MOVING':'#3b82f6','LOADING':'#f59e0b','UNLOADING':'#f59e0b','CHARGING':'#8b5cf6','RETURNING':'#6366f1','BROKEN':'#ef4444'};
+      return colors[statusName] || '#64748b';
+    };
+    
+    const getWorkstationColor = (wsId) => {
+      const status = workstationStatus.value[wsId];
+      if (!status) return '#3b82f6';
+      // 优先使用occupied字段，如果没有则根据remaining_time判断
+      const isOccupied = status.occupied === true || status.occupied === false ? status.occupied : (status.remaining_time > 0);
+      const isProcessing = status.remaining_time > 0;
+      
+      if (isOccupied) return '#22c55e';      // 绿色 - 工作中
+      if (isProcessing) return '#f59e0b';    // 橙色 - 等待物料
+      return '#3b82f6';                      // 蓝色 - 空闲
+    };
+    
+    const refreshFactory = () => loadFactoryData();
+    const refreshAGV = () => loadFactoryData();
+
+    async function loadReadinessIntegration() {
+      try {
+        const resp = await axios.get('/api/integrations/readiness/latest');
+        readinessData.value = resp.data;
+        if (readinessData.value?.product_units) {
+          form.evaluate_epoch = Math.max(1, Math.min(20, Number(readinessData.value.product_units) || 8));
+        }
+      } catch {
+        try {
+          const resp = await axios.get('/api/integrations/readiness/last');
+          readinessData.value = resp.data?.status === 'ready' ? resp.data : null;
+          if (readinessData.value?.product_units) {
+            form.evaluate_epoch = Math.max(1, Math.min(20, Number(readinessData.value.product_units) || 8));
+          }
+        } catch {
+          readinessData.value = null;
+        }
+      }
+      try {
+        const pc = await axios.get('/api/integrations/purchased-parts/catalog');
+        purchasedPartsCatalog.value = pc.data;
+      } catch {
+        purchasedPartsCatalog.value = { parts: readinessData.value?.purchased_parts || [] };
+      }
+      try {
+        const sc = await axios.get('/api/integrations/supply-chain/status');
+        const data = sc.data?.data || {};
+        supplySummary.value = data.summary || null;
+        supplyInTransit.value = data.in_transit || [];
+        supplyChainData.value.shortages = data.critical_shortages || [];
+        integrationMaterialsOverview.value = data.materials_overview || [];
+      } catch {
+        try {
+          const sc = await axios.get(`${apiBase.value}/api/supply-chain/status`);
+          const data = sc.data?.data || {};
+          supplySummary.value = data.summary || null;
+          supplyInTransit.value = data.in_transit || [];
+          supplyChainData.value.shortages = data.critical_shortages || [];
+          integrationMaterialsOverview.value = [];
+        } catch {
+          supplySummary.value = null;
+          supplyInTransit.value = [];
+          integrationMaterialsOverview.value = [];
+        }
+      }
+    }
+    
+    const submit = async () => {
+      error.value = '';
+      result.value = null;
+      makespans.value = [];
+      rewards.value = [];
+      ganttSvg.value = '';
+      ganttError.value = '';
+      episodeCount.value = 0;
+      if (!isValid.value) {
+        error.value = '模型编号与智能体数量不匹配';
+        return;
+      }
+      loading.value = true;
+      try {
+        if (readinessData.value?.id && readinessData.value.status === 'ready') {
+          try {
+            await axios.post(`/api/integrations/readiness/${readinessData.value.id}/consume`);
+            readinessData.value = { ...readinessData.value, status: 'consumed' };
+          } catch (e) {
+            console.warn('consume readiness failed', e);
+          }
+        }
+        const resp = await axios.post(`${apiBase.value}/evaluate`, {
+          scene_mode: form.scene_mode,
+          n_agents: form.n_agents,
+          n_agvs: form.n_agvs,
+          model_num: form.model_num,
+          evaluate_epoch: form.evaluate_epoch,
+          readiness_id: readinessData.value?.id || null
+        }, {timeout: 0});
+        result.value = resp.data;
+        if (resp.data.ok) {
+          makespans.value = Array.isArray(resp.data.makespans) ? resp.data.makespans : [];
+          rewards.value = Array.isArray(resp.data.rewards) ? resp.data.rewards : [];
+          ganttData.value = Array.isArray(resp.data.gantt) ? resp.data.gantt : [];
+          episodeCount.value = typeof resp.data.episode_count === 'number' ? resp.data.episode_count : makespans.value.length || rewards.value.length;
+          if (!episodeCount.value) episodeCount.value = resp.data.evaluate_epoch || 0;
+          
+          // 处理联合评估的AGV数据
+          if (resp.data.scene_mode === 'joint' && resp.data.agv_states) {
+            agvStates.value = resp.data.agv_states;
+            agvUtilization.value = resp.data.agv_utilization || 0;
+            // 更新工位状态
+            if (resp.data.workstation_states) {
+              resp.data.workstation_states.forEach(ws => {
+                workstationStatus.value[ws.id] = ws;
+              });
+            }
+          }
+          
+          selectedEpisode.value = 1;
+          await nextTick();
+          renderCharts();
+          loadGantt(true);
+        }
+      } catch (e) {
+        error.value = e.response?.data?.error || e.message || '请求失败';
+      } finally {
+        loading.value = false;
+      }
+    };
+    
+    const renderCharts = () => {
+      const ms = makespans.value.slice(0,20);
+      const rs = rewards.value.slice(0,20);
+      if (makespanChart) { makespanChart.destroy(); makespanChart = null; }
+      if (rewardChart) { rewardChart.destroy(); rewardChart = null; }
+      
+      if (makespanCanvas.value && ms.length) {
+        makespanChart = new Chart(makespanCanvas.value.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: ms.map((_,i)=>i+1),
+            datasets: [{label:'Makespan',data:ms,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,0.1)',tension:0.3,fill:true,pointRadius:4}]
+          },
+          options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+        });
+      }
+      if (rewardCanvas.value && rs.length) {
+        rewardChart = new Chart(rewardCanvas.value.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: rs.map((_,i)=>i+1),
+            datasets: [{label:'Reward',data:rs,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.1)',tension:0.3,fill:true,pointRadius:4}]
+          },
+          options: {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+        });
+      }
+    };
+    
+    const loadGantt = async (preferLocal = false) => {
+      ganttError.value = '';
+      if (!episodeCount.value) {
+        ganttSvg.value = '';
+        ganttError.value = '暂无甘特数据';
+        return;
+      }
+      if (preferLocal && Array.isArray(ganttData.value) && ganttData.value.length) {
+        const idx = selectedEpisode.value - 1;
+        if (idx >= 0 && idx < ganttData.value.length && Array.isArray(ganttData.value[idx])) {
+          ganttSvg.value = buildGantt(ganttData.value[idx]);
+          buildLegend(ganttData.value[idx]);
+          return;
+        }
+      }
+      try {
+        const resp = await axios.get(`${apiBase.value}/api/evaluation/${form.n_agents}/gantt/${selectedEpisode.value}`);
+        if (resp.data.ok) {
+          ganttSvg.value = buildGantt(resp.data.data || []);
+          buildLegend(resp.data.data || []);
+        } else {
+          ganttError.value = resp.data.error || '未获取到数据';
+        }
+      } catch (e) {
+        ganttSvg.value = '';
+        ganttError.value = e.message || '拉取失败';
+      }
+    };
+    
+    const buildGantt = (data) => {
+      if (!Array.isArray(data) || !data.length) return '';
+      const rowsRaw = data.filter(d => Array.isArray(d) && d.length >= 4);
+      if (!rowsRaw.length) return '';
+      const sites = Array.from({length:18},(_,i)=>i);
+      const containerWidth = 1000;
+      const margin = 50;
+      const tasksBySite = new Map();
+      for (const d of rowsRaw) {
+        const start = Number(d[0]) || 0;
+        const dur = Number(d[1]) > 0 ? Number(d[1]) : 1;
+        const site = Number(d[2]) || 0;
+        const plane = d[3];
+        if (!tasksBySite.has(site)) tasksBySite.set(site, []);
+        tasksBySite.get(site).push({start, dur, plane});
+      }
+      let maxTime = 1;
+      for (const tasks of tasksBySite.values()) {
+        for (const t of tasks) { maxTime = Math.max(maxTime, t.start + t.dur); }
+      }
+      const rowHeight = 26;
+      const gap = 10;
+      const height = margin * 2 + sites.length * (rowHeight + gap) + margin;
+      const innerWidth = containerWidth - margin * 2;
+      const xScale = (t) => margin + (t / Math.max(maxTime,1)) * innerWidth;
+      const colors = ['#2563eb','#f59e0b','#10b981','#ef4444','#8b5cf6','#0ea5e9','#14b8a6','#a855f7','#f97316'];
+      const rows = [];
+      sites.forEach((site, index) => {
+        const y = margin + index * (rowHeight + gap);
+        const tasks = tasksBySite.get(site) || [];
+        tasks.forEach(task => {
+          const x1 = xScale(task.start);
+          const x2 = xScale(task.start + task.dur);
+          const color = colors[Math.abs(task.plane) % colors.length];
+          const rectWidth = Math.max(2, x2 - x1);
+          rows.push(`<rect x="${x1}" y="${y}" width="${rectWidth}" height="${rowHeight}" rx="4" fill="${color}" opacity="0.9"/>`);
+          if (rectWidth > 35) {
+            rows.push(`<text x="${x1 + rectWidth/2}" y="${y + rowHeight/2 + 5}" font-size="11" fill="#fff" text-anchor="middle">P${task.plane}</text>`);
+          }
+        });
+      });
+      const siteLabels = sites.map((s, index) => {
+        const y = margin + index * (rowHeight + gap) + rowHeight / 2 + 5;
+        return `<text x="8" y="${y}" font-size="12" fill="#374151" font-weight="500">Site ${s}</text>`;
+      }).join('');
+      const ticks = [];
+      const tickCount = 8;
+      for (let i = 0; i <= tickCount; i++) {
+        const t = (maxTime / tickCount) * i;
+        const x = xScale(t);
+        ticks.push(`<line x1="${x}" y1="${height - margin + 6}" x2="${x}" y2="${height - margin + 12}" stroke="#9ca3af" stroke-width="1"/>`);
+        ticks.push(`<text x="${x - 8}" y="${height - margin + 26}" font-size="11" fill="#6b7280">${t.toFixed(0)}</text>`);
+      }
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${containerWidth} ${height}" style="width:100%;height:auto">
+        <rect x="0" y="0" width="${containerWidth}" height="${height}" fill="#fff"/>
+        ${rows.join('')}
+        ${siteLabels}
+        <line x1="${margin}" y1="${height - margin}" x2="${containerWidth - margin}" y2="${height - margin}" stroke="#e5e7eb" stroke-width="1"/>
+        ${ticks.join('')}
+      </svg>`;
+    };
+    
+    const getColorForPlane = (plane) => {
+      const colors = ['#2563eb','#f59e0b','#10b981','#ef4444','#8b5cf6','#0ea5e9','#14b8a6','#a855f7','#f97316'];
+      return colors[Math.abs(plane) % colors.length];
+    };
+    
+    const buildLegend = (data) => {
+      if (!Array.isArray(data) || !data.length) { ganttLegend.value = ''; return; }
+      const counts = data.reduce((acc, d) => {const p = String(d[3]); acc[p] = (acc[p]||0) + 1; return acc;}, {});
+      const planes = Array.from(new Set(data.map(d=>d[3]))).sort((a,b)=>Number(a)-Number(b));
+      const items = planes.map(p => {
+        const color = getColorForPlane(p);
+        const cnt = counts[String(p)] || 0;
+        return `<span style="display:inline-flex;align-items:center;gap:6px;margin-right:16px">
+          <span style="width:14px;height:10px;background:${color};display:inline-block;border-radius:3px"></span>
+          <span style="font-size:13px;color:#374151">P${p} (${cnt})</span>
+        </span>`;
+      }).join('');
+      ganttLegend.value = `<div class="legend">${items}</div>`;
+    };
+    
+    const downloadSvg = () => {
+      const container = document.querySelector('.gantt-svg-container');
+      if (!container) return;
+      const svgEl = container.querySelector('svg');
+      if (!svgEl) return;
+      const blob = new Blob([svgEl.outerHTML], {type:'image/svg+xml'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `gantt_ep${selectedEpisode.value}.svg`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    };
+    
+    const downloadPdf = async () => {
+      const container = document.querySelector('.gantt-svg-container');
+      if (!container) return;
+      const svgEl = container.querySelector('svg');
+      if (!svgEl) return;
+      const img = new Image();
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgEl.outerHTML);
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * 2; canvas.height = img.height * 2;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({orientation:'landscape',unit:'pt',format:[canvas.width,canvas.height]});
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save(`gantt_ep${selectedEpisode.value}.pdf`);
+      };
+    };
+    
+    const exportCSV = () => {
+      let csv = 'Episode,Makespan,Reward\n';
+      makespans.value.forEach((ms, i) => {
+        csv += `${i+1},${ms},${rewards.value[i] ? rewards.value[i].toFixed(3) : ''}\n`;
+      });
+      const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'evaluation_data.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    };
+    
+    const fmt = (v) => {
+      if (v === null || v === undefined || Number.isNaN(v)) return '-';
+      const num = Number(v);
+      return Math.abs(num) >= 100 ? num.toFixed(0) : num.toFixed(3);
+    };
+    
+    // ============ Dynamic Visualization ============
+    // 动态演示核心数据
+    const dynamicLoading = ref(false);
+    const dynamicPlaying = ref(false);
+    const dynamicSpeed = ref(1);
+    const dynamicCurrentTime = ref(0);
+    const dynamicMaxTime = ref(100);
+    const dynamicProgress = computed(() => dynamicMaxTime.value > 0 ? (dynamicCurrentTime.value / dynamicMaxTime.value) * 100 : 0);
+    const dynamicWorkstations = ref([]);
+    const dynamicJobs = ref([]);
+    const dynamicGanttSvg = ref('');
+    const processFlow = ref([]);
+    const processDefinitions = ref({});
+    const jobTrails = ref([]);
+    const currentProcessId = ref(null);
+    const completedProcessIds = ref([]);
+    let dynamicPlayInterval = null;
+    let currentGanttData = [];  // 甘特图原始数据
+    
+    // ============ Supply Chain ============
+    const supplyChainData = ref({
+      suppliers: [],
+      inTransitCount: 0,
+      shortageCount: 0,
+      warehouseUtil: 0,
+      materialFlows: [],
+      shortages: [],
+      totalActiveFlows: 0
+    });
+    const supplyChainLayout = ref({
+      parts_factories: [],
+      warehouse_zones: [],
+      assembly_workstations: [],
+      inbound_paths: []
+    });
+    const supplyChainAGVs = ref([]);
+    const processDependency = ref({ nodes: [], links: [], criticalPath: [] });
+    const materialFlowAnimations = ref([]);
+    
+    const completedJobCount = computed(() => dynamicJobs.value.filter(j => j.status === 'completed').length);
+    const processingJobCount = computed(() => dynamicJobs.value.filter(j => j.status === 'processing').length);
+    const waitingJobCount = computed(() => dynamicJobs.value.filter(j => j.status === 'waiting').length);
+    const completionRate = computed(() => completedJobCount.value / Math.max(1, dynamicJobs.value.length));
+    const workstationUtilization = computed(() => {
+      if (!dynamicWorkstations.value.length) return 0;
+      return dynamicWorkstations.value.filter(ws => ws.status === 'busy').length / dynamicWorkstations.value.length;
+    });
+    const busyWorkstationCount = computed(() => dynamicWorkstations.value.filter(ws => ws.status === 'busy').length);
+    const throughput = computed(() => completedJobCount.value / Math.max(0.1, dynamicCurrentTime.value / 10));
+    const avgJobProgress = computed(() => {
+      if (!dynamicJobs.value.length) return 0;
+      return dynamicJobs.value.reduce((sum, j) => sum + (j.completion_rate || 0), 0) / dynamicJobs.value.length;
+    });
+    
+    // 工序颜色映射
+    const jobColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899'];
+    const getJobColor = (jobId) => jobColors[jobId % jobColors.length];
+    
+    const getStatusColor = (status) => {
+      const colors = {completed: '#22c55e', processing: '#3b82f6', waiting: '#6b7280'};
+      return colors[status] || '#6b7280';
+    };
+    
+    const getStatusText = (status) => {
+      const texts = {completed: '已完成', processing: '加工中', waiting: '等待'};
+      return texts[status] || status;
+    };
+    
+    const getProcessName = (processId) => {
+      if (processDefinitions.value[processId]) {
+        return processDefinitions.value[processId].name;
+      }
+      const names = ['钣金成型', '内胆吸塑', '发泡填充', '压缩机安装', '管路焊接', '电气装配', '总装合箱', '检测调试', '打包入库'];
+      return names[processId] || `工序${processId}`;
+    };
+    
+    const getProcessStandardTime = (processId) => {
+      if (processDefinitions.value[processId]) {
+        return processDefinitions.value[processId].standard_time;
+      }
+      const times = [8, 6, 12, 10, 9, 7, 11, 5, 4];
+      return times[processId] || 0;
+    };
+    
+    // ============ 动态演示核心方法 ============
+    
+    // 初始化动态视图
+    const initDynamicView = async () => {
+      if (dynamicWorkstations.value.length === 0 || currentGanttData.length === 0) {
+        await initDemoData();
+      }
+    };
+    
+    // 加载演示数据
+    const initDemoData = async () => {
+      dynamicLoading.value = true;
+      try {
+        const resp = await axios.get(`${apiBase.value}/api/production/demo-data?n_jobs=8`, {timeout: 10000});
+        if (resp.data.ok) {
+          const data = resp.data.data;
+          // 保存甘特图原始数据
+          currentGanttData = data.gantt_data || [];
+          // 设置最大时间
+          dynamicMaxTime.value = data.max_time || 100;
+          // 保存工序定义
+          if (data.sync_data && data.sync_data.process_definitions) {
+            processDefinitions.value = data.sync_data.process_definitions;
+          }
+          // 重置时间
+          dynamicCurrentTime.value = 0;
+          // 计算初始状态
+          updateStateLocally();
+        }
+      } catch (e) {
+        console.error('Failed to load demo data:', e);
+        // 使用内置的模拟数据
+        useFallbackDemoData();
+      } finally {
+        dynamicLoading.value = false;
+      }
+    };
+    
+    // 使用内置备用演示数据
+    const useFallbackDemoData = () => {
+      // 工序标准时间
+      const processTimes = [8, 6, 12, 10, 9, 7, 11, 5, 4];
+      // 工序到工位的映射
+      const processWorkstations = {
+        0: [0, 1], 1: [2, 3], 2: [4, 5], 3: [7, 8], 
+        4: [9, 10], 5: [11, 12], 6: [13, 14], 7: [15, 16], 8: [17]
+      };
+      
+      currentGanttData = [];
+      for (let jobId = 0; jobId < 8; jobId++) {
+        let currentTime = jobId * 2;  // 错峰启动
+        for (let procId = 0; procId < 9; procId++) {
+          const duration = processTimes[procId] + (Math.random() - 0.5) * 2;
+          const wsId = processWorkstations[procId][jobId % 2];
+          currentGanttData.push([currentTime, duration, wsId, jobId, procId]);
+          currentTime += duration;
+        }
+      }
+      
+      dynamicMaxTime.value = 100;
+      processDefinitions.value = {
+        0: {name: '钣金成型', color: '#2563eb', standard_time: 8},
+        1: {name: '内胆吸塑', color: '#7c3aed', standard_time: 6},
+        2: {name: '发泡填充', color: '#0891b2', standard_time: 12},
+        3: {name: '压缩机安装', color: '#059669', standard_time: 10},
+        4: {name: '管路焊接', color: '#d97706', standard_time: 9},
+        5: {name: '电气装配', color: '#dc2626', standard_time: 7},
+        6: {name: '总装合箱', color: '#7c2d12', standard_time: 11},
+        7: {name: '检测调试', color: '#0d9488', standard_time: 5},
+        8: {name: '打包入库', color: '#4b5563', standard_time: 4}
+      };
+      dynamicCurrentTime.value = 0;
+      updateStateLocally();
+    };
+    
+    // ============ 核心状态计算（基于甘特图数据） ============
+    
+    // 工位布局位置
+    const getWorkstationPosition = (wsId) => {
+      if (wsId < 9) {
+        return [40 + wsId * 40, 25];
+      } else {
+        return [40 + (wsId - 9) * 40, 90];
+      }
+    };
+    
+    // 获取工位对应的工序ID
+    const getProcessForWorkstation = (wsId) => {
+      const mapping = [0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8];
+      return mapping[wsId] ?? 0;
+    };
+    
+    // 根据当前时间更新状态（核心方法）
+    const updateStateLocally = () => {
+      const time = dynamicCurrentTime.value;
+      
+      // 初始化18个工位
+      const workstations = [];
+      for (let i = 0; i < 18; i++) {
+        workstations.push({
+          id: i,
+          process_id: getProcessForWorkstation(i),
+          process_name: getProcessName(getProcessForWorkstation(i)),
+          position: getWorkstationPosition(i),
+          status: 'idle',
+          current_job_id: null,
+          remaining_time: 0,
+          color: processDefinitions.value[getProcessForWorkstation(i)]?.color || '#3b82f6'
+        });
+      }
+      
+      // 初始化8个作业
+      const jobs = [];
+      for (let i = 0; i < 8; i++) {
+        jobs.push({
+          id: i,
+          name: `冰箱${i + 1}`,
+          status: 'waiting',
+          current_process: null,
+          completed_processes: [],
+          completion_rate: 0,
+          completed_count: 0,
+          position: getWorkstationPosition(0)
+        });
+      }
+      
+      // 遍历甘特图数据更新状态
+      for (const record of currentGanttData) {
+        if (record.length < 5) continue;
+        const [start, duration, wsId, jobId, processId] = record;
+        const endTime = start + duration;
+        
+        if (start <= time && time < endTime) {
+          // 工序正在执行
+          if (workstations[wsId]) {
+            workstations[wsId].status = 'busy';
+            workstations[wsId].current_job_id = jobId;
+            workstations[wsId].remaining_time = endTime - time;
+          }
+          if (jobs[jobId]) {
+            jobs[jobId].status = 'processing';
+            jobs[jobId].current_process = processId;
+            jobs[jobId].position = workstations[wsId]?.position || [0, 0];
+          }
+        } else if (time >= endTime) {
+          // 工序已完成
+          if (jobs[jobId] && !jobs[jobId].completed_processes.includes(processId)) {
+            jobs[jobId].completed_processes.push(processId);
+            jobs[jobId].completed_count = jobs[jobId].completed_processes.length;
+            jobs[jobId].completion_rate = jobs[jobId].completed_processes.length / 9;
+          }
+          if (jobs[jobId]?.completed_count === 9) {
+            jobs[jobId].status = 'completed';
+          }
+        }
+      }
+      
+      // 更新响应式数据
+      dynamicWorkstations.value = workstations;
+      dynamicJobs.value = jobs;
+      
+      // 更新工序状态
+      currentProcessId.value = jobs.find(j => j.status === 'processing')?.current_process;
+      completedProcessIds.value = jobs.flatMap(j => j.completed_processes || []);
+      
+      // 更新甘特图
+      buildDynamicGantt();
+    };
+    
+    // 构建工序流程图
+    const buildProcessFlow = (processDefs) => {
+      return [
+        {stage: 0, processes: [{id: 0, name: '钣金成型', color: '#2563eb'}], is_parallel: false},
+        {stage: 1, processes: [{id: 1, name: '内胆吸塑', color: '#7c3aed'}], is_parallel: false},
+        {stage: 2, processes: [{id: 2, name: '发泡填充', color: '#0891b2'}], is_parallel: false},
+        {stage: 3, processes: [{id: 3, name: '压缩机安装', color: '#059669'}], is_parallel: false},
+        {stage: 4, processes: [
+          {id: 4, name: '管路焊接', color: '#d97706'},
+          {id: 5, name: '电气装配', color: '#dc2626'}
+        ], is_parallel: true},
+        {stage: 5, processes: [{id: 6, name: '总装合箱', color: '#7c2d12'}], is_parallel: false},
+        {stage: 6, processes: [{id: 7, name: '检测调试', color: '#0d9488'}], is_parallel: false},
+        {stage: 7, processes: [{id: 8, name: '打包入库', color: '#4b5563'}], is_parallel: false}
+      ];
+    };
+    
+    // 构建动态甘特图SVG
+    const buildDynamicGantt = () => {
+      if (!currentGanttData.length) {
+        dynamicGanttSvg.value = '<div style="padding:40px;text-align:center;color:#9ca3af">暂无甘特图数据</div>';
+        return;
+      }
+      
+      const containerWidth = 500;
+      const rowHeight = 20;
+      const gap = 4;
+      const margin = {top: 30, right: 20, bottom: 30, left: 50};
+      
+      // 按工位分组
+      const tasksByStation = {};
+      for (const record of currentGanttData) {
+        if (record.length < 5) continue;
+        const [start, duration, wsId, jobId, processId] = record;
+        if (!tasksByStation[wsId]) tasksByStation[wsId] = [];
+        tasksByStation[wsId].push({start, duration, end: start + duration, jobId, processId});
+      }
+      
+      const maxTime = dynamicMaxTime.value;
+      const innerWidth = containerWidth - margin.left - margin.right;
+      const xScale = (t) => margin.left + (t / maxTime) * innerWidth;
+      
+      let svg = `<svg viewBox="0 0 ${containerWidth} ${margin.top + 18 * (rowHeight + gap) + margin.bottom}" xmlns="http://www.w3.org/2000/svg">`;
+      svg += `<rect width="100%" height="100%" fill="#fff"/>`;
+      
+      // 时间轴
+      for (let i = 0; i <= 5; i++) {
+        const t = (maxTime / 5) * i;
+        const x = xScale(t);
+        svg += `<line x1="${x}" y1="${margin.top - 10}" x2="${x}" y2="${margin.top + 18 * (rowHeight + gap)}" stroke="#e5e7eb" stroke-width="1"/>`;
+        svg += `<text x="${x}" y="${margin.top - 15}" font-size="10" fill="#6b7280" text-anchor="middle">${t.toFixed(0)}</text>`;
+      }
+      
+      // 当前时间指示器
+      const currentX = xScale(dynamicCurrentTime.value);
+      svg += `<line x1="${currentX}" y1="${margin.top - 5}" x2="${currentX}" y2="${margin.top + 18 * (rowHeight + gap)}" stroke="#ef4444" stroke-width="2"/>`;
+      
+      // 工位行
+      for (let wsId = 0; wsId < 18; wsId++) {
+        const y = margin.top + wsId * (rowHeight + gap);
+        svg += `<text x="${margin.left - 5}" y="${y + rowHeight / 2 + 4}" font-size="10" fill="#374151" text-anchor="end">W${wsId}</text>`;
+        svg += `<rect x="${margin.left}" y="${y}" width="${innerWidth}" height="${rowHeight}" fill="#f9fafb" rx="2"/>`;
+        
+        const tasks = tasksByStation[wsId] || [];
+        for (const task of tasks) {
+          const x1 = Math.max(xScale(task.start), margin.left);
+          const x2 = Math.min(xScale(task.end), margin.left + innerWidth);
+          const width = Math.max(0, x2 - x1);
+          
+          if (width > 0) {
+            const isActive = task.start <= dynamicCurrentTime.value && dynamicCurrentTime.value < task.end;
+            const color = isActive ? getJobColor(task.jobId) : getJobColor(task.jobId) + '99';
+            
+            svg += `<rect x="${x1}" y="${y + 2}" width="${width}" height="${rowHeight - 4}" fill="${color}" rx="2"/>`;
+            
+            if (width > 30) {
+              svg += `<text x="${x1 + width / 2}" y="${y + rowHeight / 2 + 4}" font-size="9" fill="#fff" text-anchor="middle">R${task.jobId}</text>`;
+            }
+          }
+        }
+      }
+      
+      svg += '</svg>';
+      dynamicGanttSvg.value = svg;
+    };
+    
+    // ============ 播放控制 ============
+    
+    const dynamicPlay = () => {
+      if (dynamicPlaying.value) return;
+      if (currentGanttData.length === 0) {
+        useFallbackDemoData();
+      }
+      dynamicPlaying.value = true;
+      
+      dynamicPlayInterval = setInterval(() => {
+        dynamicCurrentTime.value += 0.5 * dynamicSpeed.value;
+        
+        if (dynamicCurrentTime.value >= dynamicMaxTime.value) {
+          dynamicCurrentTime.value = dynamicMaxTime.value;
+          dynamicPause();
+          return;
+        }
+        
+        updateStateLocally();
+      }, 100);
+    };
+    
+    const dynamicPause = () => {
+      dynamicPlaying.value = false;
+      if (dynamicPlayInterval) {
+        clearInterval(dynamicPlayInterval);
+        dynamicPlayInterval = null;
+      }
+    };
+    
+    const dynamicStop = () => {
+      dynamicPause();
+      dynamicCurrentTime.value = 0;
+      updateStateLocally();
+    };
+    
+    const dynamicStepForward = () => {
+      dynamicPause();
+      dynamicCurrentTime.value = Math.min(dynamicCurrentTime.value + 5, dynamicMaxTime.value);
+      updateStateLocally();
+    };
+    
+    const dynamicStepBack = () => {
+      dynamicPause();
+      dynamicCurrentTime.value = Math.max(dynamicCurrentTime.value - 5, 0);
+      updateStateLocally();
+    };
+    
+    const seekDynamicTime = () => {
+      dynamicPause();
+      updateStateLocally();
+    };
+    
+    const setDynamicSpeed = () => {
+      // 速度由 dynamicSpeed 控制，无需API调用
+    };
+    
+    const loadDynamicGantt = async () => {
+      // 从已加载的甘特图数据中选择Episode
+      if (!episodeCount.value || selectedEpisode.value < 1) return;
+      // 暂时不实现多Episode切换，保持当前数据
+    };
+    
+    const updateDynamicState = async () => {
+      // 此方法保留用于向后兼容，但主要逻辑已在 updateStateLocally 中实现
+      updateStateLocally();
+    };
+    
+    // ============ Supply Chain Methods ============
+    const loadSupplyChainData = async () => {
+      try {
+        // 加载扩展布局数据
+        const layoutResp = await axios.get(`${apiBase.value}/api/factory/layout/extended`, {timeout: 10000});
+        if (layoutResp.data.ok) {
+          const layout = layoutResp.data.data;
+          // 提取供应商数据
+          supplyChainLayout.value.parts_factories = layout.parts_factories || [];
+          // 提取仓库分区
+          supplyChainLayout.value.warehouse_zones = layout.central_warehouse?.zones || [];
+          // 提取组装工位
+          supplyChainLayout.value.assembly_workstations = layout.assembly_factory?.workstations || [];
+          // 提取工序依赖
+          processDependency.value = layout.process_dependency || { nodes: [], links: [], criticalPath: [] };
+        }
+        
+        // 加载供应链状态
+        const supplyResp = await axios.get(`${apiBase.value}/api/supply-chain/status`, {timeout: 10000});
+        if (supplyResp.data.ok) {
+          const data = supplyResp.data.data;
+          supplyChainData.value.suppliers = data.supplier_performance || [];
+          supplyChainData.value.inTransitCount = data.summary?.active_deliveries || 0;
+          supplyChainData.value.shortageCount = data.summary?.shortage_alerts || 0;
+          
+          // 计算仓库利用率
+          const inv = layoutResp.data.data?.central_warehouse?.inventory || {};
+          let totalUsed = 0, totalCap = 0;
+          Object.values(inv).forEach(item => {
+            totalUsed += item.quantity || 0;
+            totalCap += item.capacity || 0;
+          });
+          supplyChainData.value.warehouseUtil = totalCap > 0 ? Math.round(totalUsed / totalCap * 100) : 0;
+        }
+        
+        // 加载物料流动数据
+        const flowResp = await axios.get(`${apiBase.value}/api/material/flow`, {timeout: 10000});
+        if (flowResp.data.ok) {
+          const flowData = flowResp.data.data;
+          supplyChainData.value.materialFlows = flowData.material_flows || [];
+          supplyChainData.value.totalActiveFlows = flowData.total_active_flows || 0;
+        }
+        
+        // 加载缺料预警
+        const supplyResp2 = await axios.get(`${apiBase.value}/api/supply-chain/status`, {timeout: 10000});
+        if (supplyResp2.data.ok) {
+          supplyChainData.value.shortages = supplyResp2.data.data.critical_shortages || [];
+        }
+        
+        // 生成AGV运输动画数据
+        generateAGVTransportData();
+        
+        // 生成物料流动动画
+        generateMaterialFlowAnimations();
+        
+      } catch (e) {
+        console.error('Failed to load supply chain data:', e);
+        // 使用默认数据
+        useDefaultSupplyChainData();
+      }
+    };
+    
+    const useDefaultSupplyChainData = () => {
+      // 供应商默认数据
+      supplyChainLayout.value.parts_factories = [
+        {id: 0, name: '压缩机供应商', short_name: '压缩机', position: [-80, -60], color: '#ef4444', status: 'normal', capacity: 50, current_output: 45, delivery_time: 15, order_queue: 12},
+        {id: 1, name: '电气元件供应商', short_name: '电气', position: [-80, -20], color: '#3b82f6', status: 'normal', capacity: 100, current_output: 88, delivery_time: 10, order_queue: 8},
+        {id: 2, name: '钣金件供应商', short_name: '钣金', position: [-80, 20], color: '#a78bfa', status: 'normal', capacity: 80, current_output: 72, delivery_time: 12, order_queue: 15},
+        {id: 3, name: '发泡料供应商', short_name: '发泡料', position: [-80, 60], color: '#22c55e', status: 'normal', capacity: 30, current_output: 28, delivery_time: 20, order_queue: 5},
+        {id: 4, name: '门体配件供应商', short_name: '门体', position: [-40, 80], color: '#f59e0b', status: 'normal', capacity: 60, current_output: 55, delivery_time: 8, order_queue: 6},
+        {id: 5, name: '包装材料供应商', short_name: '包装', position: [-40, -80], color: '#6b7280', status: 'normal', capacity: 200, current_output: 180, delivery_time: 5, order_queue: 20}
+      ];
+      
+      supplyChainLayout.value.warehouse_zones = [
+        {id: 'raw_material', name: '原料存储区', position: [-30, -40], color: '#fbbf24'},
+        {id: 'parts_buffer', name: '零件缓存区', position: [0, 0], color: '#38bdf8'},
+        {id: 'finished_goods', name: '成品暂存区', position: [30, 40], color: '#a3e635'}
+      ];
+      
+      supplyChainLayout.value.assembly_workstations = [
+        {id: 0, name: '钣金成型', position: [50, 0], color: '#2563eb'},
+        {id: 1, name: '内胆吸塑', position: [100, 0], color: '#7c3aed'},
+        {id: 2, name: '发泡填充', position: [150, 0], color: '#0891b2'},
+        {id: 3, name: '压缩机安装', position: [200, 0], color: '#059669'},
+        {id: 4, name: '管路焊接', position: [200, 25], color: '#d97706'},
+        {id: 5, name: '电气元件装配', position: [250, 0], color: '#dc2626'},
+        {id: 6, name: '总装合箱', position: [300, 0], color: '#7c2d12'},
+        {id: 7, name: '检测打包', position: [350, 0], color: '#0d9488'}
+      ];
+      
+      processDependency.value = {
+        nodes: [
+          {id: 0, name: '钣金成型', color: '#2563eb'},
+          {id: 1, name: '内胆吸塑', color: '#7c3aed'},
+          {id: 2, name: '发泡填充', color: '#0891b2'},
+          {id: 3, name: '压缩机安装', color: '#059669'},
+          {id: 4, name: '管路焊接', color: '#d97706', parallel_with: 5},
+          {id: 5, name: '电气元件装配', color: '#dc2626', parallel_with: 4},
+          {id: 6, name: '总装合箱', color: '#7c2d12'},
+          {id: 7, name: '检测打包', color: '#0d9488'}
+        ],
+        links: [
+          {source: 0, target: 2, type: 'sequential'},
+          {source: 1, target: 2, type: 'sequential'},
+          {source: 2, target: 3, type: 'sequential'},
+          {source: 3, target: 4, type: 'sequential'},
+          {source: 3, target: 5, type: 'parallel'},
+          {source: 4, target: 6, type: 'sequential'},
+          {source: 5, target: 6, type: 'sequential'},
+          {source: 6, target: 7, type: 'sequential'}
+        ],
+        criticalPath: [0, 2, 3, 5, 6, 7]
+      };
+      
+      supplyChainData.value = {
+        suppliers: supplyChainLayout.value.parts_factories.map(s => ({...s, status: s.status === 'warning' ? 'warning' : 'normal'})),
+        inTransitCount: 6,
+        shortageCount: 0,
+        warehouseUtil: 65,
+        materialFlows: [],
+        shortages: [],
+        totalActiveFlows: 5
+      };
+      
+      generateAGVTransportData();
+      generateMaterialFlowAnimations();
+    };
+    
+    const generateAGVTransportData = () => {
+      const agvs = [];
+      for (let i = 0; i < 4; i++) {
+        const statuses = ['MOVING', 'IDLE', 'LOADING', 'MOVING'];
+        const positions = [[-50, -20], [0, 0], [50, 0], [100, 0]];
+        agvs.push({
+          id: i,
+          name: `AGV${i}`,
+          status_name: statuses[i],
+          position: positions[i],
+          battery_level: 85 - i * 5,
+          current_load: i < 3 ? 150 : 0,
+          max_capacity: 500
+        });
+      }
+      supplyChainAGVs.value = agvs;
+    };
+    
+    const generateMaterialFlowAnimations = () => {
+      const flows = [
+        {x: -80, y: -60, xStart: -80, xEnd: -30, yStart: -60, yEnd: -40, color: '#4ade80', duration: 3},
+        {x: -80, y: -20, xStart: -80, xEnd: -30, yStart: -20, yEnd: -20, color: '#4ade80', duration: 3},
+        {x: -80, y: 20, xStart: -80, xEnd: -30, yStart: 20, yEnd: -20, color: '#4ade80', duration: 3},
+        {x: 50, y: 0, xStart: 0, xEnd: 50, yStart: 0, yEnd: 0, color: '#facc15', duration: 2},
+        {x: 150, y: 0, xStart: 0, xEnd: 150, yStart: 0, yEnd: 0, color: '#facc15', duration: 2},
+        {x: 300, y: 0, xStart: 0, xEnd: 300, yStart: 0, yEnd: 0, color: '#a78bfa', duration: 2}
+      ];
+      materialFlowAnimations.value = flows;
+    };
+    
+    const onTabActivated = async (tab) => {
+      await nextTick();
+      if (tab === 'charts' && (makespans.value.length || rewards.value.length)) {
+        renderCharts();
+      }
+      if (tab === 'gantt' && episodeCount.value) {
+        loadGantt(true);
+      }
+      if (tab === 'dynamic') initDynamicView();
+      if (tab === 'materials') loadReadinessIntegration();
+    };
+
+    const switchTab = (tab) => {
+      if (!validTabs.includes(tab)) return;
+      activeTab.value = tab;
+    };
+
+    const onTabMessage = (event) => {
+      if (!event.data || event.data.type !== 'masa-qmix-tab') return;
+      switchTab(event.data.tab);
+    };
+
+    // ============ Lifecycle ============
+    let timer;
+    onMounted(() => {
+      updateTime();
+      timer = setInterval(updateTime, 1000);
+      loadFactoryData();
+      setInterval(loadFactoryData, 10000);
+      window.addEventListener('message', onTabMessage);
+      onTabActivated(activeTab.value);
+      if (embedMode.value) loadReadinessIntegration();
+    });
+    
+    onUnmounted(() => {
+      if (timer) clearInterval(timer);
+      window.removeEventListener('message', onTabMessage);
+    });
+    
+    // Watch tab changes（非 embed 模式下侧栏点击也会触发）
+    watch(activeTab, (newTab) => {
+      onTabActivated(newTab);
+    });
+    
+    return {
+      embedMode, readinessData, supplySummary, purchasedPartsCatalog, supplyInTransit,
+      selfMadePartsOverview, purchasedPartsOverview, displayMaterialStats,
+      loadReadinessIntegration, apiBase, form, loading, error, result, modelOptions, isValid, onAgentsChange, submit,
+      makespans, rewards, episodeCount, selectedEpisode, loadGantt,
+      makespanCanvas, rewardCanvas, fmt, ganttSvg, ganttLegend, ganttError,
+      activeTab, currentTime, connectionStatus,
+      factoryLayout, agvStates, agvUtilization, materialFlows, showMaterialFlow, workstationStatus,
+      workstations, stats, materials, materialStats, tasks, deliveryRecords,
+      getAgvColor, getWorkstationColor, refreshFactory, refreshAGV,
+      downloadSvg, downloadPdf, exportCSV,
+      // Dynamic visualization
+      dynamicLoading, dynamicPlaying, dynamicSpeed, dynamicCurrentTime, dynamicMaxTime,
+      dynamicProgress, dynamicWorkstations, dynamicJobs, dynamicGanttSvg,
+      processFlow, processDefinitions, jobTrails, currentProcessId, completedProcessIds,
+      completedJobCount, processingJobCount, waitingJobCount, completionRate,
+      workstationUtilization, busyWorkstationCount, throughput, avgJobProgress,
+      getJobColor, getStatusColor, getStatusText, getProcessName, getProcessStandardTime,
+      initDynamicView, initDemoData, loadDynamicGantt, updateDynamicState,
+      dynamicPlay, dynamicPause, dynamicStop, dynamicStepForward, dynamicStepBack,
+      seekDynamicTime, setDynamicSpeed,
+      // Supply Chain
+      supplyChainData, supplyChainLayout, supplyChainAGVs, processDependency,
+      materialFlowAnimations, loadSupplyChainData
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

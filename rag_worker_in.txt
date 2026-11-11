@@ -1,0 +1,1 @@
+{"action":"chat","messages":[{"role":"user","content":"冰箱物流配送有哪些环节？"}]}

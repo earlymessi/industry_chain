@@ -63,6 +63,23 @@ class AgentResponse:
             d["pending_action"] = self.pending_action
         if self.error:
             d["error"] = self.error
+        events_trace = self.artifacts.get("events_trace") if isinstance(self.artifacts, dict) else None
+        if isinstance(events_trace, dict):
+            d["events_trace"] = events_trace
+        kitting_trace = self.artifacts.get("kitting_trace") if isinstance(self.artifacts, dict) else None
+        if isinstance(kitting_trace, dict):
+            d["kitting_trace"] = kitting_trace
+        commitment_trace = (
+            self.artifacts.get("commitment_trace") if isinstance(self.artifacts, dict) else None
+        )
+        if isinstance(commitment_trace, dict):
+            d["commitment_trace"] = commitment_trace
+        whatif_trace = self.artifacts.get("whatif_trace") if isinstance(self.artifacts, dict) else None
+        if isinstance(whatif_trace, dict):
+            d["whatif_trace"] = whatif_trace
+        plans_trace = self.artifacts.get("plans_trace") if isinstance(self.artifacts, dict) else None
+        if isinstance(plans_trace, dict):
+            d["plans_trace"] = plans_trace
         return d
 
 
@@ -116,6 +133,13 @@ class BaseAgent:
             rule_summary = (ctx.artifacts.get("impact_summary") or {}).get("summary_zh", "")
         if not rule_summary:
             rule_summary = f"{self.name_zh} 执行完成。"
+
+        # 异常重排等已有 R0/R1/R2 量化摘要时，禁止 LLM 重写数字（曾出现文案全是 30、表格 R1=37 的不一致）
+        impact_summary = ctx.artifacts.get("impact_summary") or {}
+        impact_report = ctx.artifacts.get("impact_report") or impact_summary.get("impact_report")
+        if isinstance(impact_summary, dict) and impact_summary.get("summary_zh"):
+            if isinstance(impact_report, dict) and (impact_report.get("scenarios") or {}).get("r0"):
+                return str(impact_summary.get("summary_zh") or rule_summary)
 
         from metaforge.orchestrator.llm_summarize import llm_summarize_enabled, summarize_agent_response
 

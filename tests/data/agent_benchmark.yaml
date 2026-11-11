@@ -27,8 +27,8 @@ cases:
   - id: rule_pipeline_persist
     message: "把这个计划排程并保存落库"
     router_mode: rule
-    expect_agent: pipeline
-    expect_intent: pipeline
+    expect_agent: scheduling
+    expect_intent: schedule
     tags: [route, pipeline]
 
   - id: rule_events_fault
@@ -88,7 +88,7 @@ cases:
     intent: schedule
     router_mode: explicit
     expect_agent: scheduling
-    expect_tools: ["scheduling.parse_intent", "scheduling.run"]
+    expect_tools: ["planning.collab.run"]
     tags: [plan, scheduling]
 
   - id: plan_events
@@ -129,12 +129,9 @@ cases:
     message: ""
     intent: pipeline
     router_mode: explicit
-    expect_agent: pipeline
+    expect_agent: scheduling
     expect_tools:
-      - data.load_plan
-      - scheduling.run
-      - delivery.assess
-      - data.propose_persist
+      - planning.collab.run
     tags: [plan, pipeline]
 
   - id: plan_plans_create_step

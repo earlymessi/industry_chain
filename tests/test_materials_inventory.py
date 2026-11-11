@@ -35,7 +35,7 @@ def test_ensure_default_materials_on_empty_collection():
         async def insert_many(self, items):
             self.docs.extend(items)
 
-        async def find(self):
+        def find(self):
             class _Cur:
                 def __init__(self, docs):
                     self._docs = docs

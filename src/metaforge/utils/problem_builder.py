@@ -105,6 +105,7 @@ def build_problem_from_custom_jobs(
                     machine_options=options,
                     machine_group=_job_field(t, "machine_group"),
                     duration=proc_duration,
+                    duration_by_machine=_job_field(t, "duration_by_machine"),
                     id=op_id,
                     name=str(op_name),
                 )

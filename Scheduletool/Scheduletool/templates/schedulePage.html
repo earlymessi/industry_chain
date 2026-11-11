@@ -1,0 +1,3261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生产调度系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script>
+        (function () {
+            try {
+                const path = window.location.pathname || '';
+                const params = new URLSearchParams(window.location.search || '');
+                const inIframe = window.self !== window.top;
+                const embedded = inIframe || params.get('embed') === '1';
+                window.ST_API_BASE =
+                    path.indexOf('/scheduletool') === 0 || embedded ? '/scheduletool' : '';
+            } catch (e) {
+                window.ST_API_BASE = '';
+            }
+            window.stUrl = function (path) {
+                const p = path.charAt(0) === '/' ? path : '/' + path;
+                return (window.ST_API_BASE || '') + p;
+            };
+            // 嵌入模式下 fetch('/schedulePage/...') 自动加 /scheduletool 前缀
+            const _nativeFetch = window.fetch.bind(window);
+            window.fetch = function (input, init) {
+                if (typeof input === 'string') {
+                    if (input.startsWith('/schedulePage') || input.startsWith('/get_gantt_image')) {
+                        input = stUrl(input);
+                    }
+                }
+                return _nativeFetch(input, init);
+            };
+        })();
+    </script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        success: '#52C41A',
+                        warning: '#FAAD14',
+                        danger: '#FF4D4F',
+                        info: '#8C8C8C',
+                        light: '#F5F7FA',
+                        dark: '#1D2129'
+                        }
+
+
+                }
+            }
+        }
+    </script>
+    <script>
+        (function () {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const inIframe = window.self !== window.top;
+                if (inIframe || params.get('embed') === '1') {
+                    document.documentElement.classList.add('embed-mode');
+                }
+            } catch (e) {
+                // ignore
+            }
+        })();
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .sidebar-item {
+                @apply flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-primary/10 hover:text-primary transition-all duration-200;
+            }
+            .sidebar-item.active {
+                @apply bg-primary/10 text-primary font-medium;
+            }
+            .card-hover {
+                @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+            }
+            .btn-primary {
+                @apply bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-all duration-200;
+            }
+            .btn-secondary {
+                @apply bg-white text-primary border border-primary px-4 py-2 rounded-lg hover:bg-primary/5 transition-all duration-200;
+            }
+        }
+        #travelTimesMatrixTable .tt-input { min-width: 3.8rem; }
+        .embed-mode #sidebar { display: none !important; }
+        .embed-mode #openSidebar { display: none !important; }
+        .embed-mode #closeSidebar { display: none !important; }
+        #embedTabBar { display: none; }
+        .embed-mode #embedTabBar {
+            display: none;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08);
+        }
+        .embed-mode #pageTitle { display: none; }
+        .embed-mode #orderInputView h3 { display: none !important; }
+        .embed-mode #orderManagementView h3 { display: none !important; }
+        .embed-mode #paramsView h2 { display: none !important; }
+        .embed-mode #paramsView h3 { display: none !important; }
+        .embed-tab {
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #475569;
+            background: #f1f5f9;
+            border: 1px solid transparent;
+            cursor: pointer;
+        }
+        .embed-tab:hover { background: #e2e8f0; }
+        .embed-tab.active {
+            color: #165DFF;
+            background: rgba(22,93,255,.1);
+            border-color: rgba(22,93,255,.25);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+    <div class="flex flex-1 overflow-hidden">
+        <!-- 侧边栏导航 -->
+        <aside class="w-64 bg-white shadow-md flex-shrink-0 hidden md:block transition-all duration-300 z-20" id="sidebar">
+            <div class="flex items-center justify-between p-4 border-b">
+                <h1 class="text-xl font-bold text-primary flex items-center gap-2">
+                    <i class="fa fa-cogs"></i>
+                    <span>生产调度系统</span>
+                </h1>
+                <button class="md:hidden text-gray-500 hover:text-primary" id="closeSidebar">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <nav class="p-4">
+                <ul class="space-y-1">
+                    <li>
+                        <a href="#dashboard" class="sidebar-item active" data-target="dashboard">
+                            <i class="fa fa-tachometer"></i>
+                            <span>大屏展示</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#orderInput" class="sidebar-item" data-target="orderInput">
+                            <i class="fa fa-pencil-square-o"></i>
+                            <span>信息录入</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#orderManagement" class="sidebar-item" data-target="orderManagement">
+                            <i class="fa fa-list-alt"></i>
+                            <span>订单管理</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/schedulePage/params" class="sidebar-item" data-target="params">
+                            <i class="fa fa-cog"></i>
+                            <span>参数设置</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
+            <!-- 顶部导航栏 -->
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-2">
+                    <button class="md:hidden text-gray-500 hover:text-primary" id="openSidebar">
+                        <i class="fa fa-bars"></i>
+                    </button>
+                    <h2 class="text-xl font-bold" id="pageTitle">大屏展示</h2>
+                </div>
+                <div class="flex items-center gap-4"></div>
+            </div>
+
+            <!-- 嵌入模式：替代隐藏的原生侧栏，保留四项功能入口 -->
+            <nav id="embedTabBar" aria-label="供应链调度功能">
+                <button type="button" class="embed-tab active" data-target="dashboard">大屏展示</button>
+                <button type="button" class="embed-tab" data-target="orderInput">信息录入</button>
+                <button type="button" class="embed-tab" data-target="orderManagement">订单管理</button>
+                <button type="button" class="embed-tab" data-target="params">参数设置</button>
+            </nav>
+
+            <!-- 页面内容区域 -->
+            <div class="min-h-[calc(100vh-120px)]">
+                <!-- 大屏展示 -->
+                <div id="dashboardView" class="space-y-6">
+                    <!-- 优化流程说明（Pareto 解来自上次批量处理，非本页自动计算） -->
+                    <div id="optimizationStatusCard" class="rounded-xl border p-5 card-hover bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span id="optimizationStatusBadge" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">检测中</span>
+                                    <h3 class="text-base font-bold text-gray-800">产配联合优化（KDCEA）</h3>
+                                </div>
+                                <p id="optimizationStatusText" class="text-sm text-gray-600 leading-relaxed">
+                                    正在读取优化状态…
+                                </p>
+                                <p class="text-xs text-gray-500 mt-2">
+                                    本页仅<strong>展示</strong>优化结果；发起计算请前往「订单管理」勾选订单后点击「<strong>批量处理</strong>」。
+                                </p>
+                            </div>
+                            <div class="flex flex-wrap gap-2 shrink-0">
+                                <button type="button" id="goToBatchOptimizeBtn" class="btn-primary flex items-center gap-2">
+                                    <i class="fa fa-play-circle"></i>
+                                    <span>去订单管理 · 批量处理</span>
+                                </button>
+                                <button type="button" id="refreshOptimizationStatusBtn" class="btn-secondary flex items-center gap-2">
+                                    <i class="fa fa-refresh"></i>
+                                    <span>刷新状态</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 当前批量处理的订单（只读展示，与订单管理页结构一致，分页每页5条） -->
+                    <div class="bg-white rounded-xl shadow p-6 card-hover">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">当前批量处理的订单</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">订单序号</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">订单编号</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">零售商</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">产品信息</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">交付期限</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="batchProcessedOrdersBody">
+                                    <!-- 由 JS 填充 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-4 flex justify-between items-center flex-wrap gap-2">
+                            <div class="text-sm text-gray-500" id="batchProcessedOrdersRange">暂无批量处理的订单</div>
+                            <div class="flex items-center gap-1" id="batchProcessedPagination">
+                                <!-- 分页按钮由 JS 填充 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pareto前沿图 -->
+                    <div id="paretoSection" class="bg-white rounded-xl shadow p-6 card-hover">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-700">生产调度多目标优化Pareto前沿</h3>
+                            <div class="flex items-center gap-3">
+                                <button id="refreshParetoBtn" type="button" class="btn-primary flex items-center gap-2">
+                                    <i class="fa fa-refresh"></i>
+                                    <span>刷新数据</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-2 h-[400px]">
+<!--                            <div id="pareto-chart" class="w-full h-full"></div>-->
+                            <div id="pareto-chart" class="w-full h-full"></div>
+
+                        </div>
+                        <p class="mt-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                            说明：同一(cost,time)可能对应多个不同排产方案；散点图点击仅展示其中1个代表解，完整方案请在下方“Pareto前沿解信息”中查看。
+                        </p>
+<!--                        <div class="h-[400px]">-->
+<!--                            <div id="paretoChart"></div>-->
+<!--                        </div>-->
+                    </div>
+
+                    <!-- Pareto前沿解信息 -->
+                    <div class="bg-white rounded-xl shadow p-6 card-hover">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">Pareto前沿解信息</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">解编号</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">交付惩罚时间</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">总成本</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="paretoSolutions">
+                                    <!-- 数据将通过JavaScript动态填充 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-4 flex justify-between items-center">
+                            <div class="text-sm text-gray-500" id="paretoPageInfo">暂无数据</div>
+                            <div class="flex items-center gap-1" id="paretoPagination"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 信息录入 -->
+                <div id="orderInputView" class="hidden space-y-6">
+                    <div class="bg-white rounded-xl shadow p-6 card-hover">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-6">订单信息录入</h3>
+                        <form id="orderForm" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="retailer" class="block text-sm font-medium text-gray-700 mb-1">零售商</label>
+                                    <div class="relative">
+                                        <select id="retailer" class="w-full pl-3 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary appearance-none">
+                                            <option value="">请选择零售商</option>
+                                            <option value="retailer1">零售商1</option>
+                                            <option value="retailer2">零售商2</option>
+                                            <option value="retailer3">零售商3</option>
+                                            <option value="retailer4">零售商4</option>
+                                            <option value="retailer5">零售商5</option>
+                                            <option value="retailer1">零售商6</option>
+                                            <option value="retailer2">零售商7</option>
+                                            <option value="retailer3">零售商8</option>
+                                            <option value="retailer4">零售商9</option>
+                                            <option value="retailer5">零售商10</option>
+                                            <option value="retailer1">零售商11</option>
+                                            <option value="retailer2">零售商12</option>
+                                            <option value="retailer3">零售商13</option>
+                                            <option value="retailer4">零售商14</option>
+                                            <option value="retailer5">零售商15</option>
+                                            <option value="retailer1">零售商16</option>
+                                            <option value="retailer2">零售商17</option>
+                                            <option value="retailer3">零售商18</option>
+                                            <option value="retailer4">零售商19</option>
+                                            <option value="retailer5">零售商20</option>
+                                            <option value="retailer1">零售商21</option>
+                                            <option value="retailer2">零售商22</option>
+                                            <option value="retailer3">零售商23</option>
+                                            <option value="retailer4">零售商24</option>
+                                            <option value="retailer5">零售商25</option>
+                                            <option value="retailer1">零售商26</option>
+                                            <option value="retailer2">零售商27</option>
+                                            <option value="retailer3">零售商28</option>
+                                            <option value="retailer4">零售商29</option>
+                                            <option value="retailer5">零售商30</option>
+                                        </select>
+                                        <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="orderNumber" class="block text-sm font-medium text-gray-700 mb-1">订单编号</label>
+                                    <input type="text" id="orderNumber" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="系统自动生成" disabled value="ORD-20250601-001">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">交付日期</label>
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label for="deliveryInputMode" class="block text-xs text-gray-600 mb-1">交付期限输入方式</label>
+                                            <select id="deliveryInputMode" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                                                <option value="datetime" selected>具体时间</option>
+                                                <option value="numeric">纯数字（小时）</option>
+                                            </select>
+                                        </div>
+                                        <div id="deliveryDateTimeInputs" class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <input type="datetime-local" id="deliveryStart" step="3600" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="开始日期时间">
+                                            </div>
+                                            <div>
+                                                <input type="datetime-local" id="deliveryEnd" step="3600" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="结束日期时间">
+                                            </div>
+                                        </div>
+                                        <div id="deliveryNumericInputs" class="grid grid-cols-2 gap-3 hidden">
+                                            <div>
+                                                <input type="number" id="deliveryStartNumber" min="0" step="1" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="开始小时数">
+                                            </div>
+                                            <div>
+                                                <input type="number" id="deliveryEndNumber" min="0" step="1" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="结束小时数">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 class="text-base font-medium text-gray-700 mb-3">产品信息</h4>
+                                <div id="productItems" class="space-y-4">
+                                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 product-item bg-gray-50 p-4 rounded-lg">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">产品名称</label>
+                                            <div class="relative">
+                                                <select class="w-full pl-3 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary appearance-none product-name">
+                                                    <option value="">请选择产品</option>
+                                                    <option value="product1">产品A</option>
+                                                    <option value="product2">产品B</option>
+                                                    <option value="product3">产品C</option>
+                                                    <option value="product4">产品D</option>
+                                                    <option value="product5">产品E</option>
+                                                </select>
+                                                <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">数量</label>
+                                            <input type="number" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary product-quantity" placeholder="请输入数量" min="1">
+                                        </div>
+<!--                                        <div>-->
+<!--                                            <label class="block text-sm font-medium text-gray-700 mb-1">优先级</label>-->
+<!--                                            <div class="relative">-->
+<!--                                                <select class="w-full pl-3 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary appearance-none product-priority">-->
+<!--                                                    <option value="normal">普通</option>-->
+<!--                                                    <option value="high">高</option>-->
+<!--                                                    <option value="urgent">紧急</option>-->
+<!--                                                </select>-->
+<!--                                                <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>-->
+<!--                                            </div>-->
+<!--                                        </div>-->
+                                        <div class="flex items-end">
+                                            <button type="button" class="remove-product-btn w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors flex items-center justify-center">
+                                                <i class="fa fa-minus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <button type="button" id="addProductBtn" class="px-4 py-2 rounded-lg border border-primary text-primary hover:bg-primary/5 transition-colors flex items-center gap-2">
+                                        <i class="fa fa-plus"></i>
+                                        <span>添加产品</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end gap-3 pt-4 border-t">
+                                <button type="button" class="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+                                    重置
+                                </button>
+                                <button type="submit" class="btn-primary flex items-center gap-2">
+                                    <i class="fa fa-save"></i>
+                                    <span>保存订单</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 订单管理 -->
+                <div id="orderManagementView" class="hidden space-y-6">
+                    <div class="bg-white rounded-xl shadow p-6 card-hover">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-3">
+                            <h3 class="text-lg font-semibold text-gray-700">订单管理</h3>
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <div class="flex items-center gap-2">
+                                        <div class="relative">
+                                        <select id="filterCustomer" class="pl-3 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary appearance-none">
+                                            <option value="">全部零售商</option>
+                                        </select>
+                                        <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                                    </div>
+                                </div>
+                                <button id="refreshOrdersBtn" type="button" class="btn-primary flex items-center gap-2">
+                                    <i class="fa fa-refresh"></i>
+                                    <span>刷新</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            <div class="flex flex-col gap-1">
+                                                <div class="flex items-center gap-2">
+                                                    <input id="selectAllCheckbox" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" title="当前页全选">
+                                                    <label for="selectAllCheckbox" class="text-xs font-normal text-gray-500 cursor-pointer whitespace-nowrap">当前页全选</label>
+                                                </div>
+                                                <button type="button" id="selectAllPagesBtn" class="text-xs text-primary hover:underline text-left whitespace-nowrap">全部页全选</button>
+                                            </div>
+                                        </th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">订单编号</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">零售商</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">产品信息</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">交付期限</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="ordersRawTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-4 flex justify-between items-center flex-wrap gap-3">
+                            <div class="flex items-center gap-3">
+                                <button id="batchDeleteBtn" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                                    <i class="fa fa-trash"></i>
+                                    <span>批量删除</span>
+                                </button>
+                                <button id="batchProcessBtn" class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium">
+                                    <i class="fa fa-play-circle"></i>
+                                    <span>批量处理（启动 KDCEA 优化）</span>
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <span id="ordersPaginationInfo" class="text-sm text-gray-500">共 0 条，每页 10 条</span>
+                                <div id="ordersPagination" class="flex items-center gap-1"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 参数设置（通过 AJAX 加载） -->
+                <div id="paramsView" class="hidden space-y-6"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 模态框：KDCEA 求解进度 -->
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-[60] hidden" id="kdceaModal">
+        <div class="bg-white rounded-2xl shadow-2xl w-[420px] p-8 text-center transform transition-all duration-300">
+            <div id="kdceaSpinner" class="mx-auto mb-6">
+                <svg class="animate-spin h-16 w-16 text-primary mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+            </div>
+            <div id="kdceaSuccessIcon" class="mx-auto mb-6 hidden">
+                <svg class="h-16 w-16 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div id="kdceaFailIcon" class="mx-auto mb-6 hidden">
+                <svg class="h-16 w-16 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2" id="kdceaTitle">正在求解生产调度优化</h3>
+            <p class="text-gray-500 mb-6" id="kdceaMessage">算法运行中，请耐心等待...</p>
+            <p class="text-sm text-gray-400 mb-6" id="kdceaTimer">已用时: 0 秒</p>
+            <div class="flex justify-center gap-4">
+                <button id="kdceaCancelBtn" class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors">
+                    取消求解
+                </button>
+                <button id="kdceaCloseBtn" class="px-6 py-2.5 bg-primary hover:bg-blue-700 text-white rounded-lg font-medium transition-colors hidden">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框：Pareto前沿解详情 -->
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 hidden" id="solutionModal">
+        <div class="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto m-4 transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
+            <div class="p-6 border-b">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-gray-900">Pareto前沿解详情 - 解 #12</h3>
+                    <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-gray-50 rounded-lg p-4" data-section="production">
+                        <h4 class="text-sm font-medium text-gray-500 mb-2">交付惩罚时间</h4>
+                        <p class="text-2xl font-bold text-gray-900">186 小时</p>
+                        <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-primary h-2 rounded-full" data-percent="75" style="width: 75%"></div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1" data-percent-text>优于 75% 的解</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4" data-section="cost">
+                        <h4 class="text-sm font-medium text-gray-500 mb-2">总成本</h4>
+                        <p class="text-2xl font-bold text-gray-900">¥48,500</p>
+                        <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-secondary h-2 rounded-full" data-percent="62" style="width: 62%"></div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1" data-percent-text>优于 62% 的解</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow p-6">
+                    <h4 class="text-lg font-semibold text-gray-700 mb-4">生产甘特图</h4>
+                    <div class="h-[400px]" id="ganttChartContainer">
+<!--                        <div id="ganttChart"></div>-->
+                        <img src="" id="ganttImage" alt="甘特图" class="w-full h-full object-contain bg-gray-50">
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow p-6">
+                    <h4 class="text-lg font-semibold text-gray-700 mb-4">批次执行详情</h4>
+                    <div id="batchDetails"></div> <!-- 动态批次数据容器 -->
+                </div>
+
+
+            </div>
+            <div class="p-6 border-t flex justify-end gap-3">
+                <button id="closeModalBtn" class="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+                    关闭
+                            </div>
+
+                        <script>
+                            // 在 DOM 准备好后请求下一个订单编号并写入输入框
+                            window.addEventListener('DOMContentLoaded', function () {
+                                fetch('/schedulePage/next_order_id')
+                                    .then(r => r.json())
+                                    .then(data => {
+                                        if (data && data.success && data.order_id) {
+                                            const el = document.getElementById('orderNumber');
+                                            if (el) el.value = data.order_id;
+                                        }
+                                    })
+                                    .catch(err => console.error('无法获取下一个订单编号', err));
+                            });
+                        </script>
+    
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ---- KDCEA 求解进度弹窗控制 ----
+        let _kdceaPollTimer = null;
+        let _kdceaElapsed = 0;
+        let _kdceaTickTimer = null;
+
+        function refreshOptimizationStatus() {
+            const badge = document.getElementById('optimizationStatusBadge');
+            const text = document.getElementById('optimizationStatusText');
+            if (!badge || !text) return;
+
+            fetch('/schedulePage/optimization_summary')
+                .then(r => r.json())
+                .then((data) => {
+                    const status = data.kdcea_status || 'idle';
+                    const count = Number(data.pareto_count) || 0;
+                    const lastRun = data.last_run_at || '—';
+                    const batchN = Number(data.batch_order_count) || 0;
+
+                    if (status === 'running') {
+                        badge.textContent = '求解中';
+                        badge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800';
+                        text.textContent = 'KDCEA 正在计算，完成后将自动刷新 Pareto 解集。';
+                        if (typeof showKdceaModal === 'function') showKdceaModal();
+                    } else if (status === 'failed') {
+                        badge.textContent = '求解失败';
+                        badge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-800';
+                        text.textContent = (data.kdcea_message || '上次求解失败') + '。请回到订单管理重新批量处理。';
+                    } else if (count > 0) {
+                        badge.textContent = '已有历史结果';
+                        badge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800';
+                        text.innerHTML = `当前展示的是<strong>上次批量处理</strong>生成的 ${count} 组 Pareto 解（约 ${lastRun}），对应 ${batchN} 个订单。若要按新订单重新优化，请再次执行批量处理。`;
+                    } else {
+                        badge.textContent = '尚无结果';
+                        badge.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700';
+                        text.textContent = '尚未生成 Pareto 解。请前往「订单管理」勾选订单，点击「批量处理」启动 KDCEA。';
+                    }
+                })
+                .catch(() => {
+                    badge.textContent = '状态未知';
+                    text.textContent = '无法读取优化状态，请确认后端已启动。';
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const goBtn = document.getElementById('goToBatchOptimizeBtn');
+            const refreshBtn = document.getElementById('refreshOptimizationStatusBtn');
+            goBtn && goBtn.addEventListener('click', () => {
+                if (typeof switchScheduleView === 'function') switchScheduleView('orderManagement');
+            });
+            refreshBtn && refreshBtn.addEventListener('click', refreshOptimizationStatus);
+            refreshOptimizationStatus();
+        });
+
+        function resizeParetoChart() {
+            const chartDom = document.getElementById('pareto-chart');
+            if (!chartDom) return;
+            const chart = echarts.getInstanceByDom(chartDom);
+            if (!chart) return;
+            const doResize = () => {
+                try { chart.resize(); } catch (e) { /* ignore */ }
+            };
+            doResize();
+            requestAnimationFrame(() => {
+                doResize();
+                setTimeout(doResize, 100);
+                setTimeout(doResize, 350);
+            });
+        }
+
+        /** 批量求解完成后：先切到大屏（容器可见）再刷新 Pareto，避免缩略图 */
+        function refreshParetoDashboard() {
+            if (typeof switchScheduleView === 'function') {
+                switchScheduleView('dashboard');
+            }
+            setTimeout(() => {
+                runParetoChart();
+                if (typeof initParetoSolutions === 'function') initParetoSolutions();
+                if (typeof refreshOptimizationStatus === 'function') refreshOptimizationStatus();
+                resizeParetoChart();
+                const el = document.getElementById('paretoSection');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 120);
+        }
+
+        function showKdceaModal() {
+            const modal = document.getElementById('kdceaModal');
+            const spinner = document.getElementById('kdceaSpinner');
+            const successIcon = document.getElementById('kdceaSuccessIcon');
+            const failIcon = document.getElementById('kdceaFailIcon');
+            const title = document.getElementById('kdceaTitle');
+            const msg = document.getElementById('kdceaMessage');
+            const timer = document.getElementById('kdceaTimer');
+            const cancelBtn = document.getElementById('kdceaCancelBtn');
+            const closeBtn = document.getElementById('kdceaCloseBtn');
+
+            spinner.classList.remove('hidden');
+            successIcon.classList.add('hidden');
+            failIcon.classList.add('hidden');
+            title.textContent = '正在求解生产调度优化';
+            msg.textContent = '算法运行中，请耐心等待...';
+            cancelBtn.classList.remove('hidden');
+            closeBtn.classList.add('hidden');
+            _kdceaElapsed = 0;
+            timer.textContent = '已用时: 0 秒';
+            modal.classList.remove('hidden');
+
+            _kdceaTickTimer = setInterval(() => {
+                _kdceaElapsed++;
+                const m = Math.floor(_kdceaElapsed / 60);
+                const s = _kdceaElapsed % 60;
+                timer.textContent = m > 0 ? `已用时: ${m}分${s}秒` : `已用时: ${s} 秒`;
+            }, 1000);
+
+            pollKdceaStatus();
+        }
+
+        function pollKdceaStatus() {
+            clearTimeout(_kdceaPollTimer);
+            fetch('/schedulePage/kdcea_status')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'running') {
+                        _kdceaPollTimer = setTimeout(pollKdceaStatus, 2000);
+                    } else if (data.status === 'completed') {
+                        onKdceaDone(true, '求解完成！');
+                    } else if (data.status === 'failed') {
+                        onKdceaDone(false, '求解失败: ' + (data.message || '未知错误'));
+                    } else if (data.status === 'cancelled') {
+                        onKdceaDone(false, '已取消求解');
+                    } else {
+                        _kdceaPollTimer = setTimeout(pollKdceaStatus, 2000);
+                    }
+                })
+                .catch(() => {
+                    _kdceaPollTimer = setTimeout(pollKdceaStatus, 3000);
+                });
+        }
+
+        function onKdceaDone(success, message) {
+            clearInterval(_kdceaTickTimer);
+            const spinner = document.getElementById('kdceaSpinner');
+            const successIcon = document.getElementById('kdceaSuccessIcon');
+            const failIcon = document.getElementById('kdceaFailIcon');
+            const title = document.getElementById('kdceaTitle');
+            const msg = document.getElementById('kdceaMessage');
+            const cancelBtn = document.getElementById('kdceaCancelBtn');
+            const closeBtn = document.getElementById('kdceaCloseBtn');
+
+            spinner.classList.add('hidden');
+            cancelBtn.classList.add('hidden');
+            closeBtn.classList.remove('hidden');
+
+            if (success) {
+                successIcon.classList.remove('hidden');
+                title.textContent = '求解完成';
+                msg.textContent = message;
+                refreshParetoDashboard();
+            } else {
+                failIcon.classList.remove('hidden');
+                title.textContent = '求解终止';
+                msg.textContent = message;
+            }
+        }
+
+        function hideKdceaModal() {
+            clearTimeout(_kdceaPollTimer);
+            clearInterval(_kdceaTickTimer);
+            document.getElementById('kdceaModal').classList.add('hidden');
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('kdceaCancelBtn').addEventListener('click', function () {
+                if (!confirm('确定要取消当前求解任务吗？')) return;
+                fetch('/schedulePage/kdcea_cancel', { method: 'POST' })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            onKdceaDone(false, '已取消求解');
+                        }
+                    })
+                    .catch(() => alert('取消请求失败'));
+            });
+            document.getElementById('kdceaCloseBtn').addEventListener('click', function () {
+                hideKdceaModal();
+                resizeParetoChart();
+            });
+        });
+        // ---- END KDCEA 弹窗 ----
+
+            // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function () {
+            // 初始化图表
+            // initCharts();
+            runParetoChart();
+
+            // 填充产品下拉框
+            function populateProducts() {
+                fetch('/schedulePage/get_products').then(r => r.json()).then(data => {
+                    if (!Array.isArray(data)) return;
+                    const opts = ['<option value="">请选择产品</option>'];
+                    data.forEach(p => {
+                        const id = p.product_id || '';
+                        const name = p.product_name || id;
+                        opts.push(`<option value="${id}">${name}</option>`);
+                    });
+                    const html = opts.join('');
+                    // 重载选项时保留每个下拉框当前已选值，避免“添加产品”时清空前面已选项
+                    const selects = Array.from(document.querySelectorAll('select.product-name'));
+                    const selectedValues = selects.map(s => String(s.value || ''));
+                    selects.forEach((s, idx) => {
+                        s.innerHTML = html;
+                        const oldVal = selectedValues[idx];
+                        if (!oldVal) return;
+                        const exists = Array.from(s.options).some(o => String(o.value) === oldVal);
+                        if (exists) s.value = oldVal;
+                    });
+                }).catch(err => console.error('加载产品列表失败', err));
+            }
+
+            // 拉取并显示下一订单编号（避免表单里一直是占位编号）
+            function loadNextOrderId() {
+                const orderNumberInput = document.getElementById('orderNumber');
+                if (!orderNumberInput) return;
+                fetch('/schedulePage/next_order_id')
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && data.success && data.order_id) {
+                            orderNumberInput.value = data.order_id;
+                        }
+                    })
+                    .catch(err => console.error('加载订单编号失败', err));
+            }
+
+            // 初始填充一次
+            populateProducts();
+            loadNextOrderId();
+            // 侧边栏导航切换的处理（在页面后部有统一实现，此处保留空位）
+
+            // 移动端侧边栏控制
+            document.getElementById('openSidebar').addEventListener('click', function () {
+                document.getElementById('sidebar').classList.remove('hidden');
+            });
+
+            document.getElementById('closeSidebar').addEventListener('click', function () {
+                document.getElementById('sidebar').classList.add('hidden');
+            });
+
+            // 添加产品按钮
+            document.getElementById('addProductBtn').addEventListener('click', function () {
+                const productItems = document.getElementById('productItems');
+                const newItem = document.createElement('div');
+                newItem.className = 'grid grid-cols-1 md:grid-cols-4 gap-4 product-item bg-gray-50 p-4 rounded-lg';
+                newItem.innerHTML = `
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">产品名称</label>
+                        <div class="relative">
+                            <select class="w-full pl-3 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary appearance-none product-name">
+                                <option value="">请选择产品</option>
+                            </select>
+                            <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">数量</label>
+                        <input type="number" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary product-quantity" placeholder="请输入数量" min="1">
+                    </div>
+<!--                    <div>-->
+<!--                        <label class="block text-sm font-medium text-gray-700 mb-1">优先级</label>-->
+<!--                        <div class="relative">-->
+<!--                            <select class="w-full pl-3 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary appearance-none product-priority">-->
+<!--                                <option value="normal">普通</option>-->
+<!--                                <option value="high">高</option>-->
+<!--                                <option value="urgent">紧急</option>-->
+<!--                            </select>-->
+<!--                            <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>-->
+<!--                        </div>-->
+<!--                    </div>-->
+                    <div class="flex items-end">
+                        <button type="button" class="remove-product-btn w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors flex items-center justify-center">
+                            <i class="fa fa-minus"></i>
+                        </button>
+                    </div>
+                `;
+                productItems.appendChild(newItem);
+
+                // 绑定删除按钮事件
+                bindRemoveProductEvents();
+                // 填充新下拉的产品列表
+                populateProducts();
+                });
+            function toggleDeliveryInputs() {
+                const modeEl = document.getElementById('deliveryInputMode');
+                const mode = modeEl ? modeEl.value : 'datetime';
+                const dtBox = document.getElementById('deliveryDateTimeInputs');
+                const numBox = document.getElementById('deliveryNumericInputs');
+                if (mode === 'numeric') {
+                    dtBox && dtBox.classList.add('hidden');
+                    numBox && numBox.classList.remove('hidden');
+                } else {
+                    dtBox && dtBox.classList.remove('hidden');
+                    numBox && numBox.classList.add('hidden');
+                }
+            }
+
+            const deliveryInputModeEl = document.getElementById('deliveryInputMode');
+            if (deliveryInputModeEl) {
+                deliveryInputModeEl.addEventListener('change', function () {
+                    toggleDeliveryInputs();
+                    ensureDeliveryTimeMinutesZero();
+                });
+            }
+            toggleDeliveryInputs();
+            ensureDeliveryTimeMinutesZero();
+
+            // 表单提交（加防重复提交锁，避免重复请求与重复提示）
+            const orderFormEl = document.getElementById('orderForm');
+            let orderSubmitting = false;
+            orderFormEl.addEventListener('submit', function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if (orderSubmitting) {
+                    return;
+                }
+                
+                // 获取表单数据
+                const retailer = document.getElementById('retailer').value;
+                const deliveryInputMode = document.getElementById('deliveryInputMode').value;
+                const deliveryStart = deliveryInputMode === 'numeric'
+                    ? document.getElementById('deliveryStartNumber').value
+                    : document.getElementById('deliveryStart').value;
+                const deliveryEnd = deliveryInputMode === 'numeric'
+                    ? document.getElementById('deliveryEndNumber').value
+                    : document.getElementById('deliveryEnd').value;
+                
+                // 验证必填字段
+                if (!retailer || !deliveryStart || !deliveryEnd) {
+                    alert('请填写所有必填字段！');
+                    return;
+                }
+
+                if (deliveryInputMode === 'numeric') {
+                    const startNum = Number(deliveryStart);
+                    const endNum = Number(deliveryEnd);
+                    if (!Number.isFinite(startNum) || !Number.isFinite(endNum)) {
+                        alert('纯数字交付期限必须是有效数字！');
+                        return;
+                    }
+                    if (startNum > endNum) {
+                        alert('交付期限开始值不能大于结束值！');
+                        return;
+                    }
+                } else {
+                    const startDt = new Date(deliveryStart);
+                    const endDt = new Date(deliveryEnd);
+                    if (Number.isNaN(startDt.getTime()) || Number.isNaN(endDt.getTime())) {
+                        alert('具体时间交付期限格式不正确！');
+                        return;
+                    }
+                    if (startDt > endDt) {
+                        alert('交付期限开始时间不能晚于结束时间！');
+                        return;
+                    }
+                }
+                
+                // 收集产品信息（发送 product_id）
+                const products = [];
+                const productItems = document.querySelectorAll('.product-item');
+                productItems.forEach(item => {
+                    const productVal = item.querySelector('.product-name').value; // 已由下拉填为 product_id
+                    const quantity = item.querySelector('.product-quantity').value;
+
+                    if (productVal && quantity && parseInt(quantity) > 0) {
+                        products.push({
+                            product_id: productVal,
+                            quantity: parseInt(quantity)
+                        });
+                    }
+                });
+                
+                if (products.length === 0) {
+                    alert('请至少添加一个产品！');
+                    return;
+                }
+                
+                // 构建请求数据
+                const orderData = {
+                    retailer: retailer,
+                    deliveryStart: deliveryStart,
+                    deliveryEnd: deliveryEnd,
+                    delivery_time_type: deliveryInputMode,
+                    products: products
+                };
+                orderSubmitting = true;
+                
+                // 提交到后端
+                fetch('/schedulePage/create_order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(orderData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.success) {
+                        alert('订单保存成功！订单编号：' + (data.order_id || data.order_number));
+                        // 成功后的页面刷新逻辑单独保护，避免误触发“保存失败”提示
+                        try {
+                            loadOrders();
+                            // 刷新预填的订单编号（若函数可用）
+                            if (typeof loadNextOrderId === 'function') {
+                                loadNextOrderId();
+                            }
+                            document.getElementById('orderForm').reset();
+                            toggleDeliveryInputs();
+                            ensureDeliveryTimeMinutesZero();
+                            // 清空产品列表，只保留一个空项
+                            const productItems = document.getElementById('productItems');
+                            productItems.innerHTML = `
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 product-item bg-gray-50 p-4 rounded-lg">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">产品名称</label>
+                                        <div class="relative">
+                                            <select class="w-full pl-3 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary appearance-none product-name">
+                                                <option value="">请选择产品</option>
+                                            </select>
+                                            <i class="fa fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">数量</label>
+                                        <input type="number" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary product-quantity" placeholder="请输入数量" min="1">
+                                    </div>
+                                    <div class="flex items-end">
+                                        <button type="button" class="remove-product-btn w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors flex items-center justify-center">
+                                            <i class="fa fa-minus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                            bindRemoveProductEvents();
+                            populateProducts();
+                        } catch (uiErr) {
+                            console.error('订单保存成功，但界面刷新失败：', uiErr);
+                        }
+                    } else {
+                        alert('订单保存失败：' + (data.error || data.message || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    console.error('提交订单时出错：', error);
+                    alert('订单保存失败，请重试！');
+                })
+                .finally(() => {
+                    orderSubmitting = false;
+                });
+            });
+
+            // 初始化Pareto解数据
+            initParetoSolutions();
+            const refreshParetoBtn = document.getElementById('refreshParetoBtn');
+            if (refreshParetoBtn) {
+                refreshParetoBtn.addEventListener('click', function () {
+                    const icon = refreshParetoBtn.querySelector('i');
+                    const text = refreshParetoBtn.querySelector('span');
+                    refreshParetoBtn.disabled = true;
+                    refreshParetoBtn.classList.add('opacity-60', 'cursor-not-allowed');
+                    if (icon) icon.classList.add('fa-spin');
+                    if (text) text.textContent = '刷新中...';
+
+                    runParetoChart();
+                    initParetoSolutions();
+
+                    setTimeout(() => {
+                        resizeParetoChart();
+                        refreshParetoBtn.disabled = false;
+                        refreshParetoBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                        if (icon) icon.classList.remove('fa-spin');
+                        if (text) text.textContent = '刷新数据';
+                    }, 700);
+                });
+            }
+
+            // 模态框控制
+            const solutionModal = document.getElementById('solutionModal');
+            const modalContent = document.getElementById('modalContent');
+
+            // 关闭模态框
+            function closeModal() {
+                modalContent.classList.remove('scale-100', 'opacity-100');
+                modalContent.classList.add('scale-95', 'opacity-0');
+
+                setTimeout(() => {
+                    solutionModal.classList.add('hidden');
+                }, 300);
+            }
+
+            document.getElementById('closeModal').addEventListener('click', closeModal);
+            document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+
+            // 点击模态框外部关闭
+            solutionModal.addEventListener('click', function (e) {
+                if (e.target === solutionModal) {
+                    closeModal();
+                }
+            });
+
+            // 初始化甘特图和路径图
+            // initDetailCharts();
+
+        });
+
+        // 绑定删除产品按钮事件
+        function bindRemoveProductEvents() {
+            const removeButtons = document.querySelectorAll('.remove-product-btn');
+            removeButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const productItems = document.querySelectorAll('.product-item');
+                    if (productItems.length > 1) {
+                        this.closest('.product-item').remove();
+                    } else {
+                        alert('至少保留一个产品项');
+                    }
+                });
+            });
+        }
+
+        function toHourAlignedLocal(isoLikeValue) {
+            let d = isoLikeValue ? new Date(isoLikeValue) : new Date();
+            if (Number.isNaN(d.getTime())) d = new Date();
+            d.setMinutes(0, 0, 0);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const hh = String(d.getHours()).padStart(2, '0');
+            return `${y}-${m}-${day}T${hh}:00`;
+        }
+
+        function ensureDeliveryTimeMinutesZero() {
+            const startEl = document.getElementById('deliveryStart');
+            const endEl = document.getElementById('deliveryEnd');
+            if (startEl && !startEl.value) startEl.value = toHourAlignedLocal();
+            if (endEl && !endEl.value) endEl.value = toHourAlignedLocal();
+        }
+
+        async function suggestScheduleStartForOrders(orderIds) {
+            try {
+                const r = await fetch(stUrl('/schedulePage/get_orders?per_page=500&page=1'));
+                const data = await r.json();
+                const orders = data.orders || [];
+                const idSet = new Set((orderIds || []).map((id) => String(id)));
+                let minStart = null;
+                let minStartStr = '';
+                for (const o of orders) {
+                    const info = o.order_info || o;
+                    const oid = String(info.order_id ?? info.order_number ?? '');
+                    if (!idSet.has(oid)) continue;
+                    const s = info.order_startdate || info.order_time_start;
+                    if (!s || !String(s).includes('T')) continue;
+                    const d = new Date(s);
+                    if (Number.isNaN(d.getTime())) continue;
+                    if (!minStart || d < minStart) {
+                        minStart = d;
+                        minStartStr = String(s);
+                    }
+                }
+                if (minStart) {
+                    const sug = new Date(minStart.getTime() - 24 * 3600 * 1000);
+                    return {
+                        value: toHourAlignedLocal(sug.toISOString()),
+                        earliest: minStartStr,
+                    };
+                }
+            } catch (e) {
+                console.warn('suggestScheduleStartForOrders', e);
+            }
+            return { value: '2025-01-01T00:00', earliest: '—' };
+        }
+
+        function askScheduleStartDateTime(orderIds) {
+            return new Promise((resolve) => {
+                suggestScheduleStartForOrders(orderIds).then(({ value: defaultValue, earliest }) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'fixed inset-0 z-[9999] bg-black/40 flex items-center justify-center p-4';
+                overlay.innerHTML = `
+                    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">请输入排程开始时间</h4>
+                        <p class="text-sm text-gray-600 mb-2">当前订单为<strong>具体日期时间</strong>交付期限。排程开始时间 = 生产/配送计时的零点，必须<strong>早于</strong>所有选中订单的交付开始时间。</p>
+                        <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+                            所选订单最早交付窗约：<strong>${earliest}</strong>。建议填写其<strong>至少 24 小时之前</strong>，例如默认值 <code class="text-primary">${defaultValue}</code>。
+                        </p>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">排程开始时间（精确到小时）</label>
+                        <input id="scheduleStartInput" type="datetime-local" step="3600" value="${defaultValue}" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                        <p class="text-xs text-gray-500 mt-2">操作：点击输入框 → 选日期 → 选小时（分固定为 00）→ 点「确定」。</p>
+                        <div class="mt-4 flex justify-end gap-2">
+                            <button type="button" id="scheduleStartCancel" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">取消</button>
+                            <button type="button" id="scheduleStartConfirm" class="px-4 py-2 rounded-lg bg-primary text-white hover:opacity-90">确定</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                const inputEl = overlay.querySelector('#scheduleStartInput');
+                const close = (val) => {
+                    overlay.remove();
+                    resolve(val || null);
+                };
+                overlay.querySelector('#scheduleStartCancel').addEventListener('click', () => close(null));
+                overlay.querySelector('#scheduleStartConfirm').addEventListener('click', () => {
+                    const v = (inputEl.value || '').trim();
+                    close(v ? toHourAlignedLocal(v) : null);
+                });
+                overlay.addEventListener('click', (e) => { if (e.target === overlay) close(null); });
+                if (inputEl) inputEl.focus();
+                });
+            });
+        }
+
+        // 初始化图表
+        function initCharts() {
+            // Pareto前沿图
+            // Pareto前沿图
+            const paretoChart = echarts.init(document.getElementById('pareto-chart'));
+            // const paretoChart = echarts.init(document.getElementById('paretoChart'));
+
+            // 模拟Pareto前沿数据
+            const paretoData = [];
+            for (let i = 0; i < 20; i++) {
+                // 生成非支配解（简化模型）
+                const x = 150 + Math.random() * 100; // 交付惩罚时间
+                const y = 40000 + Math.random() * 20000; // 成本
+                // 确保数据点形成Pareto前沿形状（x越小，y越小）
+                paretoData.push([x, y, i + 1]);
+            }
+
+            // 按x排序
+            paretoData.sort((a, b) => a[0] - b[0]);
+
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function (params) {
+                        return `解 #${params.data[2]}<br>总成本: ¥${params.data[1].toFixed(0)}<br>交付惩罚时间: ${params.data[0].toFixed(1)} 小时`;
+                    }
+                },
+                xAxis: {
+                    name: '总成本 (¥)',
+                    type: 'value',
+                    axisLabel: {
+                        formatter: '{value}'
+                    }
+                },
+                yAxis: {
+
+                    name: '交付惩罚时间 (小时)',
+                    type: 'value',
+                    axisLabel: {
+                        formatter: '{value}'
+                    }
+                },
+                series: [{
+                    name: 'Pareto前沿',
+                    type: 'scatter',
+                    data: paretoData,
+                    symbolSize: 10,
+                    itemStyle: {
+                        color: '#165DFF',
+                        borderColor: '#fff',
+                        borderWidth: 1
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            color: '#FAAD14',
+                            borderColor: '#fff',
+                            borderWidth: 2,
+                            shadowBlur: 10,
+                            shadowColor: 'rgba(0, 0, 0, 0.3)'
+                        },
+                        symbolSize: 15
+                    }
+                }]
+            };
+            // // 有图表的
+            // paretoChart.setOption(option);
+            // paretoChart.setOption({
+            //     title: {
+            //         text: 'Pareto前沿分析',
+            //         left: 'center'
+            //     },
+            //     tooltip: {
+            //         trigger: 'item',
+            //         formatter: function(params) {
+            //             return `解 #${params.dataIndex + 1}<br>成本: ¥${params.data[0]}<br>交货期: ${params.data[1]}%`;
+            //         }
+            //     },
+            //     xAxis: {
+            //         name: '成本 (¥)',
+            //         type: 'value',
+            //         min: 120000,
+            //         max: 140000
+            //     },
+            //     yAxis: {
+            //         name: '交货期 (%)',
+            //         type: 'value',
+            //         min: 90,
+            //         max: 100
+            //     },
+            //     series: [{
+            //         name: 'Pareto前沿',
+            //         type: 'scatter',
+            //         data: [
+            //             [128500, 96],
+            //             [132800, 98],
+            //             [135000, 99],
+            //             [125300, 94],
+            //             [123500, 92]
+            //         ],
+            //         symbolSize: 12,
+            //         itemStyle: {
+            //             color: '#3B82F6',
+            //             borderColor: '#1E40AF',
+            //             borderWidth: 2
+            //         },
+            //         emphasis: {
+            //             itemStyle: {
+            //                 color: '#F59E0B',
+            //                 borderColor: '#D97706'
+            //             }
+            //         }
+            //     }]
+            // });
+
+            // // 监听窗口大小变化，调整图表
+            // window.addEventListener('resize', function() {
+            //     paretoChart.resize();
+            // });
+
+            paretoChart.setOption(option);
+            // 点击Pareto图上的点显示详情
+            paretoChart.on('click', function (params) {
+                showSolutionDetail(params.data[2]);
+            });
+
+            // }
+            // // 初始化ECharts实例
+            // const chartDom = document.getElementById('chart');
+            // const myChart = echarts.init(chartDom);
+            // // 初始化Pareto解数据
+            // function initParetoSolutions() {
+            //     const container = document.getElementById('paretoSolutions');
+            //     container.innerHTML = '';
+            //     // 异步获取Pareto数据
+            //     fetch('/schedulePage/paretoShow')
+            //         .then(response => response.json())
+            //         .then(data => {
+            //             // 配置图表
+            //             const option = {
+            //                 title: {
+            //                     text: 'Pareto前沿'
+            //                 },
+            //                 tooltip: {},
+            //                 xAxis: {
+            //                     name: data.x_label,
+            //                     type: 'value'
+            //                 },
+            //                 yAxis: {
+            //                     name: data.y_label,
+            //                     type: 'value'
+            //                 },
+            //                 series: [{
+            //                     type: 'scatter',
+            //                     data: data.pareto_front,
+            //                     symbolSize: 8,
+            //                     itemStyle: {
+            //                         color: '#5470C6'
+            //                     }
+            //                 }]
+            //             };
+            //
+            //             // 渲染图表
+            //             myChart.setOption(option);
+            //         })
+            //         .catch(error => {
+            //             console.error('数据加载失败:', error);
+            //         });
+
+        }
+
+        let _paretoAllSolutions = [];
+        let _paretoCurrentPage = 1;
+        const PARETO_PAGE_SIZE = 10;
+
+        function initParetoSolutions() {
+            fetch('/schedulePage/paretoShow')
+                .then(r => {
+                    if (!r.ok) throw new Error('接口返回异常');
+                    return r.json();
+                })
+                .then(solutions => {
+                    if (!Array.isArray(solutions)) { _paretoAllSolutions = []; }
+                    else { _paretoAllSolutions = solutions; }
+                    _paretoCurrentPage = 1;
+                    renderParetoSolutionsTable();
+                })
+                .catch(() => {
+                    _paretoAllSolutions = [];
+                    renderParetoSolutionsTable();
+                });
+        }
+
+        function renderParetoSolutionsTable() {
+            const container = document.getElementById('paretoSolutions');
+            const pageInfo = document.getElementById('paretoPageInfo');
+            const pagination = document.getElementById('paretoPagination');
+            container.innerHTML = '';
+
+            const total = _paretoAllSolutions.length;
+            if (total === 0) {
+                pageInfo.textContent = '暂无数据';
+                pagination.innerHTML = '';
+                return;
+            }
+
+            const totalPages = Math.ceil(total / PARETO_PAGE_SIZE);
+            if (_paretoCurrentPage > totalPages) _paretoCurrentPage = totalPages;
+            const start = (_paretoCurrentPage - 1) * PARETO_PAGE_SIZE;
+            const end = Math.min(start + PARETO_PAGE_SIZE, total);
+            const pageData = _paretoAllSolutions.slice(start, end);
+
+            pageData.forEach(s => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition-colors';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">解 #${s.id}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">${Number(s.time).toFixed(2)}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">${Number(s.cost).toFixed(2)}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button class="view-solution-btn text-primary hover:text-primary/80" data-id="${s.id}">查看详情</button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+
+            pageInfo.textContent = `显示 ${start + 1} 到 ${end} 条，共 ${total} 条`;
+
+            pagination.innerHTML = '';
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = '上一页';
+            prevBtn.className = 'px-3 py-1 rounded border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50';
+            prevBtn.disabled = _paretoCurrentPage <= 1;
+            prevBtn.addEventListener('click', () => { _paretoCurrentPage--; renderParetoSolutionsTable(); });
+            pagination.appendChild(prevBtn);
+
+            for (let p = 1; p <= totalPages; p++) {
+                const btn = document.createElement('button');
+                btn.textContent = p;
+                btn.className = p === _paretoCurrentPage
+                    ? 'px-3 py-1 rounded border border-primary bg-primary text-white'
+                    : 'px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50';
+                btn.addEventListener('click', () => { _paretoCurrentPage = p; renderParetoSolutionsTable(); });
+                pagination.appendChild(btn);
+            }
+
+            const nextBtn = document.createElement('button');
+            nextBtn.textContent = '下一页';
+            nextBtn.className = 'px-3 py-1 rounded border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50';
+            nextBtn.disabled = _paretoCurrentPage >= totalPages;
+            nextBtn.addEventListener('click', () => { _paretoCurrentPage++; renderParetoSolutionsTable(); });
+            pagination.appendChild(nextBtn);
+
+            document.querySelectorAll('.view-solution-btn').forEach(button => {
+                button.addEventListener('click', function () {
+                    const sid = parseInt(this.getAttribute('data-id'));
+                    const sol = _paretoAllSolutions.find(s => s.id === sid);
+                    if (sol) showSolutionDetail(sol);
+                });
+            });
+        }
+
+        // 显示解详情
+        function showSolutionDetail(solution) {
+            console.log("输入",solution);
+            const solutionModal = document.getElementById('solutionModal');
+            const modalContent = document.getElementById('modalContent');
+            const productionTimeElement = document.querySelector('#solutionModal .bg-gray-50:first-child .text-2xl');
+            if (productionTimeElement) {
+                productionTimeElement.textContent = `${solution.time}`;
+            }
+
+            // 示例：更新总成本
+            const costElement = document.querySelector('#solutionModal .bg-gray-50:nth-child(2) .text-2xl');
+            if (costElement) {
+                costElement.textContent = `${solution.cost}`;
+            }
+            // 修改交付惩罚时间的进度条和百分比
+           function updateProgressBySection(section, newPercentage) {
+           const container = document.querySelector(`[data-section="${section}"]`);
+           const progress = container.querySelector('[data-percent]');
+           const text = container.querySelector('[data-percent-text]');
+
+           if (!container || !progress || !text) return;
+
+           progress.style.width = `${newPercentage}%`;
+           progress.dataset.percent = newPercentage; // 更新数据属性
+           text.textContent = `优于 ${newPercentage}% 的解`;
+           }
+            // 后端已返回“优于多少百分比的解”（0-100），前端直接使用并做边界保护
+            const percentCost = Math.max(0, Math.min(100, Number(solution.cost_rank) || 0));
+            const percentTime = Math.max(0, Math.min(100, Number(solution.time_rank) || 0));
+            console.log(percentTime)
+            console.log(percentCost)
+            // “交付惩罚时间”对应 time_rank；“总成本”对应 cost_rank
+            updateProgressBySection('production', percentTime);
+            updateProgressBySection('cost', percentCost);
+            console.log("内容", solution);
+
+            //展示解详情
+            // 模拟批次数据（实际需从后端接口获取）
+            const batchData=solution.info;
+            console.log(batchData);
+            // 清空现有内容并渲染新数据
+            batchDetails.innerHTML = '';
+            batchData.forEach((batch, index) => {
+                const batchDiv = document.createElement('div');
+                batchDiv.className = `border rounded-lg p-4 mb-4 ${index > 0 ? 'mt-6' : ''}`;
+                const rawVehicleNo = Number(batch.vnumber);
+                const displayVehicleNo = Number.isFinite(rawVehicleNo) ? (rawVehicleNo + 1) : batch.vnumber;
+
+                // 批次信息
+                batchDiv.innerHTML += `
+                    <h5 class="text-base font-semibold text-gray-700 mb-2">
+                        批次信息: 第${batch.batch}批 订单序号为:[${batch.nodeshow.join(', ')}]
+                    </h5>
+
+                    <!-- 车辆信息 -->
+                    <div class="flex items-center gap-4 mb-3">
+                        <div>
+                            <span class="text-sm font-medium text-gray-500">车辆信息:</span>
+                            <p class="text-sm text-gray-900">
+                                运输车辆编号:${displayVehicleNo}
+                                车辆开始运输时间:${batch.vstart.toFixed(1)}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 运输信息 -->
+                    <div class="flex items-center gap-4 mb-3">
+                        <div>
+                            <span class="text-sm font-medium text-gray-500">运输信息:</span>
+                            <p class="text-sm text-gray-900">
+                                整体运输时间: [${batch.transport_time.map(t => t.toFixed(1)).join(', ')}]
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 仓储信息 -->
+                    <div class="flex items-center gap-4 mb-3">
+                        <div>
+                            <span class="text-sm font-medium text-gray-500">仓储信息:</span>
+                            <p class="text-sm text-gray-900">
+                                每个产品完成生产后预计等待运输的时间:[ ${batch.stockinfo.map(t => t.toFixed(3)).join('  ')} ]
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 生产信息 -->
+                    <div class="flex items-center gap-4">
+                        <div>
+                            <span class="text-sm font-medium text-gray-500">生产信息:</span>
+                            <p class="text-sm text-gray-900">
+                                生产开始时间: [${batch.productstart.map(t => t.toFixed(3)).join(' ')}]
+                                生产完成时间: [${batch.productend.map(t => t.toFixed(3)).join(' ')}]
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                batchDetails.appendChild(batchDiv);
+            });
+
+            // 甘特图：直接加载 PNG（走 /schedulePage 代理，嵌入时自动加 /scheduletool 前缀）
+            const imgElement = document.getElementById('ganttImage');
+            if (imgElement) {
+                imgElement.alt = '甘特图加载中...';
+                imgElement.onerror = function () {
+                    imgElement.alt = '甘特图加载失败，请确认后端 8008 已启动';
+                };
+                imgElement.onload = function () {
+                    imgElement.alt = '甘特图';
+                };
+                imgElement.src = stUrl('/schedulePage/gantt_png/' + solution.id) + '?_=' + Date.now();
+            }
+
+            // 更新模态框标题
+            document.querySelector('#modalContent h3').textContent = `Pareto前沿解详情 - 解${solution.id}`;
+            // renderGanttChart(solution);
+            // renderPathChart(solution);
+            // 显示模态框
+            solutionModal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function initDetailCharts() {
+        }
+
+        // 响应式处理
+        window.addEventListener('resize', function () {
+            // 重新调整所有图表
+            echarts.getInstanceByDom(document.getElementById('pareto-chart'))?.resize();
+        });
+        //接受pareto数据
+        function runParetoChart() {
+            fetch('/schedulePage/paretoShow')
+                // .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`快递破损！状态码: ${response.status}`);
+                    }
+                    return response.json();
+                })
+
+                .then(solutions => {
+                    console.log('收到的数据:', solutions);
+                    renderParetoChart(solutions);
+                    resizeParetoChart();
+                })
+                // .then(solutions => {
+                //     // 渲染Pareto前沿图
+                //     console.log(solutions);
+                //     renderParetoChart(solutions);
+                // })
+                .catch(error => {
+                    console.error('优化计算失败:', error);
+                    const chartDom = document.querySelector('#pareto-chart');
+                    if (chartDom) {
+                        chartDom.innerHTML = '<div class="text-center py-20 text-red-500">优化计算失败，请重试</div>';
+                    }
+                });
+        }
+        //渲染图像
+        function renderParetoChart(solutions) {
+            const chartDom = document.getElementById('pareto-chart');
+            if (!chartDom) return;
+            let chart = echarts.getInstanceByDom(chartDom);
+            if (!chart) {
+                chart = echarts.init(chartDom);
+            }
+
+            const data = solutions.map(s => [Number(s.cost), Number(s.time), s.id,Number(s.cost_rank),Number(s.time_rank)]);
+            console.log('收到的数据1:', data);
+            const option = {
+                title: {text: '点击点查看详细解'},
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function (params) {
+                        const solution = solutions.find(s => s.id === params.data[2]);
+                        return `解#${solution.id}<br>
+                            总成本：¥${solution.cost}<br>
+                            交付惩罚时间：${solution.time}小时<br>
+
+                            `;
+                        // 资源利用率：${solution.efficiency}%
+                    }
+                },
+                toolbox: {
+                    show: true,
+                    feature: {
+                        dataZoom: {
+                            yAxisIndex: 'none'
+                        },
+                        restore: {},
+                        saveAsImage: {}
+                    }
+                },
+                xAxis: {name: '总成本（元）', type: 'value', scale: true},
+                yAxis: {name: '交付惩罚时间（小时）', type: 'value', scale: true},
+                // 支持鼠标滚轮缩放和拖拽平移
+                dataZoom: [
+                    {
+                        type: 'inside',  // 支持鼠标滚轮缩放
+                        xAxisIndex: 0,
+                        zoomOnMouseWheel: true,
+                        moveOnMouseMove: true,
+                        moveOnMouseWheel: false
+                    },
+                    {
+                        type: 'slider',  // 底部滑动条
+                        xAxisIndex: 0,
+                        start: 0,
+                        end: 100
+                    }
+                ],
+                series: [{
+                    name: 'Pareto解',
+                    type: 'scatter',
+                    data: data,
+                    symbolSize: 12,
+                    itemStyle: {
+                        color: '#165DFF',
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            color: '#FAAD14',
+                            shadowBlur: 10,
+                            shadowColor: 'rgba(0,0,0,0.3)'
+                        },
+                        cursor: 'pointer'
+                    }
+                }]
+            };
+            chart.setOption(option, true);
+            chart.off('click');
+            // 点击事件绑定
+            chart.on('click', function (params) {
+                console.log('点击事件参数:', params);
+                const solutionId = params.data[2];
+                console.log("decud",solutionId);
+                showSolutionDetail(solutions.find(s => s.id === solutionId));
+            });
+        }
+        // 初始化甘特图（根据解编号加载数据）
+        function renderGanttChart(solutionId) {
+            const chart = echarts.init(document.getElementById('ganttChart'));
+
+            // 模拟解#1的工序数据
+            const tasks = [
+                {
+                    name: '产品A生产',
+                    start: '2023-06-15 08:00',
+                    end: '2023-06-15 16:00',
+                    machine: '生产线1',
+                    progress: 100  // 完成度
+                },
+                {
+                    name: '产品B加工',
+                    start: '2023-06-15 16:00',
+                    end: '2023-06-16 00:00',
+                    machine: '生产线2',
+                    progress: 80
+                },
+                {
+                    name: '产品C质检',
+                    start: '2023-06-16 08:00',
+                    end: '2023-06-16 12:00',
+                    machine: '质检线',
+                    progress: 100
+                }
+            ];
+
+            const option = {
+                title: {text: `解${solutionId} 生产甘特图`},
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: function (params) {
+                        return `
+                        <div><b>${params.name}</b></div>
+                        <div>时间：${params.start} ~ ${params.end}</div>
+                        <div>设备：${params.machine}</div>
+                        <div>进度：${params.progress}%</div>
+                    `;
+                    }
+                },
+                grid: {left: 120, right: 40, bottom: 30},
+                xAxis: {
+                    type: 'time',
+                    format: 'HH:mm\nMM-dd',
+                    axisLabel: {rotate: 45}
+                },
+                yAxis: {
+                    type: 'category',
+                    data: tasks.map(task => task.machine),
+                    axisTick: {alignWithLabel: true}
+                },
+                series: [{
+                    name: '工序',
+                    type: 'bar',
+                    itemStyle: {
+                        normal: {
+                            color: function (params) {
+                                return params.data.progress === 100 ? '#52C41A' : '#FAAD14'; // 绿色=完成，橙色=进行中
+                            }
+                        }
+                    },
+                    data: tasks.map(task => ({
+                        value: [task.start, task.end],
+                        name: task.name,
+                        machine: task.machine,
+                        progress: task.progress
+                    }))
+                }]
+            };
+
+            chart.setOption(option);
+        }
+        // 为侧边栏导航项添加点击事件监听器
+        const sidebarItems = document.querySelectorAll('.sidebar-item');
+        console.debug('[sidebar] 找到侧栏项数量', sidebarItems.length);
+        sidebarItems.forEach(item => {
+        // 记录绑定状态
+        console.debug('[sidebar] 绑定点击监听到', item.getAttribute('href'), 'target=', item.dataset.target);
+        item.addEventListener('click', (e) => {
+            console.debug('[sidebar.click] 被点击 href=', item.getAttribute('href'), 'target=', item.dataset.target);
+            const href = item.getAttribute('href') || '';
+            const target = item.dataset.target;
+
+            // 如果链接以 '/' 开头且不是 params（后端真正要导航的路由），保留默认导航
+            if (href.startsWith('/') && target !== 'params') {
+                console.debug('[sidebar.click] 允许浏览器导航到', href);
+                return;
+            }
+
+            // 对 params 做内联 AJAX 加载
+            if (target === 'params') {
+                e.preventDefault();
+                console.debug('[sidebar.click] 使用 AJAX 加载 params fragment');
+                const paramsView = document.getElementById('paramsView');
+                if (!paramsView) { console.warn('[sidebar.click] paramsView 未找到，取消加载'); return; }
+                fetch('/schedulePage/params_fragment')
+                    .then(async (r) => {
+                        console.debug('[sidebar.fetch] params_fragment 状态', r.status, r.headers.get('content-type'));
+                        if (r.status === 401) { window.location = '/login'; throw new Error('未登录或登录已过期'); }
+                        if (!r.ok) { const txt = await r.text(); throw new Error('状态 ' + r.status + ': ' + txt); }
+                        return r.text();
+                    })
+                    .then(html => {
+                        console.debug('[sidebar.fetch] 成功获取 fragment 大小', html.length);
+                        paramsView.innerHTML = html;
+                        // 隐藏其他视图，仅显示 paramsView
+                        const allViews = document.querySelectorAll('[id$="View"]');
+                        allViews.forEach(view => { if (view.id !== 'paramsView') view.classList.add('hidden'); });
+                        paramsView.classList.remove('hidden');
+
+                        const pageTitle = document.getElementById('pageTitle');
+                        if (pageTitle) pageTitle.textContent = item.querySelector('span').textContent;
+                        sidebarItems.forEach(sidebarItem => { sidebarItem.classList.remove('active'); });
+                        item.classList.add('active');
+
+                        // 初始化 params 内的交互（绑定表单/按钮并加载数据）
+                        if (typeof initParamsView === 'function') { console.debug('[sidebar.fetch] 调用 initParamsView'); initParamsView(); }
+                        else { console.warn('[sidebar.fetch] initParamsView 未定义'); }
+                    })
+                    .catch(err => { alert('加载参数页面失败：' + err.message); console.error(err); });
+                return;
+            }
+
+            // 单页应用内切换逻辑（非 params 且非后端导航）
+            e.preventDefault();
+            const allViews = document.querySelectorAll('[id$="View"]');
+            allViews.forEach(view => {
+                view.classList.add('hidden');
+            });
+            const targetView = document.getElementById(`${target}View`);
+            if (targetView) {
+                targetView.classList.remove('hidden');
+            }
+            const pageTitle = document.getElementById('pageTitle');
+            if (pageTitle) pageTitle.textContent = item.querySelector('span').textContent;
+            sidebarItems.forEach(sidebarItem => {
+                sidebarItem.classList.remove('active');
+            });
+            item.classList.add('active');
+
+            const embedTarget = item.dataset.target;
+            if (embedTarget) {
+                document.querySelectorAll('#embedTabBar .embed-tab').forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.target === embedTarget);
+                });
+            }
+
+            // 如果点击的是“订单管理”导航项，调用接口获取数据
+            if (target === 'orderManagement') {
+                fetchOrdersRaw();
+            }
+            // 如果点击的是“大屏展示”，刷新当前批量处理的订单列表
+            if (target === 'dashboard' && typeof loadBatchProcessedOrders === 'function') {
+                loadBatchProcessedOrders();
+                if (typeof refreshOptimizationStatus === 'function') refreshOptimizationStatus();
+                setTimeout(resizeParetoChart, 150);
+            }
+            });
+        });
+
+        // 自动打开逻辑：支持 hub / Vue 外壳通过 query 或 postMessage 切换视图
+        function switchScheduleView(target, options) {
+            options = options || {};
+            const validTargets = ['dashboard', 'orderInput', 'orderManagement', 'params'];
+            if (!validTargets.includes(target)) return;
+
+            const labelMap = {
+                dashboard: '大屏展示',
+                orderInput: '信息录入',
+                orderManagement: '订单管理',
+                params: '参数设置',
+            };
+
+            // 参数设置需加载 fragment，仍走原有点击逻辑
+            if (target === 'params') {
+                const paramsLink = document.querySelector('.sidebar-item[data-target="params"]')
+                    || document.querySelector('#embedTabBar .embed-tab[data-target="params"]');
+                if (paramsLink) paramsLink.click();
+                document.querySelectorAll('#embedTabBar .embed-tab').forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.target === target);
+                });
+            } else {
+                const allViews = document.querySelectorAll('[id$="View"]');
+                allViews.forEach((view) => view.classList.add('hidden'));
+                const targetView = document.getElementById(target + 'View');
+                if (targetView) targetView.classList.remove('hidden');
+
+                const pageTitle = document.getElementById('pageTitle');
+                if (pageTitle) pageTitle.textContent = labelMap[target] || target;
+
+                document.querySelectorAll('.sidebar-item[data-target]').forEach((item) => {
+                    item.classList.toggle('active', item.dataset.target === target);
+                });
+                document.querySelectorAll('#embedTabBar .embed-tab').forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.target === target);
+                });
+
+                if (target === 'orderManagement' && typeof fetchOrdersRaw === 'function') {
+                    fetchOrdersRaw();
+                }
+                if (target === 'dashboard') {
+                    if (typeof loadBatchProcessedOrders === 'function') loadBatchProcessedOrders();
+                    if (typeof refreshOptimizationStatus === 'function') refreshOptimizationStatus();
+                    setTimeout(resizeParetoChart, 150);
+                }
+            }
+
+            if (options.focus === 'pareto' && target === 'dashboard') {
+                setTimeout(() => {
+                    const el = document.getElementById('paretoSection');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    if (typeof runParetoChart === 'function') runParetoChart();
+                    if (typeof initParetoSolutions === 'function') initParetoSolutions();
+                    setTimeout(resizeParetoChart, 200);
+                }, 400);
+            }
+        }
+
+        function openViewFromUrl() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const open = urlParams.get('open');
+                const focus = urlParams.get('focus');
+                const hashTarget = (window.location.hash || '').replace(/^#/, '');
+                const target = open || hashTarget;
+                const validTargets = ['dashboard', 'orderInput', 'orderManagement', 'params'];
+                if (validTargets.includes(target)) {
+                    switchScheduleView(target, { focus: focus || undefined });
+                } else if (focus === 'pareto') {
+                    switchScheduleView('dashboard', { focus: 'pareto' });
+                }
+            } catch (e) {
+                console.error('[auto-open] 检查 URL 时出错', e);
+            }
+        }
+
+        window.addEventListener('message', function (event) {
+            const data = event.data;
+            if (!data || data.type !== 'scheduletool-tab') return;
+            switchScheduleView(data.tab, data.options || {});
+            if (data.tab === 'dashboard') {
+                setTimeout(resizeParetoChart, 200);
+            }
+        });
+
+        document.querySelectorAll('#embedTabBar .embed-tab').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const target = btn.dataset.target;
+                const fake = document.querySelector('.sidebar-item[data-target="' + target + '"]');
+                if (fake) fake.click();
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const paretoEl = document.getElementById('pareto-chart');
+            if (paretoEl && typeof ResizeObserver !== 'undefined') {
+                new ResizeObserver(() => resizeParetoChart()).observe(paretoEl);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', openViewFromUrl);
+        window.addEventListener('hashchange', openViewFromUrl);
+
+        // 订单管理分页：当前页码、每页条数
+        let ordersCurrentPage = 1;
+        const ORDERS_PAGE_SIZE = 10;
+        // 跨页保存已勾选的订单 ID，切换分页后仍能恢复勾选状态
+        let selectedOrderIds = new Set();
+
+        // 更新订单分页控件（总条数 total）
+        function updateOrdersPagination(total) {
+            const infoEl = document.getElementById('ordersPaginationInfo');
+            const paginationEl = document.getElementById('ordersPagination');
+            if (infoEl) infoEl.textContent = '共 ' + total + ' 条，每页 ' + ORDERS_PAGE_SIZE + ' 条';
+            if (!paginationEl) return;
+            const totalPages = Math.max(1, Math.ceil(total / ORDERS_PAGE_SIZE));
+            const page = Math.min(Math.max(1, ordersCurrentPage), totalPages);
+            ordersCurrentPage = page;
+
+            let html = '';
+            html += '<button type="button" class="orders-prev px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" ' + (page <= 1 ? 'disabled' : '') + '>上一页</button>';
+            // 总页数较少时显示全部页码，否则显示当前页前后各 2 页
+            const from = totalPages <= 7 ? 1 : Math.max(1, page - 2);
+            const to = totalPages <= 7 ? totalPages : Math.min(totalPages, page + 2);
+            for (let i = from; i <= to; i++) {
+                const active = i === page ? ' border-primary bg-primary text-white ' : ' border-gray-300 text-gray-700 hover:bg-gray-50 ';
+                html += '<button type="button" class="orders-page px-3 py-1 rounded border ' + active + '" data-page="' + i + '">' + i + '</button>';
+            }
+            html += '<button type="button" class="orders-next px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" ' + (page >= totalPages ? 'disabled' : '') + '>下一页</button>';
+            paginationEl.innerHTML = html;
+
+            paginationEl.querySelectorAll('.orders-prev').forEach(btn => {
+                btn.addEventListener('click', function () { if (ordersCurrentPage > 1) { ordersCurrentPage--; fetchOrdersRaw(ordersCurrentPage); } });
+            });
+            paginationEl.querySelectorAll('.orders-next').forEach(btn => {
+                btn.addEventListener('click', function () { if (ordersCurrentPage < totalPages) { ordersCurrentPage++; fetchOrdersRaw(ordersCurrentPage); } });
+            });
+            paginationEl.querySelectorAll('.orders-page').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const p = parseInt(btn.getAttribute('data-page'), 10);
+                    if (p >= 1 && p <= totalPages) { ordersCurrentPage = p; fetchOrdersRaw(p); }
+                });
+            });
+        }
+
+        // 全部页全选/取消：第一次点击勾选全部页，再点一次则取消全部勾选（与当前零售商过滤一致）
+        const ORDERS_FETCH_ALL_PAGE_SIZE = 100;
+        function normalizeOrderId(id) {
+            if (id === null || id === undefined) return '';
+            return String(id).trim();
+        }
+        function collectOrderIdsFromData(data) {
+            const orders = (data && data.orders) ? data.orders : [];
+            const ids = [];
+            orders.forEach(o => {
+                const id = normalizeOrderId((o.order_info && (o.order_info.order_id || o.order_info.order_number)) || '');
+                if (id) ids.push(id);
+            });
+            return ids;
+        }
+        function selectAllPages() {
+            let baseUrl = stUrl('/schedulePage/get_orders?per_page=' + ORDERS_FETCH_ALL_PAGE_SIZE);
+            const filterEl = document.getElementById('filterCustomer');
+            if (filterEl && filterEl.value) {
+                baseUrl += '&customer_id=' + encodeURIComponent(filterEl.value);
+            }
+            fetch(baseUrl + '&page=1')
+                .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+                .then(data => {
+                    const total = (data && typeof data.total === 'number') ? data.total : 0;
+                    const allIds = collectOrderIdsFromData(data);
+                    const totalPages = Math.max(1, Math.ceil(total / ORDERS_FETCH_ALL_PAGE_SIZE));
+                    if (totalPages > 1) {
+                        const promises = [];
+                        for (let p = 2; p <= totalPages; p++) {
+                            promises.push(fetch(baseUrl + '&page=' + p).then(r => r.json()));
+                        }
+                        return Promise.all(promises).then(results => {
+                            results.forEach(d => allIds.push(...collectOrderIdsFromData(d)));
+                            return allIds;
+                        });
+                    }
+                    return allIds;
+                })
+                .then(allIds => {
+                    const alreadyAllSelected = allIds.length > 0 && allIds.every(id => selectedOrderIds.has(id));
+                    if (alreadyAllSelected) {
+                        allIds.forEach(id => selectedOrderIds.delete(id));
+                    } else {
+                        allIds.forEach(id => selectedOrderIds.add(id));
+                    }
+                    fetchOrdersRaw(ordersCurrentPage);
+                })
+                .catch(err => { console.error('全部页全选失败', err); alert('全部页全选失败，请重试'); });
+        }
+
+        // 调用 /schedulePage/get_orders 接口获取订单数据，支持按零售商过滤（从 #filterCustomer 读取），分页每页 10 条
+        function fetchOrdersRaw(page) {
+            if (page == null) page = ordersCurrentPage;
+            ordersCurrentPage = page;
+            let url = stUrl('/schedulePage/get_orders?page=' + page + '&per_page=' + ORDERS_PAGE_SIZE);
+            const filterEl = document.getElementById('filterCustomer');
+            if (filterEl && filterEl.value) {
+                url += '&customer_id=' + encodeURIComponent(filterEl.value);
+            }
+        fetch(url)
+            .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`错误！状态码: ${response.status}`);
+                    }
+                    return response.json();
+                }
+            )
+            .then(data => {
+                const orders = (data && data.orders) ? data.orders : [];
+                const total = (data && typeof data.total === 'number') ? data.total : 0;
+                console.log("收到订单数据", orders.length, "条，共", total, "条");
+                const ordersRawTableBody = document.getElementById('ordersRawTableBody');
+                if(ordersRawTableBody){
+                    ordersRawTableBody.innerHTML = '';
+                }
+                updateOrdersPagination(total);
+                // 当当前页越界（例如筛选后数据变少）时，自动回到有效页并重新拉取
+                if (total > 0 && orders.length === 0 && page > 1 && ordersCurrentPage !== page) {
+                    fetchOrdersRaw(ordersCurrentPage);
+                    return;
+                }
+                // 为产品生成随机颜色（用于标签样式）
+            const productColors = {};
+            const baseColors = ['primary', 'secondary', 'success', 'warning', 'info', 'purple', 'pink'];
+
+            orders.forEach(order => {
+                const orderInfo = order.order_info;
+
+                // 生成产品标签HTML
+                const productTags = order.products.map((product, index) => {
+                    // 为每个产品分配一个颜色，如果不存在则随机选择
+                    if (!productColors[product.product_id]) {
+                        productColors[product.product_id] = baseColors[index % baseColors.length];
+                    }
+                    const color = productColors[product.product_id];
+
+                    return `<span class="bg-${color}/10 text-${color} text-xs px-2 py-1 rounded">${product.product_name} x ${product.quantity}</span>`;
+                }).join('');
+
+                // 确定显示的产品数量（最多显示3个，其余用"+X种其他产品"表示）
+                const MAX_DISPLAY_PRODUCTS = 3;
+                let displayProducts = productTags;
+                let moreProductsText = '';
+                //
+                // if (order.products.length > MAX_DISPLAY_PRODUCTS) {
+                //     const displayedTags = order.products.slice(0, MAX_DISPLAY_PRODUCTS).map((product, index) => {
+                //         const color = productColors[product.product_id];
+                //         return `<span class="bg-${color}/10 text-${color} text-xs px-2 py-1 rounded">${product.product_name} x ${product.quantity}</span>`;
+                //     }).join('');
+                //
+                //     displayProducts = displayedTags;
+                //     moreProductsText = `<div class="text-xs text-gray-500">+ ${order.products.length - MAX_DISPLAY_PRODUCTS}种其他产品</div>`;
+                // }
+
+                // 创建订单行
+                const row = document.createElement('tr');
+                row.classList.add('hover:bg-gray-50', 'transition-colors');
+
+                // 添加复选框（增加 order-checkbox 类和 data-order-id，便于批量操作识别）
+                const checkboxCell = document.createElement('td');
+                checkboxCell.classList.add('px-6', 'py-4', 'whitespace-nowrap');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.classList.add('h-4', 'w-4', 'rounded', 'border-gray-300', 'text-primary', 'focus:ring-primary', 'order-checkbox');
+                // 添加用于批量操作的标识（data-order-id 与 value）
+                const orderIdForCheckbox = normalizeOrderId(orderInfo.order_id || orderInfo.order_number || '');
+                checkbox.setAttribute('data-order-id', orderIdForCheckbox);
+                checkbox.value = orderIdForCheckbox;
+                // 根据跨页保存的集合恢复勾选状态
+                if (selectedOrderIds.has(orderIdForCheckbox)) checkbox.checked = true;
+                checkbox.addEventListener('change', function () {
+                    if (checkbox.checked) selectedOrderIds.add(orderIdForCheckbox);
+                    else selectedOrderIds.delete(orderIdForCheckbox);
+                });
+                checkboxCell.appendChild(checkbox);
+                row.appendChild(checkboxCell);
+
+                // 添加订单编号
+                const orderNumberCell = document.createElement('td');
+                orderNumberCell.classList.add('px-6', 'py-4', 'whitespace-nowrap');
+                const orderNumberDiv = document.createElement('div');
+                orderNumberDiv.classList.add('text-sm', 'font-medium', 'text-gray-900');
+                orderNumberDiv.textContent = orderInfo.order_number || orderInfo.order_id || '未知';
+                orderNumberCell.appendChild(orderNumberDiv);
+                row.appendChild(orderNumberCell);
+
+                // 添加客户名称
+                const customerNameCell = document.createElement('td');
+                customerNameCell.classList.add('px-6', 'py-4', 'whitespace-nowrap');
+                const customerNameDiv = document.createElement('div');
+                customerNameDiv.classList.add('text-sm', 'text-gray-900');
+                customerNameDiv.textContent = orderInfo.customer_name || orderInfo.customer_id || '未知';
+                customerNameCell.appendChild(customerNameDiv);
+                row.appendChild(customerNameCell);
+
+                // 添加产品信息
+                const productsCell = document.createElement('td');
+                productsCell.classList.add('px-6', 'py-4');
+                const productsDiv = document.createElement('div');
+                productsDiv.classList.add('text-sm', 'text-gray-900');
+                productsDiv.innerHTML = `
+                    <div class="flex flex-wrap items-center gap-1 mb-1">${displayProducts}</div>
+                    ${moreProductsText}
+                `;
+                productsCell.appendChild(productsDiv);
+                row.appendChild(productsCell);
+
+                // 添加时间范围（格式化时间）
+                const timeRangeCell = document.createElement('td');
+                timeRangeCell.classList.add('px-6', 'py-4', 'whitespace-nowrap');
+                const timeRangeDiv = document.createElement('div');
+                timeRangeDiv.classList.add('text-sm', 'text-gray-900');
+                
+                // 格式化日期显示（兼容数字或字符串）
+                const formatDate = (dateVal) => {
+                    if (dateVal === null || dateVal === undefined || dateVal === '') return '未知';
+                    try {
+                        const s = (typeof dateVal === 'string') ? dateVal : String(dateVal);
+                        if (s.includes('T')) return s.replace('T', ' ');
+                        if (s.includes('-')) return s;
+                        return s;
+                    } catch (e) {
+                        return String(dateVal);
+                    }
+                };
+
+                const startDate = formatDate(orderInfo.order_startdate || orderInfo.delivery_start);
+                const endDate = formatDate(orderInfo.order_enddate || orderInfo.delivery_end);
+                timeRangeDiv.textContent = `${startDate} 至 ${endDate}`;
+                timeRangeCell.appendChild(timeRangeDiv);
+                row.appendChild(timeRangeCell);
+
+                // 添加操作按钮
+                const actionCell = document.createElement('td');
+                actionCell.classList.add('px-6', 'py-4', 'whitespace-nowrap', 'text-sm', 'text-gray-500');
+
+                const viewButton = document.createElement('button');
+                viewButton.textContent = '查看';
+                viewButton.classList.add('text-primary', 'hover:text-primary/80', 'mr-3');
+                viewButton.addEventListener('click', () => {
+                    const orderNum = orderInfo.order_number || orderInfo.order_id || '未知';
+                    const retailer = orderInfo.customer_name || '未知';
+                    const products = order.products.map(p => `${p.product_name} x ${p.quantity}`).join('\n');
+                    alert('订单详情：\n订单编号：' + orderNum + '\n零售商：' + retailer + '\n产品：\n' + products);
+                });
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = '删除';
+                deleteButton.classList.add('text-danger', 'hover:text-danger/80');
+                deleteButton.addEventListener('click', () => {
+                    const orderId = orderInfo.order_id || orderInfo.order_number || '';
+                    if (confirm('确定要删除订单 ' + (orderInfo.order_number || orderInfo.order_id) + ' 吗？')) {
+                        // 调用删除API
+                        fetch('/schedulePage/delete_order/' + orderId, {
+                            method: 'DELETE'
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('订单删除成功！');
+                                // 刷新订单列表
+                                fetchOrdersRaw();
+                            } else {
+                                alert('删除失败：' + (data.error || data.message || '未知错误'));
+                            }
+                        })
+                        .catch(error => {
+                            console.error('删除订单时出错：', error);
+                            alert('删除订单时出错，请重试！');
+                        });
+                    }
+                });
+
+                actionCell.appendChild(viewButton);
+                actionCell.appendChild(deleteButton);
+                row.appendChild(actionCell);
+
+                ordersRawTableBody.appendChild(row);
+                });
+
+                // 同步表头「全选」状态：当前页全选则勾选，全不选则不勾选，否则为半选
+                const selectAllEl = document.getElementById('selectAllCheckbox');
+                if (selectAllEl) {
+                    const cbs = ordersRawTableBody.querySelectorAll('.order-checkbox');
+                    const checkedCount = ordersRawTableBody.querySelectorAll('.order-checkbox:checked').length;
+                    selectAllEl.checked = cbs.length > 0 && checkedCount === cbs.length;
+                    selectAllEl.indeterminate = cbs.length > 0 && checkedCount > 0 && checkedCount < cbs.length;
+                }
+            })
+            .catch(error => {
+                console.error('获取订单数据时出错:', error);
+            });
+         }
+
+        // 大屏展示：当前批量处理的订单（只读，分页每页5条）
+        let batchProcessedOrdersList = [];
+        let batchProcessedCurrentPage = 1;
+        const BATCH_PROCESSED_PAGE_SIZE = 5;
+
+        function loadBatchProcessedOrders() {
+            fetch('/schedulePage/batch_processed_orders')
+                .then(r => r.json())
+                .then(orders => {
+                    batchProcessedOrdersList = Array.isArray(orders) ? orders : [];
+                    batchProcessedCurrentPage = 1;
+                    renderBatchProcessedTable();
+                })
+                .catch(err => {
+                    console.error('获取批量处理订单失败:', err);
+                    batchProcessedOrdersList = [];
+                    renderBatchProcessedTable();
+                });
+        }
+
+        function renderBatchProcessedTable() {
+            const tbody = document.getElementById('batchProcessedOrdersBody');
+            const rangeEl = document.getElementById('batchProcessedOrdersRange');
+            const paginationEl = document.getElementById('batchProcessedPagination');
+            if (!tbody) return;
+
+            const total = batchProcessedOrdersList.length;
+            const totalPages = Math.max(1, Math.ceil(total / BATCH_PROCESSED_PAGE_SIZE));
+            const page = Math.min(Math.max(1, batchProcessedCurrentPage), totalPages);
+            const start = (page - 1) * BATCH_PROCESSED_PAGE_SIZE;
+            const end = Math.min(start + BATCH_PROCESSED_PAGE_SIZE, total);
+            const pageOrders = batchProcessedOrdersList.slice(start, end);
+
+            tbody.innerHTML = '';
+            if (pageOrders.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="5" class="px-6 py-4 text-center text-gray-500">暂无批量处理的订单</td>';
+                tbody.appendChild(tr);
+            } else {
+                const baseColors = ['primary', 'secondary', 'success', 'warning', 'info', 'purple', 'pink'];
+                pageOrders.forEach((order, idx) => {
+                    const sequenceNo = start + idx + 1; // 与批次执行详情中的订单序号对齐（从1开始）
+                    const orderInfo = order.order_info || {};
+                    const products = order.products || [];
+                    const productTags = products.map((p, i) => {
+                        const color = baseColors[i % baseColors.length];
+                        return `<span class="bg-${color}/10 text-${color} text-xs px-2 py-1 rounded mr-1">${(p.product_name || '')} x ${p.quantity || 0}</span>`;
+                    }).join('');
+                    const startDate = orderInfo.order_startdate || orderInfo.delivery_start || '';
+                    const endDate = orderInfo.order_enddate || orderInfo.delivery_end || '';
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-50';
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${sequenceNo}</div></td>
+                        <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${orderInfo.order_id || orderInfo.order_number || ''}</div></td>
+                        <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm text-gray-900">${orderInfo.customer_name || ''}</div></td>
+                        <td class="px-6 py-4"><div class="text-sm text-gray-900 flex flex-wrap gap-1">${productTags || '-'}</div></td>
+                        <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm text-gray-900">${startDate} 至 ${endDate}</div></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            if (rangeEl) {
+                if (total === 0) rangeEl.textContent = '暂无批量处理的订单';
+                else rangeEl.textContent = `显示 ${start + 1} 到 ${end} 条，共 ${total} 条`;
+            }
+
+            if (paginationEl && total > 0) {
+                let html = '';
+                html += `<button type="button" class="batch-pg-prev px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50" ${page <= 1 ? 'disabled' : ''}>上一页</button>`;
+                for (let p = 1; p <= totalPages; p++) {
+                    const active = p === page ? ' border-primary bg-primary text-white ' : ' border-gray-300 text-gray-700 hover:bg-gray-50 ';
+                    html += `<button type="button" class="batch-pg-num px-3 py-1 rounded border${active}" data-page="${p}">${p}</button>`;
+                }
+                html += `<button type="button" class="batch-pg-next px-3 py-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50" ${page >= totalPages ? 'disabled' : ''}>下一页</button>`;
+                paginationEl.innerHTML = html;
+                paginationEl.querySelector('.batch-pg-prev').addEventListener('click', () => { batchProcessedCurrentPage = Math.max(1, batchProcessedCurrentPage - 1); renderBatchProcessedTable(); });
+                paginationEl.querySelector('.batch-pg-next').addEventListener('click', () => { batchProcessedCurrentPage = Math.min(totalPages, batchProcessedCurrentPage + 1); renderBatchProcessedTable(); });
+                paginationEl.querySelectorAll('.batch-pg-num').forEach(btn => {
+                    btn.addEventListener('click', () => { batchProcessedCurrentPage = parseInt(btn.dataset.page, 10); renderBatchProcessedTable(); });
+                });
+            } else if (paginationEl) {
+                paginationEl.innerHTML = '';
+            }
+        }
+
+        window.refreshBatchProcessedOrders = loadBatchProcessedOrders;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // 加载客户和产品下拉
+            fetch('/schedulePage/get_customers')
+                .then(r => r.json())
+                .then(data => {
+                    const retailer = document.getElementById('retailer');
+                    if (retailer) {
+                        // 清空除第一个提示项外的选项
+                        retailer.innerHTML = '<option value="">请选择零售商</option>';
+                        data.forEach(c => {
+                            const cid = c ? c.customer_id : null;
+                            const isFactoryById = cid !== null && cid !== undefined && String(cid).trim() === '0';
+                            if ((c && c.is_factory) || isFactoryById) return;
+                            const opt = document.createElement('option');
+                            opt.value = c.customer_id;
+                            opt.textContent = c.customer_name;
+                            retailer.appendChild(opt);
+                        });
+                    }
+
+                    // 填充管理页的过滤下拉
+                    const filterSelect = document.getElementById('filterCustomer');
+                    if (filterSelect) {
+                        filterSelect.innerHTML = '<option value="">全部零售商</option>';
+                        data.forEach(c => {
+                            const opt = document.createElement('option');
+                            opt.value = c.customer_id;
+                            opt.textContent = c.customer_name;
+                            filterSelect.appendChild(opt);
+                        });
+
+                        // 当过滤选择变化时，重新加载订单列表（回到第 1 页）
+                        filterSelect.addEventListener('change', function () {
+                            ordersCurrentPage = 1;
+                            fetchOrdersRaw(1);
+                        });
+                    }
+                }).catch(() => {});
+
+            fetch('/schedulePage/get_products')
+                .then(r => r.json())
+                .then(data => {
+                    // 填充现有的产品 select
+                    document.querySelectorAll('.product-name').forEach(sel => {
+                        sel.innerHTML = '<option value="">请选择产品</option>';
+                        data.forEach(p => {
+                            const opt = document.createElement('option');
+                            opt.value = p.product_id;
+                            opt.textContent = p.product_name;
+                            sel.appendChild(opt);
+                        });
+                    });
+                }).catch(() => {});
+
+            // 添加/移除产品条目
+            const addBtn = document.getElementById('addProductBtn');
+            addBtn && addBtn.addEventListener('click', () => {
+                const container = document.getElementById('productItems');
+                const first = container.querySelector('.product-item');
+                if (!first) return;
+                const clone = first.cloneNode(true);
+                // 清空值
+                clone.querySelectorAll('select, input').forEach(el => {
+                    if (el.tagName === 'SELECT') el.selectedIndex = 0;
+                    else if (el.type === 'number') el.value = '';
+                });
+                container.appendChild(clone);
+                // 重新填充产品列表到新 select
+                fetch('/schedulePage/get_products').then(r=>r.json()).then(data=>{
+                    const sel = clone.querySelector('.product-name');
+                    if (sel) {
+                        sel.innerHTML = '<option value="">请选择产品</option>';
+                        data.forEach(p=>{const o=document.createElement('option'); o.value=p.product_id; o.textContent=p.product_name; sel.appendChild(o)});
+                    }
+                }).catch(()=>{});
+            });
+
+            // 删除按钮（事件代理）
+            document.getElementById('productItems').addEventListener('click', function (e) {
+                if (e.target.closest('.remove-product-btn')) {
+                    const item = e.target.closest('.product-item');
+                    const container = document.getElementById('productItems');
+                    if (container.querySelectorAll('.product-item').length > 1) {
+                        item.remove();
+                    } else {
+                        // 清空第一个
+                        item.querySelectorAll('select, input').forEach(el => { if (el.tagName==='SELECT') el.selectedIndex=0; else if (el.type==='number') el.value=''; });
+                    }
+                }
+            });
+
+            // 注意：提交事件由页面上方的单一处理器负责，避免重复绑定导致双重提交/提示。
+
+            // 加载订单列表（第 1 页，与订单管理分页一致）
+            function loadOrders(){
+                ordersCurrentPage = 1;
+                fetchOrdersRaw(1);
+            }
+
+            loadOrders();
+
+            // 订单管理「刷新」按钮：刷新当前页
+            const refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
+            if (refreshOrdersBtn) refreshOrdersBtn.addEventListener('click', function () {
+                const icon = refreshOrdersBtn.querySelector('i');
+                refreshOrdersBtn.disabled = true;
+                refreshOrdersBtn.classList.add('opacity-60', 'cursor-not-allowed');
+                if (icon) icon.classList.add('fa-spin');
+                fetchOrdersRaw();
+                setTimeout(() => {
+                    refreshOrdersBtn.disabled = false;
+                    refreshOrdersBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                    if (icon) icon.classList.remove('fa-spin');
+                }, 500);
+            });
+
+            // 大屏展示：首次加载时拉取当前批量处理的订单
+            loadBatchProcessedOrders();
+
+            // 当前页全选：仅操作当前页，同时更新跨页勾选集合
+            const selectAll = document.getElementById('selectAllCheckbox');
+            selectAll && selectAll.addEventListener('change', function (){
+                document.querySelectorAll('.order-checkbox').forEach(cb => {
+                    const id = normalizeOrderId(cb.getAttribute('data-order-id') || cb.dataset.orderId || cb.value);
+                    if (!id) return;
+                    if (selectAll.checked) selectedOrderIds.add(id);
+                    else selectedOrderIds.delete(id);
+                    cb.checked = selectAll.checked;
+                });
+            });
+            // 全部页全选
+            const selectAllPagesBtn = document.getElementById('selectAllPagesBtn');
+            selectAllPagesBtn && selectAllPagesBtn.addEventListener('click', selectAllPages);
+
+            // 批量删除（使用跨页保存的勾选集合，支持多页勾选后一次性删除）
+            const batchBtn = document.getElementById('batchDeleteBtn');
+            batchBtn && batchBtn.addEventListener('click', function (){
+                const ids = selectedOrderIds.size
+                    ? Array.from(selectedOrderIds).map(normalizeOrderId).filter(Boolean)
+                    : Array.from(document.querySelectorAll('.order-checkbox:checked'))
+                        .map(cb => normalizeOrderId(cb.getAttribute('data-order-id') || cb.dataset.orderId || cb.value))
+                        .filter(Boolean);
+                if (!ids.length) { alert('请选择至少一个订单'); return; }
+                if (!confirm('确定删除选中的订单吗？')) return;
+                fetch('/schedulePage/orders/batch_delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({order_ids: ids})})
+                    .then(r=>r.json()).then(res=>{ if (res.success) { alert('删除成功'); selectedOrderIds.clear(); loadOrders(); } else alert('删除失败'); }).catch(err=>{console.error(err); alert('请求失败')});
+            });
+
+            // 批量处理（使用跨页保存的勾选集合；导出被选中订单为 retailsneed.xlsx）
+            const batchProcessBtn = document.getElementById('batchProcessBtn');
+            batchProcessBtn && batchProcessBtn.addEventListener('click', function (){
+                const ids = selectedOrderIds.size
+                    ? Array.from(selectedOrderIds).map(normalizeOrderId).filter(Boolean)
+                    : Array.from(document.querySelectorAll('.order-checkbox:checked'))
+                        .map(cb => normalizeOrderId(cb.getAttribute('data-order-id') || cb.dataset.orderId || cb.value))
+                        .filter(Boolean);
+                if (!ids.length) { alert('请选择至少一个订单'); return; }
+                const submitBatchProcess = (scheduleStartValue) => {
+                    const payload = { order_ids: ids };
+                    if (scheduleStartValue) payload.schedule_start = scheduleStartValue;
+                    return fetch('/schedulePage/orders/batch_process', {
+                        method:'POST',
+                        headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify(payload)
+                    }).then(r=>r.json());
+                };
+
+                submitBatchProcess()
+                    .then(res=>{
+                        if (res.success) {
+                            if (window.refreshBatchProcessedOrders) window.refreshBatchProcessedOrders();
+                            showKdceaModal();
+                            return;
+                        }
+
+                        // 具体时间模式：要求先输入排程开始时间，再重试
+                        if (res.error_code === 'schedule_start_required') {
+                            askScheduleStartDateTime(ids).then(scheduleStart => {
+                                if (!scheduleStart) return;
+                                submitBatchProcess(scheduleStart).then(res2 => {
+                                    if (res2.success) {
+                                        if (window.refreshBatchProcessedOrders) window.refreshBatchProcessedOrders();
+                                        showKdceaModal();
+                                    } else {
+                                        alert('批量处理失败：' + (res2.message || '未知错误'));
+                                    }
+                                }).catch(err=>{console.error(err); alert('请求失败')});
+                            });
+                            return;
+                        }
+
+                        alert('批量处理失败：' + (res.message || '未知错误'));
+                    }).catch(err=>{console.error(err); alert('请求失败')});
+            });
+
+            // 单个删除（事件代理）
+            document.getElementById('ordersRawTableBody').addEventListener('click', function (e){
+                if (e.target.classList.contains('delete-single')){
+                    const tr = e.target.closest('tr');
+                    const cb = tr.querySelector('.order-checkbox');
+                    const oid = cb && normalizeOrderId(cb.getAttribute('data-order-id') || cb.dataset.orderId || cb.value);
+                    if (!oid) return;
+                    if (!confirm('确定删除订单 '+oid+' 吗？')) return;
+                    fetch('/schedulePage/orders/batch_delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({order_ids:[oid]})})
+                        .then(r=>r.json()).then(res=>{ if (res.success) { alert('删除成功'); loadOrders(); } else alert('删除失败'); }).catch(()=>alert('请求失败'));
+                }
+            });
+
+            // ---- Params 内联加载后的初始化方法，注：当 fragment 注入后调用 initParamsView()
+            window.initParamsView = function initParamsView(){
+                console.debug('[initParamsView] 已定义（window.initParamsView）');
+                console.log('[initParamsView] 初始化参数页面');
+
+                // load & render customers
+                async function loadCustomers(){
+                    const tbody = document.querySelector('#customersTable tbody');
+                    if(!tbody){ console.warn('[loadCustomers] #customersTable tbody 未找到'); return; }
+                    tbody.innerHTML = '<tr><td colspan="5">加载中...</td></tr>';
+                    try{
+                        const res = await fetch('/schedulePage/customers');
+                        console.log('[loadCustomers] 响应状态', res.status, 'Content-Type:', res.headers.get('content-type'));
+
+                        // 尝试读取为文本以便调试（不影响后续 json 解析）
+                        const rawText = await res.clone().text();
+                        console.log('[loadCustomers] 原始响应文本（前1k）', rawText.slice(0,1024));
+
+                        if(!res.ok){ throw new Error('状态 '+res.status+': '+rawText); }
+
+                        let data;
+                        try{
+                            data = JSON.parse(rawText);
+                        }catch(parseErr){
+                            console.error('[loadCustomers] JSON 解析错误', parseErr);
+                            throw new Error('无法解析为 JSON: '+parseErr.message+'，响应前1k：'+rawText.slice(0,1024));
+                        }
+
+                        console.log('[loadCustomers] 收到', Array.isArray(data) ? data.length : '非数组', '条');
+                        tbody.innerHTML = '';
+                        if(!data || !data.length){ tbody.innerHTML = '<tr><td colspan="5" class="text-muted">暂无客户</td></tr>'; return; }
+                        data.forEach(c=>{
+                            const tr = document.createElement('tr');
+                            const isFactory = !!c.is_factory;
+                            const deleteBtnHtml = isFactory ? '' : '<button class="btn btn-sm btn-danger delete-customer ms-1">删除</button>';
+                            tr.innerHTML = `
+                                <td>${c.customer_id||''}</td>
+                                <td><input class="form-control form-control-sm" value="${(c.customer_name||'').toString().replace(/"/g,'&quot;')}" data-field="customer_name"></td>
+                                <td><input class="form-control form-control-sm" value="${c.address_X||''}" data-field="address_X"></td>
+                                <td><input class="form-control form-control-sm" value="${c.address_Y||''}" data-field="address_Y"></td>
+                                <td>
+                                    <button class="btn btn-sm btn-success save-customer">保存</button>
+                                    ${deleteBtnHtml}
+                                    ${isFactory ? '<span class="text-muted small ms-1">（工厂，不可删除）</span>' : ''}
+                                </td>
+                            `;
+                            const saveBtn = tr.querySelector('.save-customer');
+                            if (saveBtn) {
+                                saveBtn.addEventListener('click', async ()=>{
+                                    const payload = {
+                                        customer_name: tr.querySelector('[data-field="customer_name"]').value,
+                                        address_X: tr.querySelector('[data-field="address_X"]').value,
+                                        address_Y: tr.querySelector('[data-field="address_Y"]').value
+                                    };
+                                    try{
+                                        const r = await fetch('/schedulePage/customers/'+encodeURIComponent(c.customer_id),{
+                                            method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+                                        });
+                                        if(r.ok) { alert('保存成功'); loadCustomers(); if (typeof loadTravelTimes === 'function') loadTravelTimes(); }
+                                        else { const txt = await r.text(); alert('保存失败: '+txt); }
+                                    }catch(err){ console.error(err); alert('保存失败'); }
+                                });
+                            }
+
+                            const delBtn = tr.querySelector('.delete-customer');
+                            if (delBtn) {
+                                delBtn.addEventListener('click', async ()=>{
+                                    const cid = c.customer_id;
+                                    if(!cid) return;
+                                    const name = (c.customer_name || cid).toString().replace(/"/g,'');
+                                    if(!confirm('确定要删除零售商「'+name+'」吗？\n\n删除后将同时：\n· 从数据库中移除该零售商\n· 删除该零售商下的所有订单及订单明细（order_items）\n· 同步更新下方模糊旅行时间矩阵。')) return;
+                                    try{
+                                        const r = await fetch('/schedulePage/customers/'+encodeURIComponent(cid), { method:'DELETE' });
+                                        const result = await r.json().catch(()=> ({}));
+                                        if(r.ok && result.success){ alert('删除成功'); loadCustomers(); if (typeof loadTravelTimes === 'function') loadTravelTimes(); if (typeof loadOrders === 'function') loadOrders(); }
+                                        else { alert('删除失败：' + (result.message || (r.status === 403 ? '工厂不可删除' : '') || r.status)); }
+                                    }catch(err){ console.error(err); alert('删除失败'); }
+                                });
+                            }
+                            tbody.appendChild(tr);
+                        });
+                    }catch(err){
+                        console.error('[loadCustomers] 错误', err);
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-danger">加载客户失败: '+err.message+'</td></tr>';
+                    }
+                }
+
+                // --- Travel times (fuzzy) ---
+                function _toNumberOrNull(v){
+                    if (v === null || v === undefined) return null;
+                    const s = String(v).trim();
+                    if (s === '') return null;
+                    const n = Number(s);
+                    return Number.isFinite(n) ? n : null;
+                }
+
+                function _tripleToInputs(triple){
+                    const t = Array.isArray(triple) ? triple : [null,null,null];
+                    return [t[0], t[1], t[2]].map(x => (x === null || x === undefined) ? '' : x);
+                }
+
+                function renderTravelTimesTable(customers, matrix){
+                    const table = document.getElementById('travelTimesMatrixTable');
+                    if(!table){ console.warn('[travelTimes] #travelTimesMatrixTable 未找到'); return; }
+                    const all = (customers || []).map((c, i) => ({ ...c, index: i }));
+                    const retailers = all.filter(c => !c.is_factory);
+                    const n = all.length;
+                    const retailerIndices = retailers.map(r => r.index);
+                    table.innerHTML = '';
+                    table.dataset.retailerIndices = JSON.stringify(retailerIndices);
+                    table.dataset.n = String(n);
+
+                    const thead = document.createElement('thead');
+                    const hr1 = document.createElement('tr');
+                    hr1.innerHTML = `<th rowspan="2" style="min-width:140px">From \\ To</th>` + retailers.map(c => {
+                        const name = (c.customer_name || c.customer_id || '').toString();
+                        return `<th colspan="3" class="text-center">${name}</th>`;
+                    }).join('');
+                    const hr2 = document.createElement('tr');
+                    hr2.innerHTML = retailers.map(() => `<th class="text-center">min</th><th class="text-center">avg</th><th class="text-center">max</th>`).join('');
+                    thead.appendChild(hr1);
+                    thead.appendChild(hr2);
+                    table.appendChild(thead);
+
+                    const tbody = document.createElement('tbody');
+
+                    // 仅第一行：工厂 -> 各零售商
+                    const fRow = document.createElement('tr');
+                    fRow.innerHTML = `<th scope="row">工厂</th>`;
+                    retailerIndices.forEach(j => {
+                        const triple = (matrix && matrix.factory_to && matrix.factory_to[j]) ? matrix.factory_to[j] : [null,null,null];
+                        const [v0,v1,v2] = _tripleToInputs(triple);
+                        const cell = document.createElement('td');
+                        cell.colSpan = 3;
+                        cell.innerHTML = `
+                            <div class="d-flex gap-1">
+                                <input class="form-control form-control-sm tt-input" data-from-type="factory" data-from-idx="0" data-to-idx="${j}" data-k="0" value="${v0}">
+                                <input class="form-control form-control-sm tt-input" data-from-type="factory" data-from-idx="0" data-to-idx="${j}" data-k="1" value="${v1}">
+                                <input class="form-control form-control-sm tt-input" data-from-type="factory" data-from-idx="0" data-to-idx="${j}" data-k="2" value="${v2}">
+                            </div>
+                        `;
+                        fRow.appendChild(cell);
+                    });
+                    tbody.appendChild(fRow);
+
+                    // 仅零售商行：零售商 i -> 零售商 j（不再包含工厂行/列）
+                    retailerIndices.forEach((idxI, ii) => {
+                        const tr = document.createElement('tr');
+                        const fromName = (all[idxI].customer_name || all[idxI].customer_id || '').toString();
+                        tr.innerHTML = `<th scope="row">${fromName}</th>`;
+                        retailerIndices.forEach((idxJ, jj) => {
+                            const triple = (matrix && matrix.retail_to && matrix.retail_to[idxI] && matrix.retail_to[idxI][idxJ]) ? matrix.retail_to[idxI][idxJ] : [null,null,null];
+                            const [v0,v1,v2] = _tripleToInputs(triple);
+                            const td = document.createElement('td');
+                            td.colSpan = 3;
+                            const disabled = (idxI === idxJ) ? 'disabled' : '';
+                            const fixed0 = (idxI === idxJ) ? ' value="0"' : ` value="${v0}"`;
+                            const fixed1 = (idxI === idxJ) ? ' value="0"' : ` value="${v1}"`;
+                            const fixed2 = (idxI === idxJ) ? ' value="0"' : ` value="${v2}"`;
+                            td.innerHTML = `
+                                <div class="d-flex gap-1">
+                                    <input class="form-control form-control-sm tt-input" data-from-type="retail" data-from-idx="${idxI}" data-to-idx="${idxJ}" data-k="0" ${disabled}${fixed0}>
+                                    <input class="form-control form-control-sm tt-input" data-from-type="retail" data-from-idx="${idxI}" data-to-idx="${idxJ}" data-k="1" ${disabled}${fixed1}>
+                                    <input class="form-control form-control-sm tt-input" data-from-type="retail" data-from-idx="${idxI}" data-to-idx="${idxJ}" data-k="2" ${disabled}${fixed2}>
+                                </div>
+                            `;
+                            tr.appendChild(td);
+                        });
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+
+                    // 对称同步：零售商 i->j 修改 => j->i 同步
+                    table.oninput = function(e){
+                        const el = e.target;
+                        if(!el || !el.classList || !el.classList.contains('tt-input')) return;
+                        const fromType = el.dataset.fromType;
+                        if(fromType !== 'retail') return;
+                        const i = Number(el.dataset.fromIdx);
+                        const j = Number(el.dataset.toIdx);
+                        const k = Number(el.dataset.k);
+                        if(!Number.isFinite(i) || !Number.isFinite(j) || !Number.isFinite(k)) return;
+                        if(i === j) return;
+                        const mirror = table.querySelector(`.tt-input[data-from-type="retail"][data-from-idx="${j}"][data-to-idx="${i}"][data-k="${k}"]`);
+                        if(mirror && mirror.value !== el.value){
+                            mirror.value = el.value;
+                        }
+                    };
+                }
+
+                function collectTravelTimesFromTable(){
+                    const table = document.getElementById('travelTimesMatrixTable');
+                    if(!table) return null;
+                    let n = 0;
+                    let retailerIndices = [];
+                    try {
+                        n = parseInt(table.dataset.n, 10) || 0;
+                        retailerIndices = JSON.parse(table.dataset.retailerIndices || '[]');
+                    } catch(e) { return null; }
+                    if(!n) return null;
+
+                    const factory_to = Array.from({length:n}, ()=>[null,null,null]);
+                    const retail_to = Array.from({length:n}, ()=>Array.from({length:n}, ()=>[null,null,null]));
+
+                    const inputs = Array.from(table.querySelectorAll('.tt-input'));
+                    inputs.forEach(el=>{
+                        const fromType = el.dataset.fromType;
+                        const i = Number(el.dataset.fromIdx);
+                        const j = Number(el.dataset.toIdx);
+                        const k = Number(el.dataset.k);
+                        if(!Number.isFinite(j) || !Number.isFinite(k)) return;
+                        const v = _toNumberOrNull(el.value);
+                        if(fromType === 'factory'){
+                            if(j>=0 && j<n && k>=0 && k<3) factory_to[j][k] = v;
+                        } else if(fromType === 'retail'){
+                            if(i>=0 && i<n && j>=0 && j<n && k>=0 && k<3) retail_to[i][j][k] = v;
+                        }
+                    });
+
+                    for(let i=0;i<n;i++){
+                        retail_to[i][i] = [0,0,0];
+                    }
+                    for(let i=0;i<n;i++){
+                        for(let j=i+1;j<n;j++){
+                            const a = retail_to[i][j];
+                            const b = retail_to[j][i];
+                            const allNull = a.every(x=>x===null);
+                            const bAllNull = b.every(x=>x===null);
+                            const chosen = (!allNull) ? a : (!bAllNull ? b : [null,null,null]);
+                            retail_to[i][j] = chosen;
+                            retail_to[j][i] = chosen;
+                        }
+                    }
+                    return { factory_to, retail_to };
+                }
+
+                function _excelCellNum(row, col){
+                    if(!row || row[col] === undefined) return null;
+                    const v = row[col];
+                    if(v === null || v === undefined || v === '') return null;
+                    const n = Number(v);
+                    return Number.isFinite(n) ? n : null;
+                }
+
+                function _excelTriple(row, colBase){
+                    return [
+                        _excelCellNum(row, colBase),
+                        _excelCellNum(row, colBase + 1),
+                        _excelCellNum(row, colBase + 2)
+                    ];
+                }
+
+                function importTravelTimesFromExcelFile(file){
+                    const table = document.getElementById('travelTimesMatrixTable');
+                    if(!table){ alert('未找到旅行时间矩阵表格，请先加载参数。'); return; }
+                    let n = 0, retailerIndices = [];
+                    try {
+                        n = parseInt(table.dataset.n, 10) || 0;
+                        retailerIndices = JSON.parse(table.dataset.retailerIndices || '[]');
+                    } catch(e) { alert('表格数据异常'); return; }
+                    const n_retail = retailerIndices.length;
+                    if(!n_retail){ alert('当前无零售商，无法导入。'); return; }
+                    const expectedRows = 1 + n_retail;
+                    const expectedCols = 3 * n_retail;
+
+                    const reader = new FileReader();
+                    reader.onload = function(e){
+                        try {
+                            if (typeof XLSX === 'undefined') {
+                                alert('Excel 解析库未加载，请刷新页面后重试。');
+                                return;
+                            }
+                            const data = new Uint8Array(e.target.result);
+                            let wb;
+                            try {
+                                wb = XLSX.read(data, { type: 'array' });
+                            } catch (parseErr) {
+                                alert('无法解析 Excel 文件：' + (parseErr.message || '文件格式可能不正确，请使用 .xlsx 或 .xls 格式。'));
+                                return;
+                            }
+                            if(!wb || !wb.SheetNames || !wb.SheetNames.length){ alert('无法解析 Excel 文件：工作簿为空或格式异常。'); return; }
+                            const ws = wb.Sheets[wb.SheetNames[0]];
+                            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                            if(!rows || rows.length < expectedRows){
+                                alert('Excel 行数不足：需要 ' + expectedRows + ' 行（第1行工厂→零售商，第2行起零售商→零售商），当前 ' + (rows ? rows.length : 0) + ' 行。');
+                                return;
+                            }
+                            for(let r = 0; r < expectedRows; r++){
+                                if(!Array.isArray(rows[r]) || rows[r].length < expectedCols){
+                                    alert('第 ' + (r+1) + ' 行列数不足：需要 ' + expectedCols + ' 列（每零售商 min/avg/max 共3列），当前 ' + (Array.isArray(rows[r]) ? rows[r].length : 0) + ' 列。');
+                                    return;
+                                }
+                            }
+
+                            // 校验：从第二行开始（零售商部分）对角线为 0，且对称
+                            for(let i = 0; i < n_retail; i++){
+                                const tri = _excelTriple(rows[1 + i], 3 * i);
+                                const isZero = tri.every(v => v === 0 || v === null);
+                                if(!isZero){ alert('第 ' + (2 + i) + ' 行第 ' + (3*i+1) + '～' + (3*i+3) + ' 列应为对角线元素 0，当前为：' + tri.join('/')); return; }
+                            }
+                            for(let i = 0; i < n_retail; i++){
+                                for(let j = i + 1; j < n_retail; j++){
+                                    const a = _excelTriple(rows[1 + i], 3 * j);
+                                    const b = _excelTriple(rows[1 + j], 3 * i);
+                                    const eq = a.length === b.length && a.every((v, k) => (v === b[k]) || (Number.isFinite(v) && Number.isFinite(b[k]) && v === b[k]));
+                                    if(!eq){ alert('零售商间矩阵应对称：第 ' + (2+i) + ' 行到第 ' + (j+1) + ' 列 与 第 ' + (2+j) + ' 行到第 ' + (i+1) + ' 列 应相同。'); return; }
+                                }
+                            }
+
+                            // 按表格顺序生成一维数值列表（与 .tt-input 顺序一致）；对角线强制为 0
+                            const flat = [];
+                            for(let r = 0; r < expectedRows; r++){
+                                for(let c = 0; c < n_retail; c++){
+                                    const isDiag = (r >= 1 && c === r - 1);
+                                    const t = isDiag ? [0, 0, 0] : _excelTriple(rows[r], 3 * c);
+                                    flat.push(t[0], t[1], t[2]);
+                                }
+                            }
+                            const inputs = Array.from(table.querySelectorAll('.tt-input'));
+                            if(flat.length !== inputs.length){
+                                alert('导入数据个数与当前表格不匹配，请确认 Excel 格式与当前零售商数量一致。');
+                                return;
+                            }
+                            flat.forEach((val, idx)=>{
+                                inputs[idx].value = (val === null || val === undefined) ? '' : val;
+                            });
+                            alert('已按 Excel 行列顺序填充到矩阵；请核对后点击“保存到数据库”。');
+                        } catch(err) {
+                            console.error(err);
+                            alert('导入失败：' + (err.message || String(err)));
+                        }
+                    };
+                    reader.onerror = function(){ alert('无法读取文件，请重试。'); };
+                    reader.readAsArrayBuffer(file);
+                }
+
+                async function loadTravelTimes(){
+                    const table = document.getElementById('travelTimesMatrixTable');
+                    if(!table){ return; } // params_fragment 未包含该表格时直接跳过
+                    table.innerHTML = '<tbody><tr><td>加载中...</td></tr></tbody>';
+                    try{
+                        const res = await fetch('/schedulePage/travel_times');
+                        if(!res.ok){
+                            const t = await res.text();
+                            throw new Error('状态 '+res.status+': '+t);
+                        }
+                        const data = await res.json();
+                        if(!data.success) throw new Error(data.message || '加载失败');
+                        renderTravelTimesTable(data.customers || [], data.matrix || {});
+                        // 同步备份到浏览器（后端不可用时可用）
+                        try{
+                            localStorage.setItem('travel_times_matrix_v1', JSON.stringify({
+                                customer_ids: data.customer_ids || [],
+                                customers: data.customers || [],
+                                matrix: data.matrix || {}
+                            }));
+                        }catch(e){ /* ignore */ }
+
+                        const reloadBtn = document.getElementById('travelTimesReloadBtn');
+                        if (reloadBtn) reloadBtn.onclick = ()=>loadTravelTimes();
+
+                        const saveBtn = document.getElementById('travelTimesSaveBtn');
+                        if (saveBtn) saveBtn.onclick = async ()=>{
+                            const matrix = collectTravelTimesFromTable();
+                            if(!matrix){ alert('未找到矩阵表格数据'); return; }
+                            const payload = { customer_ids: (data.customer_ids||[]), matrix };
+                            try{
+                                const r = await fetch('/schedulePage/travel_times',{
+                                    method:'PUT',
+                                    headers:{'Content-Type':'application/json'},
+                                    body: JSON.stringify(payload)
+                                });
+                                if(r.ok){
+                                    // 成功后也备份到浏览器
+                                    try{
+                                        localStorage.setItem('travel_times_matrix_v1', JSON.stringify({
+                                            customer_ids: payload.customer_ids || [],
+                                            customers: data.customers || [],
+                                            matrix: payload.matrix || {}
+                                        }));
+                                    }catch(e){ /* ignore */ }
+                                    alert('保存成功'); 
+                                    loadTravelTimes();
+                                } else {
+                                    const txt = await r.text();
+                                    // 后端保存失败时，退化存到浏览器
+                                    try{
+                                        localStorage.setItem('travel_times_matrix_v1', JSON.stringify({
+                                            customer_ids: payload.customer_ids || [],
+                                            customers: data.customers || [],
+                                            matrix: payload.matrix || {}
+                                        }));
+                                    }catch(e){ /* ignore */ }
+                                    alert('保存到数据库失败，已暂存到浏览器本地：'+txt);
+                                }
+                            }catch(err){
+                                console.error(err);
+                                // 网络/后端不可用：退化存到浏览器
+                                try{
+                                    localStorage.setItem('travel_times_matrix_v1', JSON.stringify({
+                                        customer_ids: payload.customer_ids || [],
+                                        customers: data.customers || [],
+                                        matrix: payload.matrix || {}
+                                    }));
+                                }catch(e){ /* ignore */ }
+                                alert('后端不可用，已暂存到浏览器本地。');
+                            }
+                        };
+
+                        const excelImportBtn = document.getElementById('travelTimesExcelImportBtn');
+                        const excelFileInput = document.getElementById('travelTimesExcelFileInput');
+                        if (excelImportBtn && excelFileInput) {
+                            excelImportBtn.onclick = function(){ excelFileInput.click(); };
+                            excelFileInput.onchange = function(ev){
+                                const f = ev.target.files && ev.target.files[0];
+                                if (f) { importTravelTimesFromExcelFile(f); ev.target.value = ''; }
+                            };
+                        }
+                    }catch(err){
+                        console.error('[travelTimes] 加载失败', err);
+                        // 读取浏览器本地备份兜底
+                        try{
+                            const raw = localStorage.getItem('travel_times_matrix_v1');
+                            if(raw){
+                                const cached = JSON.parse(raw);
+                                renderTravelTimesTable(cached.customers || [], cached.matrix || {});
+                                const reloadBtn = document.getElementById('travelTimesReloadBtn');
+                                if (reloadBtn) reloadBtn.onclick = ()=>loadTravelTimes();
+                                const saveBtn = document.getElementById('travelTimesSaveBtn');
+                                if (saveBtn) saveBtn.onclick = async ()=>{
+                                    const matrix = collectTravelTimesFromTable();
+                                    if(!matrix){ alert('未找到矩阵表格数据'); return; }
+                                    try{
+                                        localStorage.setItem('travel_times_matrix_v1', JSON.stringify({
+                                            customer_ids: cached.customer_ids || [],
+                                            customers: cached.customers || [],
+                                            matrix: matrix || {}
+                                        }));
+                                    }catch(e){ /* ignore */ }
+                                    alert('当前已保存到浏览器本地（后端不可用）。');
+                                };
+                                const excelImportBtn = document.getElementById('travelTimesExcelImportBtn');
+                                const excelFileInput = document.getElementById('travelTimesExcelFileInput');
+                                if (excelImportBtn && excelFileInput) {
+                                    excelImportBtn.onclick = function(){ excelFileInput.click(); };
+                                    excelFileInput.onchange = function(ev){
+                                        const f = ev.target.files && ev.target.files[0];
+                                        if (f) { importTravelTimesFromExcelFile(f); ev.target.value = ''; }
+                                    };
+                                }
+                                return;
+                            }
+                        }catch(e){ /* ignore */ }
+                        table.innerHTML = '<tbody><tr><td class="text-danger">加载旅行时间失败: '+err.message+'</td></tr></tbody>';
+                    }
+                }
+
+                // load & render products
+                async function loadProducts(){
+                    const tbody = document.querySelector('#productsTable tbody');
+                    if(!tbody){ console.warn('[loadProducts] #productsTable tbody 未找到'); return; }
+                    tbody.innerHTML = '<tr><td colspan="7">加载中...</td></tr>';
+                    try{
+                        const res = await fetch('/schedulePage/products');
+                        console.log('[loadProducts] 响应状态', res.status, 'Content-Type:', res.headers.get('content-type'));
+                        const rawText = await res.clone().text();
+                        console.log('[loadProducts] 原始响应文本（前1k）', rawText.slice(0,1024));
+
+                        if(!res.ok){ throw new Error('状态 '+res.status+': '+rawText); }
+
+                        let data;
+                        try{
+                            data = JSON.parse(rawText);
+                        }catch(parseErr){
+                            console.error('[loadProducts] JSON 解析错误', parseErr);
+                            throw new Error('无法解析为 JSON: '+parseErr.message+'，响应前1k：'+rawText.slice(0,1024));
+                        }
+
+                        console.log('[loadProducts] 收到', Array.isArray(data) ? data.length : '非数组', '条');
+                        tbody.innerHTML = '';
+                        if(!data || !data.length){ tbody.innerHTML = '<tr><td colspan="7" class="text-muted">暂无产品</td></tr>'; return; }
+                        data.forEach(p=>{
+                            const tr = document.createElement('tr');
+                            const show = (v) => (v !== undefined && v !== null) ? v : '';
+                            tr.innerHTML = `
+                                <td>${p.product_id||''}</td>
+                                <td><input class="form-control form-control-sm" value="${p.product_name||''}" data-field="product_name"></td>
+                                <td><input class="form-control form-control-sm" value="${show(p.takt)}" data-field="takt"></td>
+                                <td><input class="form-control form-control-sm" value="${show(p.pc)}" data-field="pc"></td>
+                                <td><input class="form-control form-control-sm" value="${show(p.pallet)}" data-field="pallet"></td>
+                                <td>
+                                    <button class="btn btn-sm btn-success save-product">保存</button>
+                                    <button class="btn btn-sm btn-danger delete-product ms-1">删除</button>
+                                </td>
+                            `;
+                            const saveBtn = tr.querySelector('.save-product');
+                            saveBtn.addEventListener('click', async ()=>{
+                                const payload = {
+                                    product_name: tr.querySelector('[data-field="product_name"]').value,
+                                    takt: tr.querySelector('[data-field="takt"]').value,
+                                    pc: tr.querySelector('[data-field="pc"]').value,
+                                    pallet: tr.querySelector('[data-field="pallet"]').value
+                                };
+                                try{
+                                    const r = await fetch('/schedulePage/products/'+encodeURIComponent(p.product_id),{
+                                        method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+                                    });
+                                    if(r.ok) { alert('保存成功'); loadProducts(); }
+                                    else { const txt = await r.text(); alert('保存失败: '+txt); }
+                                }catch(err){ console.error(err); alert('保存失败'); }
+                            });
+                            const delBtn = tr.querySelector('.delete-product');
+                            delBtn.addEventListener('click', async ()=>{
+                                const name = (p.product_name || p.product_id || '该产品').toString().replace(/"/g, '');
+                                if (!confirm('确定要删除产品「' + name + '」吗？\n\n删除后将同时：\n· 从数据库中移除该产品\n· 删除所有订单中与该产品相关的明细（order_items）\n· 若某订单仅包含该产品，该订单也会被删除。')) return;
+                                try {
+                                    const r = await fetch('/schedulePage/products/' + encodeURIComponent(p.product_id), { method: 'DELETE' });
+                                    const result = await r.json().catch(() => ({}));
+                                    if (r.ok && result.success) {
+                                        alert('删除成功');
+                                        loadProducts();
+                                        if (typeof loadOrders === 'function') loadOrders();
+                                    } else {
+                                        alert('删除失败：' + (result.message || r.status));
+                                    }
+                                } catch (err) { console.error(err); alert('删除请求失败'); }
+                            });
+                            tbody.appendChild(tr);
+                        });
+                    }catch(err){
+                        console.error('[loadProducts] 错误', err);
+                        tbody.innerHTML = '<tr><td colspan="7" class="text-danger">加载产品失败: '+err.message+'</td></tr>';
+                    }
+                }
+
+                // 绑定新增表单提交（使用 onsubmit 覆盖之前的绑定，避免重复绑定）
+                const createCustomerForm = document.getElementById('createCustomerForm');
+                if (createCustomerForm) {
+                    createCustomerForm.onsubmit = async (e)=>{
+                        e.preventDefault();
+                        const fd = new FormData(e.target);
+                        const payload = Object.fromEntries(fd.entries());
+                        try{
+                            const r = await fetch('/schedulePage/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+                            if(r.ok){ alert('新增成功'); e.target.reset(); loadCustomers(); if (typeof loadTravelTimes === 'function') loadTravelTimes(); }
+                            else { const t = await r.text(); alert('新增失败: ' + t); }
+                        }catch(err){ console.error(err); alert('新增失败'); }
+                    };
+                }
+
+                const createProductForm = document.getElementById('createProductForm');
+                if (createProductForm) {
+                    createProductForm.onsubmit = async (e)=>{
+                        e.preventDefault();
+                        const fd = new FormData(e.target);
+                        const payload = Object.fromEntries(fd.entries());
+                        try{
+                            const r = await fetch('/schedulePage/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+                            if(r.ok){ alert('新增成功'); e.target.reset(); loadProducts(); }
+                            else { const t = await r.text(); alert('新增失败: ' + t); }
+                        }catch(err){ console.error(err); alert('新增失败'); }
+                    };
+                }
+
+                const createVehicleForm = document.getElementById('createVehicleForm');
+                if (createVehicleForm) {
+                    createVehicleForm.onsubmit = async (e)=>{
+                        e.preventDefault();
+                        const fd = new FormData(e.target);
+                        const payload = Object.fromEntries(fd.entries());
+                        try{
+                            const r = await fetch('/schedulePage/vehicles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+                            if(r.ok){ alert('新增成功'); e.target.reset(); loadVehicles(); }
+                            else { const t = await r.text(); alert('新增失败: ' + t); }
+                        }catch(err){ console.error(err); alert('新增失败'); }
+                    };
+                }
+
+                // load & render vehicles
+                async function loadVehicles(){
+                    const tbody = document.querySelector('#vehiclesTable tbody');
+                    if(!tbody){ console.warn('[loadVehicles] #vehiclesTable tbody 未找到'); return; }
+                    tbody.innerHTML = '<tr><td colspan="6">加载中...</td></tr>';
+                    try{
+                        const res = await fetch('/schedulePage/vehicles');
+                        console.log('[loadVehicles] 响应状态', res.status, 'Content-Type:', res.headers.get('content-type'));
+                        const rawText = await res.clone().text();
+                        console.log('[loadVehicles] 原始响应文本（前1k）', rawText.slice(0,1024));
+                        if(!res.ok){ throw new Error('状态 '+res.status+': '+rawText); }
+                        let data;
+                        try{ data = JSON.parse(rawText); }catch(parseErr){ console.error('[loadVehicles] JSON 解析错误', parseErr); throw new Error('无法解析为 JSON: '+parseErr.message+'，响应前1k：'+rawText.slice(0,1024)); }
+                        console.log('[loadVehicles] 收到', Array.isArray(data) ? data.length : '非数组', '条');
+                        tbody.innerHTML = '';
+                        if(!data || !data.length){ tbody.innerHTML = '<tr><td colspan="6" class="text-muted">暂无车辆</td></tr>'; return; }
+                        data.forEach(v=>{
+                            const vehicleKey = String(v.vehicle_id ?? v._id ?? '').trim();
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${vehicleKey || ''}</td>
+                                <td><input class="form-control form-control-sm" value="${v.vehicle_name||''}" data-field="vehicle_name"></td>
+                                <td><input class="form-control form-control-sm" value="${v.capacity||''}" data-field="capacity" type="number"></td>
+                                <td><input class="form-control form-control-sm" value="${v.constcost||''}" data-field="constcost" type="number"></td>
+                                <td><input class="form-control form-control-sm" value="${v.varcost||''}" data-field="varcost" type="number"></td>
+                                <td>
+                                    <button class="btn btn-sm btn-success save-vehicle">保存</button>
+                                    <button class="btn btn-sm btn-danger delete-vehicle ms-1">删除</button>
+                                </td>
+                            `;
+                            const saveBtn = tr.querySelector('.save-vehicle');
+                            saveBtn.addEventListener('click', async ()=>{
+                                if (!vehicleKey) { alert('保存失败：车辆ID缺失'); return; }
+                                const payload = {
+                                    vehicle_name: tr.querySelector('[data-field="vehicle_name"]').value,
+                                    capacity: tr.querySelector('[data-field="capacity"]').value,
+                                    constcost: tr.querySelector('[data-field="constcost"]').value,
+                                    varcost: tr.querySelector('[data-field="varcost"]').value
+                                };
+                                try{
+                                    const r = await fetch('/schedulePage/vehicles/'+encodeURIComponent(vehicleKey),{
+                                        method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+                                    });
+                                    if(r.ok) { alert('保存成功'); loadVehicles(); }
+                                    else { const txt = await r.text(); alert('保存失败: '+txt); }
+                                }catch(err){ console.error(err); alert('保存失败'); }
+                            });
+                            const delBtn = tr.querySelector('.delete-vehicle');
+                            delBtn.addEventListener('click', async ()=>{
+                                if (!vehicleKey) { alert('删除失败：车辆ID缺失'); return; }
+                                const name = (v.vehicle_name || vehicleKey || '该车辆').toString().replace(/"/g, '');
+                                if (!confirm('确定要删除车辆「' + name + '」吗？')) return;
+                                try {
+                                    const r = await fetch('/schedulePage/vehicles/' + encodeURIComponent(vehicleKey), { method: 'DELETE' });
+                                    const result = await r.json().catch(() => ({}));
+                                    if (r.ok && result.success) {
+                                        alert('删除成功');
+                                        loadVehicles();
+                                        if (typeof loadOrders === 'function') loadOrders();
+                                    } else {
+                                        alert('删除失败：' + (result.message || r.status));
+                                    }
+                                } catch (err) { console.error(err); alert('删除请求失败'); }
+                            });
+                            tbody.appendChild(tr);
+                        });
+                    }catch(err){ console.error('[loadVehicles] 错误', err); tbody.innerHTML = '<tr><td colspan="6" class="text-danger">加载车辆失败: '+err.message+'</td></tr>'; }
+                }
+
+                // 首次加载数据
+                loadCustomers(); loadProducts(); loadVehicles(); if (typeof loadTravelTimes === 'function') loadTravelTimes();
+            }
+        });
+    </script>
+</body>
+</html>
+    

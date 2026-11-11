@@ -3,8 +3,32 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+import copy
 
 from metaforge.services.persist_store import _pick_best_schedule
+
+
+def candidates_to_schedule_results(candidates: Any, recommended_id: Optional[str]) -> Dict[str, Any]:
+    """Expose the approved recommendation to legacy consumers; retain alternatives in the package."""
+    results = {}
+    if not recommended_id:
+        return results
+    for candidate in candidates if isinstance(candidates, list) else []:
+        if not isinstance(candidate, dict) or candidate.get("error"):
+            continue
+        sid = str(candidate.get("schedule_id") or candidate.get("solver") or candidate.get("id") or "").strip()
+        gantt = candidate.get("gantt_data")
+        if sid != str(recommended_id) or not isinstance(gantt, list) or not gantt:
+            continue
+        entry = copy.deepcopy(candidate)
+        metrics = dict(entry.get("metrics") or {})
+        makespan = metrics.get("makespan")
+        if makespan is None:
+            makespan = max(float(op.get("end") or 0) for op in gantt)
+        metrics["makespan"] = makespan
+        entry.update(id=sid, name=entry.get("solver_label") or sid, best_score=makespan, metrics=metrics)
+        results[sid] = entry
+    return results
 
 
 def normalize_schedule_results(raw: Any) -> Dict[str, Any]:

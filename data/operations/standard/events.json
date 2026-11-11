@@ -1,0 +1,7 @@
+[
+  {"name":"原生产设备0故障","type":"resource_unavailable","target_id":"production:machine:0","data":{"expected_recovery_at":null}},
+  {"name":"原生产设备0确认恢复","type":"resource_recovered","target_id":"production:machine:0","data":{}},
+  {"name":"原组装压缩机工位7停用","type":"resource_unavailable","target_id":"assembly:workstation:7","data":{"expected_recovery_at":null}},
+  {"name":"原压缩机库存修正","type":"inventory_count","target_id":"assembly|compressor","data":{"material_id":"compressor","location":"assembly","quantity":3}},
+  {"name":"原物流车辆14缺失","type":"resource_unavailable","target_id":"logistics:vehicle:14","data":{"expected_recovery_at":null}}
+]

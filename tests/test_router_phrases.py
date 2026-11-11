@@ -8,7 +8,7 @@ from metaforge.orchestrator.router import resolve_agent_id
 
 # 设计验收：20 条典型话术（规则回退 / explicit intent）
 PHRASE_CASES = [
-    ("用禁忌搜索和 SPT 对比一下排程", "scheduling"),
+    ("用禁忌搜索和 SPT 对比一下排程", "whatif"),
     ("3号机坏了4小时，帮我重排", "events"),
     ("新建计划试产01", "plans"),
     ("检查一下齐套能否开工", "kitting"),
@@ -24,7 +24,7 @@ PHRASE_CASES = [
     ("加载计划 演示-A", "plans"),
     ("生成客户交期说明话术", "commitment"),
     ("先排程再预测物料", "kitting"),
-    ("对比遗传算法和模拟退火", "scheduling"),
+    ("对比遗传算法和模拟退火", "whatif"),
     ("物料延迟3天到货重排", "events"),
     ("删除计划旧版", "plans"),
     ("紧急插单工单 J005", "events"),

@@ -1,0 +1,1090 @@
+{
+  "id": "REFRIGERATOR-STANDARD-v1",
+  "name": "冰箱产业链标准计划 v1",
+  "source": "standard",
+  "mode": "simulation",
+  "provenance": "人工构造的工业流程验证参数，不是现场实测；服务器真实时间1:1执行。启用起点为标准班次起点。",
+  "orders": [
+    {
+      "id": "O-A",
+      "name": "冰箱A型批次A",
+      "product_id": "FR-A",
+      "quantity": 6,
+      "due_seconds": 9000,
+      "priority": 3,
+      "customer": "CA"
+    },
+    {
+      "id": "O-B",
+      "name": "冰箱B型批次B",
+      "product_id": "FR-B",
+      "quantity": 4,
+      "due_seconds": 10200,
+      "priority": 2,
+      "customer": "CB"
+    },
+    {
+      "id": "O-C",
+      "name": "冰箱A型批次C",
+      "product_id": "FR-A",
+      "quantity": 4,
+      "due_seconds": 10800,
+      "priority": 1,
+      "customer": "CC"
+    }
+  ],
+  "resources": [
+    {
+      "id": "M1",
+      "name": "加工中心一",
+      "kind": "production",
+      "location": "A",
+      "working_offsets": [
+        [
+          0,
+          28800
+        ],
+        [
+          86400,
+          115200
+        ],
+        [
+          172800,
+          201600
+        ],
+        [
+          259200,
+          288000
+        ],
+        [
+          345600,
+          374400
+        ],
+        [
+          432000,
+          460800
+        ],
+        [
+          518400,
+          547200
+        ]
+      ]
+    },
+    {
+      "id": "M2",
+      "name": "加工中心二（替代）",
+      "kind": "production",
+      "location": "A",
+      "working_offsets": [
+        [
+          0,
+          28800
+        ],
+        [
+          86400,
+          115200
+        ],
+        [
+          172800,
+          201600
+        ],
+        [
+          259200,
+          288000
+        ],
+        [
+          345600,
+          374400
+        ],
+        [
+          432000,
+          460800
+        ],
+        [
+          518400,
+          547200
+        ]
+      ]
+    },
+    {
+      "id": "S1",
+      "name": "组装工位一",
+      "kind": "assembly",
+      "location": "B",
+      "working_offsets": [
+        [
+          0,
+          28800
+        ],
+        [
+          86400,
+          115200
+        ],
+        [
+          172800,
+          201600
+        ],
+        [
+          259200,
+          288000
+        ],
+        [
+          345600,
+          374400
+        ],
+        [
+          432000,
+          460800
+        ],
+        [
+          518400,
+          547200
+        ]
+      ]
+    },
+    {
+      "id": "S2",
+      "name": "组装工位二",
+      "kind": "assembly",
+      "location": "B",
+      "working_offsets": [
+        [
+          0,
+          28800
+        ],
+        [
+          86400,
+          115200
+        ],
+        [
+          172800,
+          201600
+        ],
+        [
+          259200,
+          288000
+        ],
+        [
+          345600,
+          374400
+        ],
+        [
+          432000,
+          460800
+        ],
+        [
+          518400,
+          547200
+        ]
+      ]
+    },
+    {
+      "id": "V1",
+      "name": "配送车辆一",
+      "kind": "vehicle",
+      "location": "D",
+      "capacity": 12,
+      "working_offsets": [
+        [
+          0,
+          28800
+        ],
+        [
+          86400,
+          115200
+        ],
+        [
+          172800,
+          201600
+        ],
+        [
+          259200,
+          288000
+        ],
+        [
+          345600,
+          374400
+        ],
+        [
+          432000,
+          460800
+        ],
+        [
+          518400,
+          547200
+        ]
+      ]
+    },
+    {
+      "id": "V2",
+      "name": "配送车辆二",
+      "kind": "vehicle",
+      "location": "D",
+      "capacity": 8,
+      "working_offsets": [
+        [
+          0,
+          28800
+        ],
+        [
+          86400,
+          115200
+        ],
+        [
+          172800,
+          201600
+        ],
+        [
+          259200,
+          288000
+        ],
+        [
+          345600,
+          374400
+        ],
+        [
+          432000,
+          460800
+        ],
+        [
+          518400,
+          547200
+        ]
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "O-A-T1",
+      "name": "冰箱A型批次A · 钣金成型",
+      "order_id": "O-A",
+      "kind": "production",
+      "quantity": 6,
+      "duration_mode": "per_unit",
+      "alternatives": [
+        {
+          "resource_id": "M1",
+          "unit_seconds": 120,
+          "setup_seconds": 60
+        },
+        {
+          "resource_id": "M2",
+          "unit_seconds": 132.0,
+          "setup_seconds": 60
+        }
+      ],
+      "predecessors": [],
+      "transfer_seconds": 0,
+      "transfer_on_reassign_seconds": 60,
+      "resumable": true,
+      "inputs": [
+        {
+          "material_id": "RAW",
+          "quantity": 6,
+          "location": "A"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "A-CUT",
+          "quantity": 6,
+          "location": "A"
+        }
+      ]
+    },
+    {
+      "id": "O-A-T2",
+      "name": "冰箱A型批次A · 部件加工",
+      "order_id": "O-A",
+      "kind": "production",
+      "quantity": 6,
+      "duration_mode": "per_unit",
+      "alternatives": [
+        {
+          "resource_id": "M1",
+          "unit_seconds": 90,
+          "setup_seconds": 30
+        },
+        {
+          "resource_id": "M2",
+          "unit_seconds": 99.00000000000001,
+          "setup_seconds": 30
+        }
+      ],
+      "predecessors": [
+        "O-A-T1"
+      ],
+      "transfer_seconds": 0,
+      "transfer_on_reassign_seconds": 60,
+      "resumable": true,
+      "inputs": [
+        {
+          "material_id": "A-CUT",
+          "quantity": 6,
+          "location": "A"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "A-PANEL",
+          "quantity": 6,
+          "location": "A"
+        }
+      ]
+    },
+    {
+      "id": "O-A-T3",
+      "name": "冰箱A型批次A · 壳体组装",
+      "order_id": "O-A",
+      "kind": "assembly",
+      "quantity": 6,
+      "duration_mode": "per_unit",
+      "alternatives": [
+        {
+          "resource_id": "S1",
+          "unit_seconds": 80,
+          "setup_seconds": 30
+        },
+        {
+          "resource_id": "S2",
+          "unit_seconds": 88.0,
+          "setup_seconds": 30
+        }
+      ],
+      "predecessors": [
+        "O-A-T2"
+      ],
+      "transfer_seconds": 300,
+      "transfer_on_reassign_seconds": 60,
+      "resumable": true,
+      "inputs": [
+        {
+          "material_id": "A-PANEL",
+          "quantity": 6,
+          "location": "A"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "A-BODY",
+          "quantity": 6,
+          "location": "B"
+        }
+      ]
+    },
+    {
+      "id": "O-A-T4",
+      "name": "冰箱A型批次A · 压缩机及电控组装",
+      "order_id": "O-A",
+      "kind": "assembly",
+      "quantity": 6,
+      "duration_mode": "per_unit",
+      "alternatives": [
+        {
+          "resource_id": "S1",
+          "unit_seconds": 100,
+          "setup_seconds": 30
+        },
+        {
+          "resource_id": "S2",
+          "unit_seconds": 110.00000000000001,
+          "setup_seconds": 30
+        }
+      ],
+      "predecessors": [
+        "O-A-T3"
+      ],
+      "transfer_seconds": 0,
+      "transfer_on_reassign_seconds": 60,
+      "resumable": true,
+      "inputs": [
+        {
+          "material_id": "A-BODY",
+          "quantity": 6,
+          "location": "B"
+        },
+        {
+          "material_id": "COMP",
+          "quantity": 6,
+          "location": "B"
+        },
+        {
+          "material_id": "BOARD",
+          "quantity": 6,
+          "location": "B"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "A-FG",
+          "quantity": 6,
+          "location": "B"
+        }
+      ]
+    },
+    {
+      "id": "O-B-T1",
+      "name": "冰箱B型批次B · 钣金成型",
+      "order_id": "O-B",
+      "kind": "production",
+      "quantity": 4,
+      "duration_mode": "per_unit",
+      "alternatives": [
+        {
+          "resource_id": "M1",
+          "unit_seconds": 150,
+          "setup_seconds": 60
+        },
+        {
+          "resource_id": "M2",
+          "unit_seconds": 165.0,
+          "setup_seconds": 60
+        }
+      ],
+      "predecessors": [],
+      "transfer_seconds": 0,
+      "transfer_on_reassign_seconds": 60,
+      "resumable": true,
+      "inputs": [
+        {
+          "material_id": "RAW",
+          "quantity": 4,
+          "location": "A"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "B-CUT",
+          "quantity": 4,
+          "location": "A"
+        }
+      ]
+    },
+    {
+      "id": "O-B-T2",
+      "name": "冰箱B型批次B · 部件加工",
+      "order_id": "O-B",
+      "kind": "production",
+      "quantity": 4,
+      "duration_mode": "per_unit",
+      "alternatives": [
+        {
+          "resource_id": "M1",
+          "unit_seconds": 110,
+          "setup_seconds": 30
+        },
+        {
+          "resource_id": "M2",
+          "unit_seconds": 121.00000000000001,
+          "setup_seconds": 30
+        }
+      ],
+      "predecessors": [
+        "O-B-T1"
+      ],
+      "transfer_seconds": 0,
+      "transfer_on_reassign_seconds": 60,
+      "resumable": true,
+      "inputs": [
+        {
+          "material_id": "B-CUT",
+          "quantity": 4,
+          "location": "A"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "B-PANEL",
+          "quantity": 4,
+          "location": "A"
+        }
+      ]
+    },
+    {
+      "id": "O-B-T3",
+      "name": "冰箱B型批次B · 壳体组装",
+      "order_id": "O-B",
+      "kind": "assembly",
+      "quantity": 4,
+      "duration_mode": "per_unit",
+      "alternatives": [
+        {
+          "resource_id": "S1",
+          "unit_seconds": 100,
+          "setup_seconds": 30
+        },
+        {
+          "resource_id": "S2",
+          "unit_seconds": 110.00000000000001,
+          "setup_seconds": 30
+        }
+      ],
+      "predecessors": [
+        "O-B-T2"
+      ],
+      "transfer_seconds": 300,
+      "transfer_on_reassign_seconds": 60,
+      "resumable": true,
+      "inputs": [
+        {
+          "material_id": "B-PANEL",
+          "quantity": 4,
+          "location": "A"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "B-BODY",
+          "quantity": 4,
+          "location": "B"
+        }
+      ]
+    },
+    {
+      "id": "O-B-T4",
+      "name": "冰箱B型批次B · 压缩机及电控组装",
+      "order_id": "O-B",
+      "kind": "assembly",
+      "quantity": 4,
+      "duration_mode": "per_unit",
+      "alternatives": [
+        {
+          "resource_id": "S1",
+          "unit_seconds": 130,
+          "setup_seconds": 30
+        },
+        {
+          "resource_id": "S2",
+          "unit_seconds": 143.0,
+          "setup_seconds": 30
+        }
+      ],
+      "predecessors": [
+        "O-B-T3"
+      ],
+      "transfer_seconds": 0,
+      "transfer_on_reassign_seconds": 60,
+      "resumable": true,
+      "inputs": [
+        {
+          "material_id": "B-BODY",
+          "quantity": 4,
+          "location": "B"
+        },
+        {
+          "material_id": "COMP",
+          "quantity": 4,
+          "location": "B"
+        },
+        {
+          "material_id": "BOARD",
+          "quantity": 4,
+          "location": "B"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "B-FG",
+          "quantity": 4,
+          "location": "B"
+        }
+      ]
+    },
+    {
+      "id": "O-C-T1",
+      "name": "冰箱A型批次C · 钣金成型",
+      "order_id": "O-C",
+      "kind": "production",
+      "quantity": 4,
+      "duration_mode": "per_unit",
+      "alternatives": [
+        {
+          "resource_id": "M1",
+          "unit_seconds": 120,
+          "setup_seconds": 60
+        },
+        {
+          "resource_id": "M2",
+          "unit_seconds": 132.0,
+          "setup_seconds": 60
+        }
+      ],
+      "predecessors": [],
+      "transfer_seconds": 0,
+      "transfer_on_reassign_seconds": 60,
+      "resumable": true,
+      "inputs": [
+        {
+          "material_id": "RAW",
+          "quantity": 4,
+          "location": "A"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "C-CUT",
+          "quantity": 4,
+          "location": "A"
+        }
+      ]
+    },
+    {
+      "id": "O-C-T2",
+      "name": "冰箱A型批次C · 部件加工",
+      "order_id": "O-C",
+      "kind": "production",
+      "quantity": 4,
+      "duration_mode": "per_unit",
+      "alternatives": [
+        {
+          "resource_id": "M1",
+          "unit_seconds": 90,
+          "setup_seconds": 30
+        },
+        {
+          "resource_id": "M2",
+          "unit_seconds": 99.00000000000001,
+          "setup_seconds": 30
+        }
+      ],
+      "predecessors": [
+        "O-C-T1"
+      ],
+      "transfer_seconds": 0,
+      "transfer_on_reassign_seconds": 60,
+      "resumable": true,
+      "inputs": [
+        {
+          "material_id": "C-CUT",
+          "quantity": 4,
+          "location": "A"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "C-PANEL",
+          "quantity": 4,
+          "location": "A"
+        }
+      ]
+    },
+    {
+      "id": "O-C-T3",
+      "name": "冰箱A型批次C · 壳体组装",
+      "order_id": "O-C",
+      "kind": "assembly",
+      "quantity": 4,
+      "duration_mode": "per_unit",
+      "alternatives": [
+        {
+          "resource_id": "S1",
+          "unit_seconds": 80,
+          "setup_seconds": 30
+        },
+        {
+          "resource_id": "S2",
+          "unit_seconds": 88.0,
+          "setup_seconds": 30
+        }
+      ],
+      "predecessors": [
+        "O-C-T2"
+      ],
+      "transfer_seconds": 300,
+      "transfer_on_reassign_seconds": 60,
+      "resumable": true,
+      "inputs": [
+        {
+          "material_id": "C-PANEL",
+          "quantity": 4,
+          "location": "A"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "C-BODY",
+          "quantity": 4,
+          "location": "B"
+        }
+      ]
+    },
+    {
+      "id": "O-C-T4",
+      "name": "冰箱A型批次C · 压缩机及电控组装",
+      "order_id": "O-C",
+      "kind": "assembly",
+      "quantity": 4,
+      "duration_mode": "per_unit",
+      "alternatives": [
+        {
+          "resource_id": "S1",
+          "unit_seconds": 100,
+          "setup_seconds": 30
+        },
+        {
+          "resource_id": "S2",
+          "unit_seconds": 110.00000000000001,
+          "setup_seconds": 30
+        }
+      ],
+      "predecessors": [
+        "O-C-T3"
+      ],
+      "transfer_seconds": 0,
+      "transfer_on_reassign_seconds": 60,
+      "resumable": true,
+      "inputs": [
+        {
+          "material_id": "C-BODY",
+          "quantity": 4,
+          "location": "B"
+        },
+        {
+          "material_id": "COMP",
+          "quantity": 4,
+          "location": "B"
+        },
+        {
+          "material_id": "BOARD",
+          "quantity": 4,
+          "location": "B"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "C-FG",
+          "quantity": 4,
+          "location": "B"
+        }
+      ]
+    },
+    {
+      "id": "TRIP1-LOAD",
+      "name": "TRIP1 成品装车",
+      "kind": "loading",
+      "quantity": 10,
+      "duration_mode": "batch",
+      "alternatives": [
+        {
+          "resource_id": "V1",
+          "duration_seconds": 120,
+          "setup_seconds": 0
+        },
+        {
+          "resource_id": "V2",
+          "duration_seconds": 120,
+          "setup_seconds": 0
+        }
+      ],
+      "predecessors": [
+        "O-A-T4",
+        "O-B-T4"
+      ],
+      "at_node": "D",
+      "inputs": [
+        {
+          "material_id": "A-FG",
+          "quantity": 6,
+          "location": "B"
+        },
+        {
+          "material_id": "B-FG",
+          "quantity": 4,
+          "location": "B"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "A-FG",
+          "quantity": 6,
+          "location": "@resource"
+        },
+        {
+          "material_id": "B-FG",
+          "quantity": 4,
+          "location": "@resource"
+        }
+      ]
+    },
+    {
+      "id": "O-A-DELIVERY",
+      "name": "冰箱A型批次A · 客户交付",
+      "order_id": "O-A",
+      "kind": "delivery",
+      "quantity": 6,
+      "load_units": 6,
+      "duration_mode": "batch",
+      "alternatives": [
+        {
+          "resource_id": "V1",
+          "duration_seconds": 0,
+          "setup_seconds": 0
+        },
+        {
+          "resource_id": "V2",
+          "duration_seconds": 0,
+          "setup_seconds": 0
+        }
+      ],
+      "predecessors": [
+        "O-A-T4"
+      ],
+      "to_node": "CA",
+      "service_seconds": 120,
+      "window_offsets": [
+        0,
+        28800
+      ],
+      "inputs": [
+        {
+          "material_id": "A-FG",
+          "quantity": 6,
+          "location": "@resource"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "id": "O-B-DELIVERY",
+      "name": "冰箱B型批次B · 客户交付",
+      "order_id": "O-B",
+      "kind": "delivery",
+      "quantity": 4,
+      "load_units": 4,
+      "duration_mode": "batch",
+      "alternatives": [
+        {
+          "resource_id": "V1",
+          "duration_seconds": 0,
+          "setup_seconds": 0
+        },
+        {
+          "resource_id": "V2",
+          "duration_seconds": 0,
+          "setup_seconds": 0
+        }
+      ],
+      "predecessors": [
+        "O-B-T4"
+      ],
+      "to_node": "CB",
+      "service_seconds": 120,
+      "window_offsets": [
+        0,
+        28800
+      ],
+      "inputs": [
+        {
+          "material_id": "B-FG",
+          "quantity": 4,
+          "location": "@resource"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "id": "TRIP1-RETURN",
+      "name": "TRIP1 车辆返场",
+      "kind": "return",
+      "quantity": 1,
+      "duration_mode": "batch",
+      "alternatives": [
+        {
+          "resource_id": "V1",
+          "duration_seconds": 0
+        },
+        {
+          "resource_id": "V2",
+          "duration_seconds": 0
+        }
+      ],
+      "predecessors": [],
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "id": "TRIP2-LOAD",
+      "name": "TRIP2 成品装车",
+      "kind": "loading",
+      "quantity": 4,
+      "duration_mode": "batch",
+      "alternatives": [
+        {
+          "resource_id": "V1",
+          "duration_seconds": 120,
+          "setup_seconds": 0
+        },
+        {
+          "resource_id": "V2",
+          "duration_seconds": 120,
+          "setup_seconds": 0
+        }
+      ],
+      "predecessors": [
+        "O-C-T4"
+      ],
+      "at_node": "D",
+      "inputs": [
+        {
+          "material_id": "C-FG",
+          "quantity": 4,
+          "location": "B"
+        }
+      ],
+      "outputs": [
+        {
+          "material_id": "C-FG",
+          "quantity": 4,
+          "location": "@resource"
+        }
+      ]
+    },
+    {
+      "id": "O-C-DELIVERY",
+      "name": "冰箱A型批次C · 客户交付",
+      "order_id": "O-C",
+      "kind": "delivery",
+      "quantity": 4,
+      "load_units": 4,
+      "duration_mode": "batch",
+      "alternatives": [
+        {
+          "resource_id": "V1",
+          "duration_seconds": 0,
+          "setup_seconds": 0
+        },
+        {
+          "resource_id": "V2",
+          "duration_seconds": 0,
+          "setup_seconds": 0
+        }
+      ],
+      "predecessors": [
+        "O-C-T4"
+      ],
+      "to_node": "CC",
+      "service_seconds": 120,
+      "window_offsets": [
+        0,
+        28800
+      ],
+      "inputs": [
+        {
+          "material_id": "C-FG",
+          "quantity": 4,
+          "location": "@resource"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "id": "TRIP2-RETURN",
+      "name": "TRIP2 车辆返场",
+      "kind": "return",
+      "quantity": 1,
+      "duration_mode": "batch",
+      "alternatives": [
+        {
+          "resource_id": "V1",
+          "duration_seconds": 0
+        },
+        {
+          "resource_id": "V2",
+          "duration_seconds": 0
+        }
+      ],
+      "predecessors": [],
+      "inputs": [],
+      "outputs": []
+    }
+  ],
+  "route_groups": [
+    {
+      "id": "TRIP1",
+      "loading_task": "TRIP1-LOAD",
+      "delivery_tasks": [
+        "O-A-DELIVERY",
+        "O-B-DELIVERY"
+      ],
+      "return_task": "TRIP1-RETURN",
+      "depot": "D",
+      "vehicle_options": [
+        "V1",
+        "V2"
+      ]
+    },
+    {
+      "id": "TRIP2",
+      "loading_task": "TRIP2-LOAD",
+      "delivery_tasks": [
+        "O-C-DELIVERY"
+      ],
+      "return_task": "TRIP2-RETURN",
+      "depot": "D",
+      "vehicle_options": [
+        "V1",
+        "V2"
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "id": "TRIP1",
+      "vehicle_id": "V1",
+      "stops": [
+        "O-A-DELIVERY",
+        "O-B-DELIVERY"
+      ]
+    },
+    {
+      "id": "TRIP2",
+      "vehicle_id": "V2",
+      "stops": [
+        "O-C-DELIVERY"
+      ]
+    }
+  ],
+  "stock": [
+    {
+      "material_id": "RAW",
+      "quantity": 14,
+      "location": "A"
+    },
+    {
+      "material_id": "COMP",
+      "quantity": 8,
+      "location": "B"
+    },
+    {
+      "material_id": "BOARD",
+      "quantity": 14,
+      "location": "B"
+    }
+  ],
+  "supplies": [
+    {
+      "id": "SUP-COMP-01",
+      "name": "压缩机补给批次",
+      "material_id": "COMP",
+      "location": "B",
+      "quantity": 6,
+      "arrival_seconds": 1500,
+      "source": "standard"
+    }
+  ],
+  "travel_seconds": {
+    "D|CA": 600,
+    "CA|D": 600,
+    "D|CB": 720,
+    "CB|D": 720,
+    "D|CC": 900,
+    "CC|D": 900,
+    "CA|CB": 480,
+    "CB|CA": 480,
+    "CA|CC": 780,
+    "CC|CA": 780,
+    "CB|CC": 540,
+    "CC|CB": 540
+  },
+  "schedule": []
+}

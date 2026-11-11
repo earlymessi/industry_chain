@@ -3,7 +3,7 @@
     <div v-if="showHeader" class="panel-head">
       <div class="title">{{ title }}</div>
       <div class="head-tags">
-        <el-tag v-if="llmStatus.enabled" type="success" size="small">GLM</el-tag>
+        <el-tag v-if="llmStatus.enabled" type="success" size="small">{{ llmBadgeLabel }}</el-tag>
         <el-tag v-else type="info" size="small">规则</el-tag>
         <el-tag v-if="sessionId" size="small" effect="plain">会话 {{ sessionId.slice(0, 8) }}</el-tag>
       </div>
@@ -85,6 +85,7 @@
               :trace="m.trace"
               :loading="m.role === 'thinking'"
               :hint="m.statusText || ''"
+              :llm-planner-label="llmPlannerLabel"
             />
           </template>
           <template v-else-if="m.role === 'assistant'">
@@ -96,7 +97,7 @@
               type="primary"
               size="small"
               style="margin-top: 8px"
-              @click="router.push('/reports')"
+              @click="router.push(productionPath('reports'))"
             >
               查看分析报表
             </el-button>
@@ -133,7 +134,7 @@
 </template>
 
 <script setup>
-import { defineComponent, h, nextTick, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElTag } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
@@ -148,8 +149,10 @@ import {
   scheduleResultsFromArtifacts,
 } from '../utils/planScheduleSync'
 import { applyMesEventArtifactsToStore } from '../utils/mesEventSync'
+import { useAssistantStore } from '../stores/useAssistantStore'
 import PersistConfirmDialog from './PersistConfirmDialog.vue'
 import AgentResultCards from './AgentResultCards.vue'
+import { normalizeProductionPath, productionPath } from '../utils/productionRoutes'
 
 defineProps({
   compact: { type: Boolean, default: false },
@@ -161,6 +164,7 @@ defineProps({
 const router = useRouter()
 const workStore = useWorkContextStore()
 const resultsStore = useResultsStore()
+const assistantStore = useAssistantStore()
 const {
   planOptions,
   plansLoading,
@@ -203,7 +207,7 @@ async function applyOrchestratorSideEffects(data) {
         message: data.ui_action.hint || '异常重排完成，可在生产看板查看甘特对比',
         duration: 3500,
       })
-      router.push('/')
+      router.push(productionPath('dashboard'))
       return
     }
   }
@@ -219,14 +223,14 @@ async function applyOrchestratorSideEffects(data) {
   const wantsReports =
     data?.agent_id === 'scheduling' &&
     data?.status === 'success' &&
-    (data?.ui_action?.path === '/reports' || hasResults)
+    (data?.ui_action?.path === '/reports' || data?.ui_action?.path === productionPath('reports') || hasResults)
 
   if (wantsReports && hasResults) {
     ElMessage.success({
       message: '排程完成，正在打开分析报表…',
       duration: 2500,
     })
-    router.push('/reports')
+    router.push(productionPath('reports'))
     return
   }
 
@@ -235,15 +239,16 @@ async function applyOrchestratorSideEffects(data) {
   }
 
   const nav = data?.ui_action
-  if (nav?.type === 'navigate' && nav.path && nav.path !== '/reports') {
-    if (nav.path === '/aps' && active) {
+  const navPath = normalizeProductionPath(nav?.path)
+  if (nav?.type === 'navigate' && navPath && navPath !== productionPath('reports')) {
+    if ((nav.path === '/aps' || navPath === productionPath('aps')) && active) {
       goToAps({
         id: active.plan_id,
         plan_name: active.plan_name,
         jobs: active.jobs || [],
       })
     } else {
-      router.push(nav.path)
+      router.push(navPath)
     }
   }
 }
@@ -254,10 +259,22 @@ const TracePanel = defineComponent({
     trace: { type: Array, default: () => [] },
     loading: { type: Boolean, default: false },
     hint: { type: String, default: '' },
+    llmPlannerLabel: { type: String, default: '大模型' },
   },
   setup(props) {
     const plannerLabel = (p) => {
-      const map = { llm: 'GLM', rule: '规则', rule_fallback: '规则回退', explicit: '手动' }
+      const map = {
+        llm: props.llmPlannerLabel || '大模型',
+        rule: '规则',
+        rule_fallback: '规则回退',
+        explicit: '手动',
+        events_collab: '固定编排',
+        kitting_collab: '齐套编排',
+        commitment_collab: '交期编排',
+        whatif_collab: '方案对比',
+        plans_collab: '计划管理',
+        planning_collab: '协同排产',
+      }
       return map[p] || p || '—'
     }
     return () => {
@@ -299,6 +316,16 @@ const sessionId = ref('')
 const intentOverride = ref('')
 const scrollRef = ref(null)
 const llmStatus = ref({ enabled: false })
+
+function formatLlmBadge(status) {
+  if (!status?.enabled) return '规则'
+  const providerMap = { deepseek: 'DeepSeek', zhipu: '智谱' }
+  const provider = providerMap[status.provider] || status.provider || 'LLM'
+  return status.model ? `${provider} · ${status.model}` : provider
+}
+
+const llmBadgeLabel = computed(() => llmStatus.value?.label || formatLlmBadge(llmStatus.value))
+const llmPlannerLabel = computed(() => (llmStatus.value?.enabled ? llmBadgeLabel.value : '规则'))
 
 const persistVisible = ref(false)
 const persistPreview = ref(null)
@@ -454,6 +481,8 @@ async function send() {
     else if (data.status === 'pending_confirm') {
       ElMessage.info(data.pending_action?.preview?.has_existing_schedule ? '请确认是否覆盖已有排程' : '请确认是否落库')
       if (data.pending_action) openConfirm(data.pending_action)
+    } else if (data.status === 'out_of_scope') {
+      ElMessage.info('该问题不在六个业务 Agent 范围内，请按下方说明前往对应页面')
     } else if (data.status === 'need_input') {
       ElMessage.info('请按助手提示补充信息后继续发送')
     }
@@ -493,9 +522,26 @@ async function onPersistConfirmed(data) {
   ElMessage.success('落库成功')
 }
 
+async function drainSystemNotices() {
+  while (assistantStore.systemNotices.length) {
+    const n = assistantStore.shiftSystemNotice()
+    if (!n?.text) continue
+    messages.value.push({ role: 'assistant', text: n.text })
+  }
+  await scrollBottom()
+}
+
+watch(
+  () => assistantStore.systemNotices.length,
+  () => {
+    drainSystemNotices()
+  },
+)
+
 onMounted(async () => {
   syncSelectedFromStore()
   fetchPlans()
+  drainSystemNotices()
   try {
     const { data } = await api.get('/api/llm/status')
     llmStatus.value = data

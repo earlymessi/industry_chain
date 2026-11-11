@@ -21,13 +21,19 @@ let rightChart = null
 
 const r1Title = computed(() => {
   const label = props.scenarios?.r1?.label || 'R1 · 扰动不重排'
-  const ms = props.scenarios?.r1?.makespan
+  const fromGantt = Array.isArray(props.r1Gantt) && props.r1Gantt.length
+    ? Math.max(...props.r1Gantt.map((d) => Number(d.end) || 0))
+    : null
+  const ms = fromGantt != null ? fromGantt : props.scenarios?.r1?.makespan
   return ms != null ? `${label}（完工 ${Number(ms).toFixed(1)} h）` : label
 })
 
 const r2Title = computed(() => {
   const label = props.scenarios?.r2?.label || 'R2 · 重调度'
-  const ms = props.scenarios?.r2?.makespan
+  const fromGantt = Array.isArray(props.r2Gantt) && props.r2Gantt.length
+    ? Math.max(...props.r2Gantt.map((d) => Number(d.end) || 0))
+    : null
+  const ms = fromGantt != null ? fromGantt : props.scenarios?.r2?.makespan
   return ms != null ? `${label}（完工 ${Number(ms).toFixed(1)} h）` : label
 })
 
@@ -58,7 +64,13 @@ const captionText = computed(() => {
   if (props.eventType === 'due_date_change') {
     return '左：仅更新交期、排程时间不变；右：按新交期重调度。左图蓝框为改期工单，右图蓝框为相对原计划调整的工序。'
   }
-  return '左：故障后仅时间推演（不调用求解器重排）；右：冻结已开工 + 原算法残段重排。红区为故障窗口，蓝框为相对原计划调整的工序。'
+  if (props.eventType === 'machine_breakdown') {
+    return '左：故障后仅时间推演（不调用求解器重排）；右：冻结已开工 + 原算法残段重排。红色虚线框「故障」为故障窗口，蓝框为相对原计划调整的工序。'
+  }
+  if (props.eventType === 'planned_downtime') {
+    return '左：原计划；右：加入计划停机后重排。橙色虚线框为停机窗口，蓝框为相对原计划调整的工序。'
+  }
+  return '左：事件前原计划；右：事件后重排。蓝框为相对原计划调整的工序。'
 })
 
 const leftHighlightKeys = computed(() => {

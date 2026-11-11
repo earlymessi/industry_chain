@@ -1,0 +1,78 @@
+[{
+  "_id": {
+    "$oid": "6a2631a9350e91c1c8300fd6"
+  },
+  "vehicle_id": "VEH-1780887977",
+  "vehicle_name": "车辆1",
+  "capacity": 33,
+  "constcost": 5000,
+  "varcost": 100,
+  "created_at": {
+    "$date": "2026-06-08T03:06:17.009Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a2631c1350e91c1c8300fd7"
+  },
+  "vehicle_id": "VEH-1780888001",
+  "vehicle_name": "车辆2",
+  "capacity": 31,
+  "constcost": 4000,
+  "varcost": 95,
+  "created_at": {
+    "$date": "2026-06-08T03:06:41.989Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a2631d4350e91c1c8300fd8"
+  },
+  "vehicle_id": "VEH-1780888020",
+  "vehicle_name": "车辆3",
+  "capacity": 29,
+  "constcost": 3000,
+  "varcost": 90,
+  "created_at": {
+    "$date": "2026-06-08T03:07:00.944Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a2631f2350e91c1c8300fd9"
+  },
+  "vehicle_id": "VEH-1780888050",
+  "vehicle_name": "车辆4",
+  "capacity": 28,
+  "constcost": 2300,
+  "varcost": 85,
+  "created_at": {
+    "$date": "2026-06-08T03:07:30.847Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26320b350e91c1c8300fda"
+  },
+  "vehicle_id": "VEH-1780888075",
+  "vehicle_name": "车辆5",
+  "capacity": 26,
+  "constcost": 1600,
+  "varcost": 80,
+  "created_at": {
+    "$date": "2026-06-08T03:07:55.997Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6a26322a350e91c1c8300fdb"
+  },
+  "vehicle_id": "VEH-1780888106",
+  "vehicle_name": "车辆6",
+  "capacity": 24,
+  "constcost": 800,
+  "varcost": 75,
+  "created_at": {
+    "$date": "2026-06-08T03:08:26.009Z"
+  }
+}]

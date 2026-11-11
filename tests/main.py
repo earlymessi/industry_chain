@@ -1,8 +1,18 @@
 import os
+
+# 避免 MASA-QMIX(torch) 与 matplotlib 同时加载时 OpenMP 冲突导致 worker 崩溃
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 from pathlib import Path
+import importlib.util
+import threading
+import hashlib
+import uuid
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _SRC_ROOT = _REPO_ROOT / "src"
+_MASA_QMIX_ROOT = _REPO_ROOT / "MASA-QMIX"
+_SERVER_INSTANCE_ID = uuid.uuid4().hex[:12]
 
 # 开发时优先使用仓库 src，避免 site-packages 里旧版 metaforge 覆盖新路由逻辑
 import sys
@@ -28,14 +38,14 @@ _load_dotenv()
 import uvicorn
 import math
 import time
-import uuid
 import asyncio
 import motor.motor_asyncio
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Request, UploadFile, File
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.wsgi import WSGIMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -81,7 +91,7 @@ routing_templates_collection = db.routing_templates
 schedule_tasks_collection = db.schedule_tasks
 maintenance_collection = db.maintenance_orders
 
-_schedule_executor = ThreadPoolExecutor(max_workers=2)
+_schedule_executor = ThreadPoolExecutor(max_workers=4)
 _schedule_tasks_mem: Dict[str, Dict[str, Any]] = {}
 agv_fleet_collection = db.agv_fleet
 agv_tasks_collection = db.agv_tasks
@@ -90,6 +100,144 @@ material_collection = db.materials_inventory
 tool_collection = db.tools_library
 machine_collection = db.machines_layout
 execution_collection = db.production_execution
+readiness_collection = db.assembly_readiness
+MASA_QMIX_UI_URL = os.getenv("MASA_QMIX_UI_URL", "/masa-qmix/").strip() or "/masa-qmix/"
+MASA_QMIX_MOUNT_PATH = "/masa-qmix"
+_masa_qmix_boot_error = ""
+_masa_qmix_lock = threading.RLock()
+
+
+def _load_masa_qmix_wsgi_app():
+    global _masa_qmix_boot_error
+
+    api_server_path = _MASA_QMIX_ROOT / "api_server.py"
+    if not api_server_path.is_file():
+        _masa_qmix_boot_error = f"未找到 MASA-QMIX 启动文件: {api_server_path}"
+        return None
+
+    try:
+        if str(_MASA_QMIX_ROOT) not in sys.path:
+            sys.path.append(str(_MASA_QMIX_ROOT))
+
+        spec = importlib.util.spec_from_file_location("masa_qmix_api_server", api_server_path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError("无法加载 MASA-QMIX api_server 模块")
+
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        flask_app = getattr(module, "app", None)
+        if flask_app is None:
+            raise RuntimeError("MASA-QMIX api_server.py 中未找到 Flask app")
+        return flask_app
+    except Exception as exc:
+        _masa_qmix_boot_error = str(exc)
+        return None
+
+
+_masa_qmix_wsgi_app = _load_masa_qmix_wsgi_app()
+
+_SCHEDULETOOL_ROOT = _REPO_ROOT / "Scheduletool"
+SCHEDULETOOL_MOUNT_PATH = "/scheduletool"
+_scheduletool_boot_error = ""
+_scheduletool_lock = threading.RLock()
+
+
+def _load_scheduletool_wsgi_app():
+    global _scheduletool_boot_error
+
+    app_py = _SCHEDULETOOL_ROOT / "app.py"
+    if not app_py.is_file():
+        _scheduletool_boot_error = f"未找到 Scheduletool 启动文件: {app_py}"
+        return None
+
+    try:
+        if str(_SCHEDULETOOL_ROOT) not in sys.path:
+            sys.path.insert(0, str(_SCHEDULETOOL_ROOT))
+        from Scheduletool import create_app
+
+        return create_app()
+    except Exception as exc:
+        _scheduletool_boot_error = str(exc)
+        return None
+
+
+_scheduletool_wsgi_app = _load_scheduletool_wsgi_app()
+
+ZHENJIE_MOUNT_PATH = "/logistics-vrp"
+_zhenjie_boot_error = ""
+
+
+def _load_zhenjie_wsgi_app():
+    global _zhenjie_boot_error
+    try:
+        if str(_REPO_ROOT) not in sys.path:
+            sys.path.append(str(_REPO_ROOT))
+        from zhenjie.app import app as flask_app
+
+        return flask_app
+    except Exception as exc:
+        _zhenjie_boot_error = f"车辆路径模块加载失败: {exc}"
+        return None
+
+
+_zhenjie_wsgi_app = _load_zhenjie_wsgi_app()
+
+
+def _scheduletool_flask_response(resp):
+    return Response(
+        content=resp.get_data(),
+        status_code=resp.status_code,
+        media_type=resp.mimetype or "text/html",
+    )
+
+
+def _call_scheduletool(method: str, path: str, **kwargs):
+    if _scheduletool_wsgi_app is None:
+        raise HTTPException(
+            status_code=503,
+            detail=_scheduletool_boot_error or "Scheduletool not mounted",
+        )
+    with _scheduletool_lock:
+        old_cwd = os.getcwd()
+        os.chdir(_SCHEDULETOOL_ROOT)
+        try:
+            with _scheduletool_wsgi_app.test_client() as client:
+                return _scheduletool_flask_response(client.open(path, method=method, **kwargs))
+        finally:
+            os.chdir(old_cwd)
+
+
+def _fetch_scheduletool_kdcea_status() -> Dict[str, Any]:
+    if _scheduletool_wsgi_app is None:
+        return {"status": "idle", "message": ""}
+    import json as _json
+
+    resp = _call_scheduletool("GET", "/schedulePage/kdcea_status")
+    try:
+        return _json.loads(resp.body.decode("utf-8"))
+    except Exception:
+        return {"status": "unknown", "message": ""}
+
+
+def _masa_qmix_flask_response(resp):
+    return Response(
+        content=resp.get_data(),
+        status_code=resp.status_code,
+        media_type=resp.mimetype or "application/json",
+    )
+
+
+def _call_masa_qmix(method: str, path: str, **kwargs):
+    if _masa_qmix_wsgi_app is None:
+        raise HTTPException(status_code=503, detail=_masa_qmix_boot_error or "MASA-QMIX not mounted")
+    with _masa_qmix_lock:
+        old_cwd = os.getcwd()
+        os.chdir(_MASA_QMIX_ROOT)
+        try:
+            with _masa_qmix_wsgi_app.test_client() as client:
+                return _masa_qmix_flask_response(client.open(path, method=method, **kwargs))
+        finally:
+            os.chdir(old_cwd)
 
 
 # ==========================================
@@ -177,16 +325,32 @@ async def lifespan(app: FastAPI):
         if s_count == 0:
             print("[Lifespan] 初始化员工花名册...")
             default_staff = [
-                {"id": 1, "name": "张三", "role": "组长", "is_active": True},
-                {"id": 2, "name": "李四", "role": "操作员", "is_active": True},
-                {"id": 3, "name": "王五", "role": "操作员", "is_active": True},
-                {"id": 4, "name": "赵六", "role": "操作员", "is_active": True},
-                {"id": 5, "name": "钱七", "role": "操作员", "is_active": True},
-                {"id": 6, "name": "孙八", "role": "质检", "is_active": False},
-                {"id": 7, "name": "周九", "role": "操作员", "is_active": True},
-                {"id": 8, "name": "吴十", "role": "实习生", "is_active": True},
+                {"id": 1, "name": "张三", "role": "组长", "skills": ["管理", "数控"], "shift": "早班", "level": "L3", "is_active": True},
+                {"id": 2, "name": "李四", "role": "操作员", "skills": ["数控", "装配"], "shift": "早班", "level": "L2", "is_active": True},
+                {"id": 3, "name": "王五", "role": "操作员", "skills": ["数控"], "shift": "早班", "level": "L2", "is_active": True},
+                {"id": 4, "name": "赵六", "role": "操作员", "skills": ["数控", "磨床"], "shift": "中班", "level": "L2", "is_active": True},
+                {"id": 5, "name": "钱七", "role": "操作员", "skills": ["数控"], "shift": "中班", "level": "L1", "is_active": True},
+                {"id": 6, "name": "孙八", "role": "质检", "skills": ["质检"], "shift": "早班", "level": "L2", "is_active": False},
+                {"id": 7, "name": "周九", "role": "操作员", "skills": ["数控", "装配"], "shift": "晚班", "level": "L2", "is_active": True},
+                {"id": 8, "name": "吴十", "role": "实习生", "skills": ["辅助"], "shift": "早班", "level": "L1", "is_active": True},
             ]
             await staff_collection.insert_many(default_staff)
+        else:
+            staff_skill_defaults = {
+                1: {"skills": ["管理", "数控"], "shift": "早班", "level": "L3"},
+                2: {"skills": ["数控", "装配"], "shift": "早班", "level": "L2"},
+                3: {"skills": ["数控"], "shift": "早班", "level": "L2"},
+                4: {"skills": ["数控", "磨床"], "shift": "中班", "level": "L2"},
+                5: {"skills": ["数控"], "shift": "中班", "level": "L1"},
+                6: {"skills": ["质检"], "shift": "早班", "level": "L2"},
+                7: {"skills": ["数控", "装配"], "shift": "晚班", "level": "L2"},
+                8: {"skills": ["辅助"], "shift": "早班", "level": "L1"},
+            }
+            for sid, patch in staff_skill_defaults.items():
+                await staff_collection.update_one(
+                    {"id": sid, "skills": {"$exists": False}},
+                    {"$set": patch},
+                )
     except Exception as e:
         print(f"[WARN] 员工初始化失败: {e}")
 
@@ -237,18 +401,51 @@ async def lifespan(app: FastAPI):
     # ----------------------
     # 3. 启动完成，挂起
     # ----------------------
-    yield
+    try:
+        from metaforge.services.rag_streamlit import start_streamlit
+
+        asyncio.get_event_loop().run_in_executor(_schedule_executor, start_streamlit)
+        print("[Lifespan] Streamlit 知识库页已后台启动（不再并行预热 RAG 子进程，避免 Chroma 锁库）")
+    except Exception as e:
+        print(f"[WARN] RAG 预热/Streamlit 启动失败: {e}")
+
+    await app.state.operations.start()
+    try:
+        yield
+    finally:
+        await app.state.operations.stop()
 
     # ----------------------
     # 4. 关闭逻辑 (Shutdown)
     # ----------------------
     print("[Lifespan] 系统关闭")
+    try:
+        from metaforge.services.rag_bridge import _stop_worker
+        from metaforge.services.rag_streamlit import stop_streamlit
+
+        _stop_worker()
+        stop_streamlit()
+    except Exception:
+        pass
 
 
 # ==========================================
 # 3. 实例化 FastAPI
 # ==========================================
 app = FastAPI(lifespan=lifespan)
+
+from metaforge.operations.api import install as install_operations
+def _operations_assembly_read(path):
+    import json
+    try:
+        response = _call_masa_qmix('GET', path)
+    except HTTPException as exc:
+        raise ValueError('原组装评估暂不可用，可使用原工艺补排') from exc
+    if response.status_code != 200:
+        raise ValueError('原组装评估暂不可用，请重试或使用原工艺补排')
+    return json.loads(response.body.decode('utf-8'))
+
+install_operations(app, db, assembly_reader=_operations_assembly_read)
 
 # 托管前端构建产物：/assets/*
 dist_assets_dir = BASE_DIR / "templates" / "dist" / "assets"
@@ -292,6 +489,7 @@ class JobData(BaseModel):
     material_arrival: Optional[float] = None  # 物料就绪后才可开工（由 enforce 或手工填写）
     bom: Optional[List[BomLine]] = None
     tasks: List[TaskData]
+    job_id: Optional[str] = None
 
 
 class RoutingTemplateSchema(BaseModel):
@@ -491,29 +689,79 @@ def fix_id(doc):
     doc["id"] = str(doc.pop("_id"))
     return doc
 
+
+def no_store_file_response(path: Path):
+    return FileResponse(
+        str(path),
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
+
+
+def frontend_version() -> str:
+    dist_index = BASE_DIR / "templates" / "dist" / "index.html"
+    if not dist_index.exists():
+        return "missing"
+    data = dist_index.read_bytes()
+    return hashlib.sha256(data).hexdigest()[:16]
+
 # === 路由 ===
+
+# HTML 入口禁止浏览器缓存，避免「首次仍是旧包、刷新才变新」
+_HTML_NO_CACHE = {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
+
+# 清掉本源旧 HTML 缓存（旧版整页曾以 200 被强缓存，不请求服务器就会一直「一开是旧页」）
+_CLEAR_SITE_CACHE = {
+    **_HTML_NO_CACHE,
+    "Clear-Site-Data": '"cache"',
+}
+
+
+def _serve_frontend_index():
+    """只托管 Vue 构建产物；旧版 templates/index.html 已移除。"""
+    dist_index = BASE_DIR / "templates" / "dist" / "index.html"
+    if dist_index.exists():
+        return FileResponse(str(dist_index), headers=_HTML_NO_CACHE)
+    return {"error": "Frontend build not found. Run: cd frontend && npm run build"}
+
+
+@app.get("/go")
+def cache_bust_enter():
+    """
+    强制清浏览器对本站的 HTTP 缓存后进入新前端。
+    若书签打开 / 或 /new-ui/ 仍是旧页，先访问一次本地址即可。
+    """
+    return RedirectResponse(
+        url="/new-ui/home",
+        status_code=302,
+        headers=_CLEAR_SITE_CACHE,
+    )
+
 
 @app.get("/")
 def read_root():
-    # 默认优先返回新前端构建产物
-    dist_index = BASE_DIR / "templates" / "dist" / "index.html"
-    if dist_index.exists():
-        return FileResponse(str(dist_index))
+    return RedirectResponse(url="/go", status_code=302, headers=_HTML_NO_CACHE)
 
-    # 兼容旧版页面（仅兜底）
-    html_path = BASE_DIR / "templates" / "index.html"
-    if html_path.exists():
-        return FileResponse(str(html_path))
-    return {"message": "MetaForge Backend Running"}
+
+@app.get("/api/frontend-version")
+def get_frontend_version():
+    return {
+        "version": frontend_version(),
+        "server_instance": _SERVER_INSTANCE_ID,
+    }
 
 
 @app.get("/new-ui")
 def read_new_ui():
-    """新前端独立入口（迁移中），避免影响旧版生产页面。"""
-    dist_index = BASE_DIR / "templates" / "dist" / "index.html"
-    if dist_index.exists():
-        return FileResponse(str(dist_index))
-    return {"error": "New UI build not found. Please run frontend build first."}
+    """无尾斜杠：走清缓存入口，避免命中旧文档缓存。"""
+    return RedirectResponse(url="/go", status_code=302, headers=_HTML_NO_CACHE)
 
 
 @app.get("/new-ui/{full_path:path}")
@@ -521,11 +769,102 @@ def read_new_ui_spa(full_path: str):
     """
     SPA history fallback:
     访问 /new-ui/aps、/new-ui/reports 等前端路由时，统一返回 index.html。
+    裸 /new-ui/ 仍可能被浏览器缓存成旧整页，故改走 /go 清缓存。
     """
-    dist_index = BASE_DIR / "templates" / "dist" / "index.html"
-    if dist_index.exists():
-        return FileResponse(str(dist_index))
-    return {"error": "New UI build not found. Please run frontend build first."}
+    if full_path.strip("/") == "":
+        return RedirectResponse(url="/go", status_code=302, headers=_HTML_NO_CACHE)
+    return _serve_frontend_index()
+
+
+@app.get("/masa-qmix")
+def masa_qmix_entry():
+    return RedirectResponse(url=f"{MASA_QMIX_MOUNT_PATH}/")
+
+
+@app.get("/masa-qmix/")
+def masa_qmix_index():
+    html_path = _MASA_QMIX_ROOT / "frontend" / "index.html"
+    if html_path.exists():
+        return no_store_file_response(html_path)
+    return {"error": "MASA-QMIX frontend/index.html not found."}
+
+
+@app.post("/masa-qmix/evaluate")
+async def masa_qmix_evaluate(request: Request):
+    body = await request.json()
+    return _call_masa_qmix("POST", "/evaluate", json=body)
+
+
+@app.get("/masa-qmix/api/evaluation/{n_agents}")
+def masa_qmix_evaluation(n_agents: int):
+    return _call_masa_qmix("GET", f"/api/evaluation/{n_agents}")
+
+
+@app.get("/masa-qmix/api/evaluation/{n_agents}/gantt/{episode_id}")
+def masa_qmix_gantt(n_agents: int, episode_id: int):
+    return _call_masa_qmix("GET", f"/api/evaluation/{n_agents}/gantt/{episode_id}")
+
+
+if _masa_qmix_wsgi_app is not None:
+    app.mount(MASA_QMIX_MOUNT_PATH, WSGIMiddleware(_masa_qmix_wsgi_app), name="masa_qmix")
+
+
+@app.get("/scheduletool")
+def scheduletool_entry():
+    return RedirectResponse(url=f"{SCHEDULETOOL_MOUNT_PATH}/schedulePage/dataShow")
+
+
+@app.api_route("/get_gantt_image/{solution_id}", methods=["GET"])
+def scheduletool_gantt_proxy(solution_id: int):
+    """Scheduletool 甘特图 API（页面内 fetch 使用根路径）。"""
+    if _scheduletool_wsgi_app is None:
+        raise HTTPException(status_code=503, detail=_scheduletool_boot_error or "Scheduletool not mounted")
+    return _call_scheduletool("GET", f"/get_gantt_image/{solution_id}")
+
+
+@app.api_route("/schedulePage/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def scheduletool_page_proxy(full_path: str, request: Request):
+    """Scheduletool 页面内 fetch 使用根路径 /schedulePage，由此转发到内嵌 Flask。"""
+    if _scheduletool_wsgi_app is None:
+        raise HTTPException(status_code=503, detail=_scheduletool_boot_error or "Scheduletool not mounted")
+    body = await request.body()
+    query_string = request.url.query or None
+    hop_by_hop = {"host", "content-length", "connection", "transfer-encoding"}
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in hop_by_hop}
+    return _call_scheduletool(
+        request.method,
+        f"/schedulePage/{full_path}",
+        query_string=query_string,
+        data=body or None,
+        headers=headers,
+    )
+
+
+if _scheduletool_wsgi_app is not None:
+    app.mount(SCHEDULETOOL_MOUNT_PATH, WSGIMiddleware(_scheduletool_wsgi_app), name="scheduletool")
+
+
+@app.get("/api/integrations/zhenjie/status")
+def get_zhenjie_integration_status():
+    return {
+        "available": _zhenjie_wsgi_app is not None,
+        "mounted": _zhenjie_wsgi_app is not None,
+        "url": f"{ZHENJIE_MOUNT_PATH}/",
+        "detail": _zhenjie_boot_error,
+    }
+
+
+@app.get(ZHENJIE_MOUNT_PATH)
+def zhenjie_entry():
+    return RedirectResponse(url=f"{ZHENJIE_MOUNT_PATH}/")
+
+
+if _zhenjie_wsgi_app is not None:
+    app.mount(ZHENJIE_MOUNT_PATH, WSGIMiddleware(_zhenjie_wsgi_app), name="zhenjie")
+else:
+    @app.api_route(f"{ZHENJIE_MOUNT_PATH}/{{full_path:path}}", methods=["GET", "POST", "PUT", "DELETE"])
+    def zhenjie_unavailable(full_path: str):
+        raise HTTPException(status_code=503, detail=_zhenjie_boot_error)
 
 
 @app.get("/api/benchmarks")
@@ -757,7 +1096,83 @@ class ExecutionStartRequest(BaseModel):
 async def execution_state():
     from metaforge.services.production_execution import get_state
 
-    return await get_state(execution_collection)
+    return await get_state(
+        execution_collection,
+        orders_coll=orders_collection,
+        readiness_coll=readiness_collection,
+    )
+
+
+class ScheduleBreakdownRequest(BaseModel):
+    machine_id: int = 0
+    breakdown_start: float
+    breakdown_duration: float = 4.0
+
+
+class ScheduleEventRequest(BaseModel):
+    event_type: str
+    trigger_at: float
+    params: dict = {}
+
+
+@app.post("/api/execution/schedule_event")
+async def execution_schedule_event(req: ScheduleEventRequest):
+    """预约动态事件：仿真时钟到达后自动 dispatch 重排并暂停（事件注入器，非 Agent）。"""
+    from metaforge.services.production_execution import schedule_event
+
+    try:
+        return await schedule_event(
+            execution_collection,
+            event_type=req.event_type,
+            trigger_at=req.trigger_at,
+            params=req.params or {},
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.post("/api/execution/cancel_scheduled_event")
+async def execution_cancel_scheduled_event():
+    from metaforge.services.production_execution import cancel_scheduled_event
+
+    try:
+        return await cancel_scheduled_event(execution_collection)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.post("/api/execution/schedule_breakdown")
+async def execution_schedule_breakdown(req: ScheduleBreakdownRequest):
+    """兼容旧 API：预约故障。"""
+    from metaforge.services.production_execution import schedule_breakdown
+
+    try:
+        return await schedule_breakdown(
+            execution_collection,
+            machine_id=req.machine_id,
+            breakdown_start=req.breakdown_start,
+            breakdown_duration=req.breakdown_duration,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.post("/api/execution/cancel_scheduled_breakdown")
+async def execution_cancel_scheduled_breakdown():
+    from metaforge.services.production_execution import cancel_scheduled_breakdown
+
+    try:
+        return await cancel_scheduled_breakdown(execution_collection)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.post("/api/execution/ack_auto_reschedule")
+async def execution_ack_auto_reschedule():
+    """前端已展示自动重排结果后确认消费通知。"""
+    from metaforge.services.production_execution import ack_auto_reschedule
+
+    return await ack_auto_reschedule(execution_collection)
 
 
 @app.post("/api/execution/start")
@@ -771,10 +1186,50 @@ async def execution_start(req: ExecutionStartRequest):
             plan_id=req.plan_id,
             solver_id=req.solver_id,
             sim_speed=req.sim_speed,
+            readiness_coll=readiness_collection,
         )
         return doc
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.post("/api/execution/complete-now")
+async def execution_complete_now():
+    from metaforge.services.production_execution import complete_execution_now, get_active
+
+    doc = await get_active(execution_collection)
+    if not doc:
+        raise HTTPException(status_code=400, detail="无进行中的 MES 执行")
+    try:
+        return await complete_execution_now(
+            execution_collection,
+            doc,
+            orders_coll=orders_collection,
+            readiness_coll=readiness_collection,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.post("/api/execution/start_from_package")
+async def execution_start_from_package(body: Dict = Body(...)):
+    from metaforge.services.package_to_execution import start_from_package
+
+    try:
+        return await start_from_package(
+            execution_collection,
+            orders_collection,
+            package=body.get("package"),
+            run_id=body.get("run_id"),
+            plan_id=body.get("plan_id"),
+            persist_plan=bool(body.get("persist_plan", True)),
+            sim_speed=float(body.get("sim_speed") or 60),
+            jobs=body.get("jobs"),
+            plan_name=body.get("plan_name") or "Package 推荐计划",
+            candidates=body.get("candidates") or body.get("candidate_schedules"),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/execution/pause")
@@ -1682,8 +2137,28 @@ async def orchestrator_run(req: OrchestratorRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     route = preview.get("route") or resolve_agent_route(req.message, req.intent, ctx)
-    agent_id = preview["agent_id"]
+    agent_id = preview.get("agent_id")
     preview_trace: List[Dict[str, Any]] = list(preview.get("trace") or [])
+
+    if route.get("out_of_scope") or preview.get("status") == "out_of_scope":
+        out = {
+            "status": "out_of_scope",
+            "agent_id": None,
+            "summary_zh": route.get("guidance_zh") or preview.get("summary_zh") or "",
+            "scope_category": route.get("scope_category"),
+            "execution_trace": preview_trace,
+            "router_planner": route.get("router"),
+            "router_intent": route.get("intent"),
+            "router_reason_zh": route.get("reason_zh"),
+        }
+        out["session_id"] = persist_after_run(
+            session_id,
+            agent_id="",
+            request_context=ctx,
+            response=out,
+        )
+        return out
+
     params = dict(req.params or {})
     if ctx.get("confirm_token") and "confirm_token" not in params:
         params["confirm_token"] = ctx["confirm_token"]
@@ -1801,7 +2276,7 @@ async def _hydrate_scheduling_agent_request(req: AgentRunRequest, areq):
 
 @app.post("/api/agents/scheduling/run")
 async def agents_scheduling_run(req: AgentRunRequest):
-    from metaforge.agents.scheduling import SchedulingAgentRunner
+    from metaforge.orchestrator.router import get_agent
     from metaforge.services.persist_store import confirm_and_persist
 
     params = dict(req.params or {})
@@ -1823,21 +2298,21 @@ async def agents_scheduling_run(req: AgentRunRequest):
     req.params = params
     areq = _agent_request_from_body(req)
     areq = await _hydrate_scheduling_agent_request(req, areq)
-    agent = SchedulingAgentRunner()
+    agent = get_agent("scheduling")
     return agent.run(areq).to_dict()
 
 
 @app.post("/api/agents/commitment/run")
 async def agents_commitment_run(req: AgentRunRequest):
-    from metaforge.agents.commitment import CommitmentAgentRunner
+    from metaforge.orchestrator.router import get_agent
 
-    agent = CommitmentAgentRunner()
+    agent = get_agent("commitment")
     return agent.run(_agent_request_from_body(req)).to_dict()
 
 
 @app.post("/api/agents/kitting/run")
 async def agents_kitting_run(req: AgentRunRequest):
-    from metaforge.agents.kitting import KittingAgentRunner
+    from metaforge.orchestrator.router import get_agent
 
     areq = _agent_request_from_body(req)
     if req.custom_data and "inventory" not in areq.context.get("extras", {}):
@@ -1851,13 +2326,13 @@ async def agents_kitting_run(req: AgentRunRequest):
                 m["id"]: m.get("name", m["id"]) for m in material_catalog
             }
             areq.context["extras"]["material_catalog"] = material_catalog
-    agent = KittingAgentRunner()
+    agent = get_agent("kitting")
     return agent.run(areq).to_dict()
 
 
 @app.post("/api/agents/events/run")
 async def agents_events_run(req: AgentRunRequest):
-    from metaforge.agents.events import EventsAgentRunner
+    from metaforge.orchestrator.router import get_agent
 
     areq = _agent_request_from_body(req)
     areq.context.setdefault("extras", {})
@@ -1871,7 +2346,7 @@ async def agents_events_run(req: AgentRunRequest):
             areq.context["extras"]["production_execution"] = exec_state
     except Exception:
         pass
-    agent = EventsAgentRunner()
+    agent = get_agent("events")
     out = agent.run(areq).to_dict()
     out["agent_id"] = "events"
     if out.get("status") == "success":
@@ -2042,7 +2517,7 @@ async def db_confirm_save(req: ConfirmSaveRequest):
 
 @app.post("/api/agents/whatif/run")
 async def agents_whatif_run(req: AgentRunRequest):
-    from metaforge.agents.whatif import WhatifAgentRunner
+    from metaforge.orchestrator.router import get_agent
 
     areq = _agent_request_from_body(req)
     areq.context.setdefault("extras", {})
@@ -2050,15 +2525,15 @@ async def agents_whatif_run(req: AgentRunRequest):
         areq.context["extras"]["resource_config"] = await _fetch_resource_config()
     except Exception:
         pass
-    agent = WhatifAgentRunner()
+    agent = get_agent("whatif")
     return agent.run(areq).to_dict()
 
 
 @app.post("/api/agents/plans/run")
 async def agents_plans_run(req: AgentRunRequest):
-    from metaforge.agents.plans import PlansAgentRunner
+    from metaforge.orchestrator.router import get_agent
 
-    agent = PlansAgentRunner()
+    agent = get_agent("plans")
     return agent.run(_agent_request_from_body(req)).to_dict()
 
 
@@ -2067,6 +2542,238 @@ async def agents_pipeline_run_deprecated(req: AgentRunRequest):
     """已废弃：pipeline 合并入 scheduling。请使用 /api/agents/scheduling/run。"""
     req.params = {**(req.params or {}), "persist_after": True}
     return await agents_scheduling_run(req)
+
+
+def _planning_enabled() -> bool:
+    return os.getenv("PLANNING_STRATEGY_V1", "1").strip() not in ("0", "false", "False")
+
+
+def _planning_collab_enabled() -> bool:
+    return os.getenv("PLANNING_COLLAB_V1", "1").strip() not in ("0", "false", "False")
+
+
+def _require_planning():
+    if not _planning_enabled():
+        raise HTTPException(status_code=404, detail="planning strategy v1 disabled")
+
+
+def _require_planning_collab():
+    if not _planning_collab_enabled():
+        raise HTTPException(status_code=404, detail="planning collab v1 disabled")
+
+
+@app.get("/api/planning/strategy/presets")
+async def planning_strategy_presets():
+    _require_planning()
+    from metaforge.strategy.presets import list_presets
+
+    return {"presets": list_presets()}
+
+
+@app.get("/api/planning/constraints/catalog")
+async def planning_constraints_catalog():
+    _require_planning()
+    from metaforge.strategy.catalog import (
+        HARD_CONSTRAINT_TYPES,
+        SOFT_CONSTRAINT_TYPES,
+        SOFT_FOLDS_INTO,
+        list_constraint_catalog,
+    )
+
+    return {
+        "catalog": list_constraint_catalog(),
+        "hard_types": sorted(HARD_CONSTRAINT_TYPES),
+        "soft_types": sorted(SOFT_CONSTRAINT_TYPES),
+        "soft_folds_into": dict(SOFT_FOLDS_INTO),
+    }
+
+
+@app.post("/api/planning/strategy/generate")
+async def planning_strategy_generate(body: Dict[str, Any] = Body(...)):
+    _require_planning()
+    from metaforge.strategy.generator import generate_strategy
+
+    strategy, meta = generate_strategy(
+        user_goal=body.get("user_goal") or "",
+        jobs=body.get("jobs") or [],
+        machines=body.get("machines") or [],
+        llm_client=body.get("llm_client"),
+        workers=body.get("workers"),
+        tools=body.get("tools"),
+        allow_simulated=body.get("allow_simulated", True),
+    )
+    return {"strategy": strategy.to_dict(), "meta": meta}
+
+
+@app.post("/api/planning/strategy/validate")
+async def planning_strategy_validate(body: Dict[str, Any] = Body(...)):
+    _require_planning()
+    from metaforge.strategy.guardrails import validate_strategy
+    from metaforge.strategy.models import SchedulingStrategy
+
+    raw = body.get("strategy")
+    if not isinstance(raw, dict):
+        raise HTTPException(status_code=400, detail="strategy must be an object")
+    strategy = SchedulingStrategy.from_dict(raw)
+    ok, errors, fixed = validate_strategy(
+        strategy,
+        jobs=body.get("jobs") or [],
+        machines=body.get("machines") or [],
+        workers=body.get("workers"),
+        tools=body.get("tools"),
+        allow_simulated=body.get("allow_simulated", True),
+    )
+    return {"ok": ok, "errors": errors, "strategy": fixed.to_dict()}
+
+
+@app.post("/api/planning/strategy/evaluate")
+async def planning_strategy_evaluate(body: Dict[str, Any] = Body(...)):
+    _require_planning()
+    from metaforge.strategy.evaluator import evaluate_candidates
+    from metaforge.strategy.models import SchedulingStrategy
+
+    raw = body.get("strategy")
+    if not isinstance(raw, dict):
+        raise HTTPException(status_code=400, detail="strategy must be an object")
+    strategy = SchedulingStrategy.from_dict(raw)
+    evaluation = evaluate_candidates(
+        strategy,
+        list(body.get("candidates") or []),
+        jobs=body.get("jobs") or [],
+    )
+    return evaluation
+
+
+@app.post("/api/planning/run")
+async def planning_run(body: Dict[str, Any] = Body(...)):
+    _require_planning()
+    from metaforge.strategy.pipeline import run_planning
+
+    try:
+        return run_planning(
+            user_goal=body.get("user_goal") or "",
+            jobs=body.get("jobs") or [],
+            machines=body.get("machines") or [],
+            skip_strategy_hitl=bool(body.get("skip_strategy_hitl", False)),
+            llm_client=body.get("llm_client"),
+            problem=body.get("problem"),
+            workers=body.get("workers"),
+            tools=body.get("tools"),
+            allow_simulated=body.get("allow_simulated", True),
+            preset_id=body.get("preset_id"),
+            strategy=body.get("strategy"),
+            primary_solvers=body.get("primary_solvers") or body.get("solvers"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/planning/collab/analyze")
+async def planning_collab_analyze(body: Dict[str, Any] = Body(...)):
+    _require_planning_collab()
+    from metaforge.harness.skill import invoke_skill
+    from metaforge.skills.planning_collab import ensure_registered
+
+    ensure_registered()
+    return invoke_skill(
+        "planning_collab.analyze",
+        user_goal=body.get("user_goal") or "",
+        jobs=body.get("jobs") or [],
+        machines=body.get("machines") or [],
+        llm_client=body.get("llm_client"),
+        parallel=bool(body.get("parallel", True)),
+    )
+
+
+@app.post("/api/planning/collab/run")
+async def planning_collab_run(body: Dict[str, Any] = Body(...)):
+    _require_planning_collab()
+    from metaforge.harness.skill import invoke_skill
+    from metaforge.skills.planning_collab import ensure_registered
+
+    ensure_registered()
+    return invoke_skill(
+        "planning_collab",
+        user_goal=body.get("user_goal") or "",
+        jobs=body.get("jobs") or [],
+        machines=body.get("machines") or [],
+        skip_strategy_hitl=bool(body.get("skip_strategy_hitl", False)),
+        llm_client=body.get("llm_client"),
+        problem=body.get("problem"),
+        parallel=bool(body.get("parallel", True)),
+        primary_solvers=body.get("primary_solvers") or body.get("solvers"),
+    )
+
+
+@app.get("/api/planning/collab/runs/{run_id}")
+async def planning_collab_get_run(run_id: str):
+    _require_planning_collab()
+    from metaforge.planning_collab.supervisor import get_collab_run
+
+    run = get_collab_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="collab run not found")
+    return run
+
+
+@app.get("/api/planning/runs/{run_id}")
+async def planning_get_run(run_id: str):
+    _require_planning()
+    from metaforge.strategy.run_state import get_run
+
+    run = get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    return run
+
+
+@app.post("/api/planning/runs/{run_id}/strategy/approve")
+async def planning_strategy_approve(run_id: str, body: Dict[str, Any] = Body(default={})):
+    _require_planning()
+    from metaforge.strategy.hitl import approve_strategy
+    from metaforge.strategy.pipeline import resume_planning
+
+    out = approve_strategy(run_id)
+    if out.get("status") == "FAILED":
+        raise HTTPException(status_code=400, detail=out.get("error") or "approve failed")
+    if out.get("status") == "RUNNING":
+        out = resume_planning(run_id, problem=body.get("problem"))
+    return out
+
+
+@app.post("/api/planning/runs/{run_id}/strategy/reject")
+async def planning_strategy_reject(run_id: str, body: Dict[str, Any] = Body(default={})):
+    _require_planning()
+    from metaforge.strategy.hitl import reject_strategy
+
+    return reject_strategy(run_id, reason=body.get("reason") or "")
+
+
+@app.post("/api/planning/runs/{run_id}/strategy/edit_and_approve")
+async def planning_strategy_edit_and_approve(run_id: str, body: Dict[str, Any] = Body(...)):
+    _require_planning()
+    from metaforge.strategy.hitl import edit_and_approve
+    from metaforge.strategy.pipeline import resume_planning
+    from metaforge.strategy.run_state import get_run
+
+    run = get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    raw = body.get("strategy")
+    if not isinstance(raw, dict):
+        raise HTTPException(status_code=400, detail="strategy must be an object")
+    out = edit_and_approve(
+        run_id,
+        raw,
+        jobs=body.get("jobs") or run.get("jobs") or [],
+        machines=body.get("machines") or run.get("machines") or [],
+        workers=body.get("workers"),
+        tools=body.get("tools"),
+        allow_simulated=body.get("allow_simulated", True),
+    )
+    if out.get("status") == "RUNNING":
+        out = resume_planning(run_id, problem=body.get("problem"))
+    return out
 
 
 @app.post("/api/events/quantity_change")
@@ -2211,15 +2918,22 @@ async def scheduling_agent_run(req: AgentScheduleRequest):
 @app.get("/api/llm/status")
 async def llm_status():
     import os
+    from metaforge.orchestrator.llm_config import llm_display_label, llm_model_name, llm_provider
     from metaforge.orchestrator.session import session_store_mode, use_mongo_store
 
-    plan_agents = [x.strip() for x in os.getenv("LLM_PLAN_AGENTS", "scheduling,events").split(",") if x.strip()]
+    plan_agents = [x.strip() for x in os.getenv("LLM_PLAN_AGENTS", "scheduling").split(",") if x.strip()]
     import metaforge.orchestrator.router as router_mod
+
+    provider = llm_provider() or ("deepseek" if os.getenv("DEEPSEEK_API_KEY") else "zhipu" if os.getenv("ZHIPU_API_KEY") else "")
+    model = llm_model_name()
+    has_key = bool(os.getenv("DEEPSEEK_API_KEY") or os.getenv("ZHIPU_API_KEY"))
 
     return {
         "enabled": os.getenv("LLM_ENABLED") == "1",
-        "model": os.getenv("ZHIPU_MODEL", "glm-4.5-air"),
-        "has_api_key": bool(os.getenv("ZHIPU_API_KEY")),
+        "provider": provider,
+        "model": model,
+        "label": llm_display_label() if has_key else "",
+        "has_api_key": has_key,
         "fallback": os.getenv("LLM_FALLBACK", "rule"),
         "llm_router": os.getenv("LLM_ROUTER", "glm"),
         "plan_enabled": os.getenv("LLM_PLAN_ENABLED", "1") == "1",
@@ -2260,6 +2974,451 @@ async def get_solvers_catalog(family: Optional[str] = None):
         return catalog
     except Exception as e:
         return {"error": str(e), "solvers": []}
+
+
+@app.get("/api/integrations/masa-qmix")
+async def get_masa_qmix_integration_status():
+    available = _masa_qmix_wsgi_app is not None
+    detail = _masa_qmix_boot_error
+    return {
+        "name": "MASA-QMIX",
+        "ui_url": MASA_QMIX_MOUNT_PATH + "/",
+        "available": available,
+        "detail": detail,
+        "mode": "embedded-fastapi" if available else "unavailable",
+    }
+
+
+@app.get("/api/integrations/scheduletool/status")
+async def get_scheduletool_integration_status():
+    from metaforge.services.scheduletool_bridge import status as scheduletool_status_fn
+
+    fetcher = _fetch_scheduletool_kdcea_status if _scheduletool_wsgi_app is not None else None
+    data = scheduletool_status_fn(kdcea_fetcher=fetcher)
+    return {
+        "name": "Scheduletool",
+        "ui_url": f"{SCHEDULETOOL_MOUNT_PATH}/schedulePage/dataShow",
+        "mounted": _scheduletool_wsgi_app is not None,
+        "detail": _scheduletool_boot_error,
+        **data,
+    }
+
+
+@app.get("/api/integrations/scheduletool/summary")
+async def get_scheduletool_integration_summary():
+    from metaforge.services.scheduletool_bridge import summary as scheduletool_summary_fn
+
+    fetcher = _fetch_scheduletool_kdcea_status if _scheduletool_wsgi_app is not None else None
+    return scheduletool_summary_fn(kdcea_fetcher=fetcher)
+
+
+@app.get("/api/integrations/story")
+async def get_integration_story():
+    from metaforge.services.assembly_readiness import get_last_record, load_purchased_parts_catalog
+    from metaforge.services.integration_story import build_story
+    from metaforge.services.production_execution import get_state
+    from metaforge.services.scheduletool_bridge import summary as scheduletool_summary_fn
+
+    execution = await get_state(
+        execution_collection,
+        orders_coll=orders_collection,
+        readiness_coll=readiness_collection,
+    )
+
+    readiness = await get_last_record(readiness_collection)
+
+    supply_summary = None
+    purchased_count = 0
+    if _masa_qmix_wsgi_app is not None:
+        try:
+            resp = _call_masa_qmix("GET", "/api/supply-chain/status")
+            import json as _json
+
+            payload = _json.loads(resp.body.decode("utf-8"))
+            supply_summary = payload.get("data") or payload.get("summary") or payload
+            if isinstance(supply_summary, dict) and "summary" in supply_summary:
+                supply_summary = supply_summary["summary"]
+        except Exception:
+            supply_summary = None
+
+    if readiness and readiness.get("purchased_parts"):
+        purchased_count = len(readiness["purchased_parts"])
+    else:
+        try:
+            purchased_count = len(load_purchased_parts_catalog().get("parts") or [])
+        except Exception:
+            purchased_count = 0
+
+    fetcher = _fetch_scheduletool_kdcea_status if _scheduletool_wsgi_app is not None else None
+    st = scheduletool_summary_fn(kdcea_fetcher=fetcher)
+
+    return build_story(
+        execution=execution,
+        readiness=readiness,
+        supply_summary=supply_summary if isinstance(supply_summary, dict) else None,
+        purchased_count=purchased_count,
+        scheduletool=st,
+        scheduletool_mounted=_scheduletool_wsgi_app is not None,
+    )
+
+
+class RagChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class RagChatRequest(BaseModel):
+    query: Optional[str] = None
+    messages: Optional[List[RagChatMessage]] = None
+
+
+@app.get("/api/rag/status")
+async def rag_status(deep: bool = False):
+    from metaforge.services.rag_bridge import status as rag_status_fn
+
+    if deep:
+        return await asyncio.get_event_loop().run_in_executor(
+            _schedule_executor,
+            lambda: rag_status_fn(deep=True),
+        )
+    return rag_status_fn(deep=False)
+
+
+@app.get("/api/rag/streamlit-url")
+async def rag_streamlit_url():
+    from metaforge.services.rag_streamlit import start_streamlit, streamlit_running, streamlit_url
+
+    running = await asyncio.get_event_loop().run_in_executor(
+        _schedule_executor,
+        lambda: streamlit_running() or start_streamlit(),
+    )
+    return {
+        "url": streamlit_url(),
+        "running": bool(running),
+        "hint": "" if running else "Streamlit 未启动，可手动运行 .\\scripts\\start_rag_streamlit.ps1",
+    }
+
+
+@app.post("/api/rag/warmup")
+async def rag_warmup():
+    from metaforge.services.rag_bridge import warmup as rag_warmup_fn
+
+    return await asyncio.get_event_loop().run_in_executor(
+        _schedule_executor,
+        rag_warmup_fn,
+    )
+
+
+@app.post("/api/rag/chat")
+async def rag_chat(req: RagChatRequest):
+    from metaforge.services.rag_bridge import chat as rag_chat_fn
+
+    if req.messages:
+        payload = [{"role": m.role, "content": m.content} for m in req.messages]
+    elif req.query:
+        payload = [{"role": "user", "content": req.query.strip()}]
+    else:
+        raise HTTPException(status_code=400, detail="请提供 query 或 messages")
+
+    try:
+        return await asyncio.get_event_loop().run_in_executor(
+            _schedule_executor,
+            lambda: rag_chat_fn(payload),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+class RagKbActionRequest(BaseModel):
+    action: str = "ingest"
+
+
+@app.post("/api/rag/kb")
+async def rag_kb_manage(req: RagKbActionRequest):
+    from metaforge.services.rag_bridge import kb_manage as rag_kb_fn
+
+    action = (req.action or "").strip().lower()
+    if action not in ("ingest", "clear", "rebuild"):
+        raise HTTPException(status_code=400, detail="action 须为 ingest、clear 或 rebuild")
+
+    try:
+        return await asyncio.get_event_loop().run_in_executor(
+            _schedule_executor,
+            lambda: rag_kb_fn(action),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get("/api/rag/documents")
+async def rag_list_documents():
+    from metaforge.services.rag_bridge import list_kb_documents
+
+    try:
+        return await asyncio.get_event_loop().run_in_executor(
+            _schedule_executor,
+            list_kb_documents,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.post("/api/rag/documents")
+async def rag_upload_document(file: UploadFile = File(...)):
+    from metaforge.services.rag_bridge import save_kb_upload
+
+    try:
+        content = await file.read()
+        filename = file.filename or "document.txt"
+        return await asyncio.get_event_loop().run_in_executor(
+            _schedule_executor,
+            lambda: save_kb_upload(filename, content),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get("/api/rag/documents/preview")
+async def rag_preview_document(path: str):
+    from metaforge.services.rag_bridge import preview_kb_document
+
+    rel = (path or "").strip()
+    if not rel:
+        raise HTTPException(status_code=400, detail="path 不能为空")
+
+    try:
+        return await asyncio.get_event_loop().run_in_executor(
+            _schedule_executor,
+            lambda: preview_kb_document(rel),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+class RagDocumentIngestRequest(BaseModel):
+    path: str
+
+
+@app.post("/api/rag/documents/ingest")
+async def rag_ingest_document(req: RagDocumentIngestRequest):
+    from metaforge.services.rag_bridge import ingest_kb_document
+
+    path = (req.path or "").strip()
+    if not path:
+        raise HTTPException(status_code=400, detail="path 不能为空")
+
+    try:
+        return await asyncio.get_event_loop().run_in_executor(
+            _schedule_executor,
+            lambda: ingest_kb_document(path),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+class RagDocumentDeleteRequest(BaseModel):
+    path: str
+
+
+@app.delete("/api/rag/documents")
+async def rag_delete_document(req: RagDocumentDeleteRequest):
+    from metaforge.services.rag_bridge import delete_kb_document
+
+    path = (req.path or "").strip()
+    if not path:
+        raise HTTPException(status_code=400, detail="path 不能为空")
+
+    try:
+        return await asyncio.get_event_loop().run_in_executor(
+            _schedule_executor,
+            lambda: delete_kb_document(path),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+class RagReferencePreviewRequest(BaseModel):
+    reference: str
+
+
+@app.post("/api/rag/reference-preview")
+async def rag_reference_preview(req: RagReferencePreviewRequest):
+    from metaforge.services.rag_bridge import reference_preview as rag_ref_preview_fn
+
+    try:
+        preview = await asyncio.get_event_loop().run_in_executor(
+            _schedule_executor,
+            lambda: rag_ref_preview_fn(req.reference),
+        )
+        return {"preview": preview}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+class ReadinessGenerateRequest(BaseModel):
+    plan_id: Optional[str] = None
+
+
+@app.get("/api/integrations/mapping/catalog")
+async def get_integration_mapping_catalog():
+    from metaforge.services.assembly_readiness import load_mapping_catalog
+
+    return load_mapping_catalog()
+
+
+@app.get("/api/integrations/purchased-parts/catalog")
+async def get_integration_purchased_parts_catalog():
+    from metaforge.services.assembly_readiness import load_purchased_parts_catalog
+
+    return load_purchased_parts_catalog()
+
+
+@app.get("/api/integrations/supply-chain/status")
+async def get_integration_supply_chain_status():
+    from metaforge.services.purchased_supply import build_supply_chain_status
+
+    return {"ok": True, "data": build_supply_chain_status()}
+
+
+@app.get("/api/integrations/purchased-supply/state")
+async def get_purchased_supply_state():
+    from metaforge.services.purchased_supply import get_full_state_view
+
+    return get_full_state_view()
+
+
+class PurchasedSupplyStateUpdate(BaseModel):
+    materials: Optional[Dict[str, Any]] = None
+    deliveries: Optional[List[Dict[str, Any]]] = None
+
+
+@app.put("/api/integrations/purchased-supply/state")
+async def put_purchased_supply_state(body: PurchasedSupplyStateUpdate):
+    from metaforge.services.purchased_supply import update_supply_state
+
+    return update_supply_state(body.model_dump(exclude_none=True))
+
+
+class SupplySimulateRequest(BaseModel):
+    minutes: int = 30
+
+
+@app.post("/api/integrations/purchased-supply/simulate")
+async def post_purchased_supply_simulate(body: SupplySimulateRequest = Body(default=SupplySimulateRequest())):
+    from metaforge.services.purchased_supply import simulate_advance_deliveries
+
+    return simulate_advance_deliveries(minutes=max(1, int(body.minutes)))
+
+
+class SupplyDispatchRequest(BaseModel):
+    supplier_name: str
+    material_id: str
+    quantity: int = 20
+    eta_minutes: int = 20
+    priority: str = "normal"
+
+
+@app.post("/api/integrations/purchased-supply/dispatch")
+async def post_purchased_supply_dispatch(body: SupplyDispatchRequest):
+    from metaforge.services.purchased_supply import dispatch_delivery
+
+    try:
+        return dispatch_delivery(
+            supplier_name=body.supplier_name,
+            material_id=body.material_id,
+            quantity=body.quantity,
+            eta_minutes=body.eta_minutes,
+            priority=body.priority,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@app.post("/api/integrations/readiness/generate")
+async def post_readiness_generate(req: ReadinessGenerateRequest = Body(default=ReadinessGenerateRequest())):
+    from metaforge.services.assembly_readiness import generate_readiness_from_execution
+
+    doc, err = await generate_readiness_from_execution(
+        execution_collection,
+        orders_collection,
+        readiness_collection,
+        plan_id=req.plan_id,
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    return doc
+
+
+@app.get("/api/integrations/readiness/latest")
+async def get_readiness_latest():
+    from metaforge.services.assembly_readiness import get_latest_ready
+
+    doc = await get_latest_ready(readiness_collection)
+    if not doc:
+        raise HTTPException(status_code=404, detail="暂无待组装批次")
+    return doc
+
+
+@app.get("/api/integrations/readiness/last")
+async def get_readiness_last():
+    from metaforge.services.assembly_readiness import get_last_record
+
+    doc = await get_last_record(readiness_collection)
+    if not doc:
+        raise HTTPException(status_code=404, detail="暂无组装就绪记录")
+    return doc
+
+
+@app.get("/api/integrations/readiness/{readiness_id}")
+async def get_readiness_by_id(readiness_id: str):
+    from metaforge.services.assembly_readiness import get_readiness_by_id
+
+    doc = await get_readiness_by_id(readiness_collection, readiness_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="记录不存在")
+    return doc
+
+
+@app.post("/api/integrations/readiness/{readiness_id}/consume")
+async def post_readiness_consume(readiness_id: str):
+    from metaforge.services.assembly_readiness import consume_readiness
+
+    doc, err = await consume_readiness(readiness_collection, readiness_id)
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    return doc
 
 
 async def _prepare_problem_async(req: SingleSolverRunRequest):
@@ -2418,11 +3577,13 @@ async def due_date_reschedule(req: DueDateRescheduleRequest):
 
 
 @app.post("/api/staffing/analyze")
-def analyze_staffing(schedule_data: List[Dict[str, Any]]):
+async def analyze_staffing(schedule_data: List[Dict[str, Any]]):
     """
     分析排程数据，计算每小时的人力需求
-    假设：1 台运行中的机器 = 1 名操作员
+    假设：1 台运行中的机器 = 1 名具备数控技能的操作员
     """
+    from metaforge.services.staff_dispatch import staff_can_operate
+
     if not schedule_data:
         return {"timeline": [], "stats": {}}
 
@@ -2464,14 +3625,41 @@ def analyze_staffing(schedule_data: List[Dict[str, Any]]):
             "machines": sorted(list(set(machine_details[t])))  # 去重并排序
         })
 
+    staff_docs = await staff_collection.find({"is_active": True}).to_list(100)
+    skilled_active = sum(1 for s in staff_docs if staff_can_operate(s, 0))
+
     return {
         "timeline": timeline_data,
         "stats": {
             "max_peak": max_staff,
             "avg_load": round(avg_staff, 2),
-            "total_hours": total_man_hours
+            "total_hours": total_man_hours,
+            "skilled_active": skilled_active,
+            "peak_shortage": max(0, max_staff - skilled_active),
         }
     }
+
+
+class StaffDispatchBody(BaseModel):
+    schedule_data: List[Dict[str, Any]]
+    sim_time: float = 0
+
+
+@app.post("/api/staffing/dispatch")
+async def staffing_dispatch(body: StaffDispatchBody):
+    """按甘特时刻预览人员派工（机台值守 / 待命 / 巡检）及孪生坐标。"""
+    from metaforge.services.staff_dispatch import build_staff_dispatch_preview
+
+    staff = await staff_collection.find().sort("id", 1).to_list(100)
+    machines = await machine_collection.find().sort("id", 1).to_list(200)
+    return build_staff_dispatch_preview(
+        body.schedule_data or [],
+        staff,
+        machines,
+        float(body.sim_time or 0),
+    )
+
+
 # === 员工管理 API ===
 
 @app.get("/api/staff/list")
@@ -2703,6 +3891,7 @@ async def get_logistics_layout():
                 "id": int(m["id"]),
                 "name": m.get("name", f"Machine-{m['id']}"),
                 "x": float(m.get("x", 0.0)),
+                "y": float(m.get("y", 7.5)),
                 "z": float(m.get("z", 0.0)),
             }
             for m in docs
@@ -2949,6 +4138,7 @@ async def get_digital_twin_snapshot(
                     {
                         "id": m["id"],
                         "x": m["x"],
+                        "y": float(m.get("y", 7.5)),
                         "z": m["z"],
                         "status": "running" if is_running else "idle",
                         "current_job": "",
@@ -2956,7 +4146,12 @@ async def get_digital_twin_snapshot(
                 )
 
     agv_data = await build_agv_snapshot(agv_fleet_collection, db_machines)
-    staff_data = await build_staff_snapshot(staff_collection)
+    staff_data = await build_staff_snapshot(
+        staff_collection,
+        db_machines,
+        gantt=gantt if gantt else None,
+        sim_time=current_sim_time,
+    )
 
     return {
         "machines": machines_snapshot,
@@ -2993,12 +4188,20 @@ if __name__ == "__main__":
         raise SystemExit(1)
 
     print(f"MetaForge Backend (FastAPI+Motor) running on http://{_host}:{_port}")
-    print(f"  统一入口: http://{_host}:{_port}/new-ui/")
+    print(f"  统一入口: http://{_host}:{_port}/go  →  /new-ui/dashboard")
     print(f"  reload={_reload}  METAFORGE_RELOAD=1 可开启热重载（开发慎用，易堆积僵尸进程）")
-    uvicorn.run(
-        "main:app",
-        host=_host,
-        port=_port,
-        reload=_reload,
-        reload_dirs=_reload_dirs if _reload else None,
-    )
+    if _reload:
+        uvicorn.run(
+            "main:app",
+            host=_host,
+            port=_port,
+            reload=True,
+            reload_dirs=_reload_dirs,
+        )
+    else:
+        uvicorn.run(
+            app,
+            host=_host,
+            port=_port,
+            reload=False,
+        )

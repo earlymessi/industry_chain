@@ -77,6 +77,7 @@
             <el-option :value="60" label="默认 60（1分=1h）" />
             <el-option :value="1" label="实时 1（1h=1h）" />
             <el-option :value="300" label="快进 300（1分=5h）" />
+            <el-option :value="-1" label="立即完成（演示）" />
           </el-select>
         </el-col>
         <el-col :span="5">
@@ -91,6 +92,14 @@
             </el-button>
             <el-button v-if="execution.status === 'running'" @click="pauseExecution">暂停</el-button>
             <el-button v-if="execution.status === 'paused'" type="success" @click="resumeExecution">继续</el-button>
+            <el-button
+              v-if="execution.status === 'running' || execution.status === 'paused'"
+              type="warning"
+              plain
+              @click="completeNow"
+            >
+              立即完成
+            </el-button>
             <el-button v-if="execution.status !== 'idle'" type="danger" plain @click="resetExecution">重置</el-button>
           </el-button-group>
         </el-col>
@@ -103,8 +112,21 @@
         </el-descriptions-item>
         <el-descriptions-item label="状态">{{ executionStatusLabel }}</el-descriptions-item>
       </el-descriptions>
+
+      <el-alert
+        v-if="execution.status === 'completed'"
+        type="success"
+        :closable="false"
+        show-icon
+        class="mt"
+        title="MES 整单执行完毕"
+      >
+        <template #default>
+          <el-button link type="primary" @click="readinessDialogVisible = true">查看就绪详情</el-button>
+        </template>
+      </el-alert>
       <el-descriptions v-if="execution.status !== 'idle'" :column="1" border class="mt">
-        <el-descriptions-item label="仿真倍速">×{{ execution.sim_speed }}</el-descriptions-item>
+        <el-descriptions-item label="仿真倍速">{{ simSpeedLabel }}</el-descriptions-item>
       </el-descriptions>
 
       <div v-if="showMesContext && displayGantt.length" class="mt gantt-block">
@@ -121,59 +143,8 @@
         <span v-if="execution.status === 'idle'" class="hint-text">开始执行后红线将随仿真时刻移动</span>
       </div>
 
-      <el-divider v-if="showMesContext" content-position="left">数字孪生车间</el-divider>
-
-      <template v-if="showMesContext">
-        <el-progress
-          v-if="unifiedMakespan > 0"
-          :percentage="mesProgressPercent"
-          :stroke-width="10"
-          class="mt"
-        />
-        <DigitalTwinMap
-          class="mt"
-          :machines="twinMachines"
-          :agvs="twinAux.agvs"
-          :staff="twinAux.staff"
-        />
-        <el-row :gutter="12" class="mt">
-          <el-col :lg="12" :md="24">
-            <el-card shadow="never">
-              <template #header><div class="h2">机器状态（与甘特同步）</div></template>
-              <el-table :data="twinMachines" size="small" max-height="280">
-                <el-table-column prop="id" label="ID" width="70" />
-                <el-table-column prop="status" label="状态" width="90">
-                  <template #default="{ row }">
-                    <el-tag :type="row.status === 'running' ? 'success' : 'info'">{{ row.status }}</el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="current_job" label="当前工单" min-width="120" />
-              </el-table>
-            </el-card>
-          </el-col>
-          <el-col :lg="6" :md="12" :sm="24">
-            <el-card shadow="never">
-              <template #header><div class="h2">AGV 车队</div></template>
-              <el-table :data="twinAux.agvs" size="small" max-height="280">
-                <el-table-column prop="id" label="AGV" width="70" />
-                <el-table-column prop="status" label="状态" />
-              </el-table>
-            </el-card>
-          </el-col>
-          <el-col :lg="6" :md="12" :sm="24">
-            <el-card shadow="never">
-              <template #header><div class="h2">在岗人员</div></template>
-              <el-table :data="twinAux.staff" size="small" max-height="280">
-                <el-table-column prop="id" label="ID" width="70" />
-                <el-table-column prop="name" label="姓名" />
-              </el-table>
-            </el-card>
-          </el-col>
-        </el-row>
-      </template>
-
       <el-alert
-        v-else
+        v-if="!showMesContext"
         type="info"
         show-icon
         :closable="false"
@@ -203,19 +174,100 @@
       <MesReschedulePanel
         :execution="execution"
         @rescheduled="onRescheduled"
+        @refresh-execution="loadExecution"
       />
     </el-card>
+
+    <el-card v-if="showMesContext" shadow="never" class="mt">
+      <template #header>
+        <div class="row">
+          <div class="h">数字孪生车间</div>
+        </div>
+      </template>
+      <el-progress
+        v-if="unifiedMakespan > 0"
+        :percentage="mesProgressPercent"
+        :stroke-width="10"
+      />
+      <DigitalTwinPanel
+        class="mt"
+        :machines="twinMachines"
+        :agvs="twinAux.agvs"
+        :staff="twinAux.staff"
+      />
+      <el-row :gutter="12" class="mt">
+        <el-col :lg="12" :md="24">
+          <el-card shadow="never">
+            <template #header><div class="h2">机器状态（与甘特同步）</div></template>
+            <el-table :data="twinMachines" size="small" max-height="280">
+              <el-table-column prop="id" label="ID" width="70" />
+              <el-table-column prop="status" label="状态" width="90">
+                <template #default="{ row }">
+                  <el-tag :type="row.status === 'running' ? 'success' : 'info'">{{ row.status }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="current_job" label="当前工单" min-width="120" />
+            </el-table>
+          </el-card>
+        </el-col>
+        <el-col :lg="6" :md="12" :sm="24">
+          <el-card shadow="never">
+            <template #header><div class="h2">AGV 车队</div></template>
+            <el-table :data="twinAux.agvs" size="small" max-height="280">
+              <el-table-column prop="id" label="AGV" width="70" />
+              <el-table-column prop="status" label="状态" />
+            </el-table>
+          </el-card>
+        </el-col>
+        <el-col :lg="6" :md="12" :sm="24">
+          <el-card shadow="never">
+            <template #header><div class="h2">在岗人员</div></template>
+            <el-table :data="twinAux.staff" size="small" max-height="280" empty-text="当前时刻无派工">
+              <el-table-column prop="name" label="姓名" width="72" />
+              <el-table-column label="机台" width="72">
+                <template #default="{ row }">M{{ row.machine_id }}</template>
+              </el-table-column>
+              <el-table-column prop="job_name" label="工单" min-width="90" />
+              <el-table-column label="技能" min-width="90">
+                <template #default="{ row }">
+                  {{ (row.skills || []).join('、') || '-' }}
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+        </el-col>
+      </el-row>
+    </el-card>
+
+    <el-dialog v-model="readinessDialogVisible" title="组装就绪详情" width="640px">
+      <template v-if="readinessInfo">
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item label="来源计划">{{ readinessInfo.plan_name }}</el-descriptions-item>
+          <el-descriptions-item label="可组装台数">{{ readinessInfo.product_units }}</el-descriptions-item>
+          <el-descriptions-item label="状态">{{ readinessInfo.status === 'ready' ? '待组装' : '已消费' }}</el-descriptions-item>
+          <el-descriptions-item label="MES Makespan">{{ readinessInfo.mes_makespan_h }} h</el-descriptions-item>
+        </el-descriptions>
+        <el-table :data="readinessInfo.self_made_parts || []" size="small" class="mt" max-height="280">
+          <el-table-column prop="job_name" label="生产工件" min-width="120" />
+          <el-table-column prop="mapped_part_name" label="组装物料" min-width="100" />
+          <el-table-column prop="mapped_workstation" label="组装工位" min-width="100" />
+          <el-table-column prop="quantity" label="数量" width="70" />
+        </el-table>
+      </template>
+      <el-empty v-else description="暂无就绪记录" />
+    </el-dialog>
 
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { api } from '../api/client'
 import MesReschedulePanel from '../components/MesReschedulePanel.vue'
 import ExecutionGanttChart from '../components/ExecutionGanttChart.vue'
-import DigitalTwinMap from '../components/DigitalTwinMap.vue'
+import DigitalTwinPanel from '../components/DigitalTwinPanel.vue'
 import { useResultsStore } from '../stores/useResultsStore'
 import { useWorkContextStore } from '../stores/useWorkContextStore'
 import {
@@ -229,11 +281,16 @@ import { buildMachinesFromGantt } from '../utils/digitalTwinFromGantt'
 
 const store = useResultsStore()
 const workContext = useWorkContextStore()
+const route = useRoute()
+const router = useRouter()
 
 const stats = ref({})
 const layoutMachines = ref([])
 const twinAux = ref({ agvs: [], staff: [] })
 const execution = ref({ status: 'idle' })
+const readinessInfo = ref(null)
+const readinessDialogVisible = ref(false)
+const lastExecutionStatus = ref('idle')
 const loading = ref(false)
 const plans = ref([])
 const selectedPlanId = ref('')
@@ -270,6 +327,7 @@ const executionStatusLabel = computed(() => {
   const s = execution.value.status
   if (s === 'running') return '执行中'
   if (s === 'paused') return '已暂停'
+  if (s === 'completed') return '执行完毕'
   return '未启动'
 })
 
@@ -277,7 +335,14 @@ const executionTagType = computed(() => {
   const s = execution.value.status
   if (s === 'running') return 'success'
   if (s === 'paused') return 'warning'
+  if (s === 'completed') return ''
   return 'info'
+})
+
+const simSpeedLabel = computed(() => {
+  const speed = Number(execution.value.sim_speed)
+  if (speed < 0) return '立即完成（演示）'
+  return `×${speed}`
 })
 
 const showMesContext = computed(
@@ -390,9 +455,28 @@ async function loadPlans() {
   }))
 }
 
+async function loadReadinessLatest() {
+  try {
+    const { data } = await api.get('/api/integrations/readiness/latest')
+    readinessInfo.value = data
+    return data
+  } catch {
+    try {
+      const { data } = await api.get('/api/integrations/readiness/last')
+      readinessInfo.value = data
+      return data
+    } catch {
+      readinessInfo.value = null
+      return null
+    }
+  }
+}
+
 async function loadExecution() {
+  const prev = lastExecutionStatus.value
   const { data } = await api.get('/api/execution/state')
   execution.value = data || { status: 'idle' }
+  lastExecutionStatus.value = execution.value.status || 'idle'
   if (data?.status && data.status !== 'idle') {
     selectedPlanId.value = data.plan_id || selectedPlanId.value
     selectedSolverId.value = data.baseline_solver || selectedSolverId.value
@@ -407,6 +491,13 @@ async function loadExecution() {
       })
       await loadImpactAssessmentForPlan(data.plan_id, { executionDoc: data }, store)
     }
+  }
+  if (data?.status === 'completed' && prev !== 'completed') {
+    const ready = await loadReadinessLatest()
+    const partKinds = new Set((ready?.self_made_parts || []).map((p) => p.mapped_part_id)).size
+    ElMessage.success(
+      `MES 执行完毕，已生成组装就绪：${ready?.plan_name || data.plan_name || '—'}，${partKinds} 类自制件 / ${ready?.product_units || '—'} 台`,
+    )
   }
 }
 
@@ -440,7 +531,7 @@ async function fetchTwinAuxiliary() {
 
 function twinSnapshotParams() {
   const ex = execution.value
-  if (ex?.status === 'running' || ex?.status === 'paused') {
+  if (ex?.status === 'running' || ex?.status === 'paused' || ex?.status === 'completed') {
     return {}
   }
   if (selectedPlanId.value && selectedSolverId.value) {
@@ -505,10 +596,33 @@ async function startExecution() {
     })
     execution.value = data
     syncStoreFromPlan(selectedPlanId.value, selectedSolverId.value, data)
-    ElMessage.success('已开始 MES 执行')
+    if (data.status === 'completed') {
+      const ready = await loadReadinessLatest()
+      const partKinds = new Set((ready?.self_made_parts || []).map((p) => p.mapped_part_id)).size
+      ElMessage.success(
+        `MES 已立即完成，组装就绪：${ready?.plan_name || data.plan_name || '—'}，${partKinds} 类自制件 / ${ready?.product_units || '—'} 台`,
+      )
+    } else {
+      ElMessage.success('已开始 MES 执行')
+    }
     await refreshAll()
   } catch (e) {
     ElMessage.error(`启动失败: ${e.response?.data?.detail || e.message}`)
+  }
+}
+
+async function completeNow() {
+  try {
+    const { data } = await api.post('/api/execution/complete-now')
+    execution.value = data
+    const ready = await loadReadinessLatest()
+    const partKinds = new Set((ready?.self_made_parts || []).map((p) => p.mapped_part_id)).size
+    ElMessage.success(
+      `MES 已立即完成，组装就绪：${ready?.plan_name || data.plan_name || '—'}，${partKinds} 类自制件 / ${ready?.product_units || '—'} 台`,
+    )
+    await refreshAll()
+  } catch (e) {
+    ElMessage.error(`完成失败: ${e.response?.data?.detail || e.message}`)
   }
 }
 
@@ -527,6 +641,13 @@ function onRescheduled(resultBundle) {
     store.setResults(resultBundle.results)
   }
   const impact = resultBundle?.impact_report
+  if (impact) {
+    try {
+      sessionStorage.setItem('metaforge_last_impact', JSON.stringify(impact))
+    } catch {
+      /* ignore quota */
+    }
+  }
   const sid =
     impact?.rescheduled_solver ||
     execution.value.baseline_solver ||
@@ -590,8 +711,37 @@ onMounted(async () => {
   await loadPlans()
   await fetchLayout()
   await refreshAll()
+  if (route.query.from_package === '1') {
+    await loadPlans()
+    await refreshAll()
+    if (route.query.plan_id) {
+      selectedPlanId.value = String(route.query.plan_id)
+    }
+    const code = route.query.package_code ? String(route.query.package_code) : ''
+    if (execution.value?.status && execution.value.status !== 'idle') {
+      ElMessage.success(
+        code
+          ? `已加载 Package 执行仿真（${code} · ${execution.value.plan_name || ''}）`
+          : `已加载 Package 执行仿真（${execution.value.plan_name || ''}）`,
+      )
+    }
+    router.replace({ path: '/dashboard', query: {} })
+  }
   timer = setInterval(refreshAll, 2000)
 })
+
+watch(
+  () => route.query.from_package,
+  async (v) => {
+    if (v !== '1') return
+    await loadPlans()
+    await refreshAll()
+    if (route.query.plan_id) {
+      selectedPlanId.value = String(route.query.plan_id)
+    }
+    router.replace({ path: '/dashboard', query: {} })
+  },
+)
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)

@@ -38,9 +38,15 @@ def test_run_tool_success():
     assert r.data["echo"] == "hi"
 
 
-def test_run_tool_unknown_raises():
+def test_run_tool_unknown_returns_error():
+    result = run_tool("nonexistent.tool", {}, ToolContext())
+    assert not result.ok
+    assert "Unknown tool" in result.error
+
+
+def test_get_unknown_tool_raises():
     with pytest.raises(KeyError, match="Unknown tool"):
-        run_tool("nonexistent.tool", {}, ToolContext())
+        get_tool("nonexistent.tool")
 
 
 def test_get_tool():

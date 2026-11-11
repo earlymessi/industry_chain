@@ -279,8 +279,6 @@
         <template #header>
           <div class="row">
             <div class="h">策略与运行</div>
-            <div class="spacer" />
-            <el-checkbox :model-value="isAllSelected" @change="toggleSelectAll">全选</el-checkbox>
           </div>
         </template>
 
@@ -351,99 +349,49 @@
               :disabled="customJobs.length === 0"
               @click="openGlobalAssistant"
             >
-              车间助手（故障/齐套/交期）
+              资源助手
             </el-button>
           </div>
         </div>
 
-        <div class="weights-panel">
-          <el-form-item label="自然语言排程（可选）" label-width="auto" style="margin-bottom: 8px">
-            <el-input
-              v-model="scheduleMessage"
-              type="textarea"
-              :rows="2"
-              placeholder="例如：交付优先，对比禁忌搜索和 SPT"
-            />
-          </el-form-item>
-          <div class="ops-btns" style="margin-bottom: 12px">
-            <el-button size="small" :disabled="!scheduleMessage?.trim()" @click="previewScheduleIntent">
-              预览解析
-            </el-button>
-            <span v-if="lastPlanner" class="ops-tip">上次解析：{{ lastPlanner }}</span>
+        <div class="solver-panel">
+          <div class="solver-panel-head">
+            <div class="h2">对比算法</div>
+            <el-checkbox :model-value="isAllSelected" @change="toggleSelectAll">全选</el-checkbox>
           </div>
-          <div class="row" style="margin-bottom: 10px">
-            <span class="weights-title" style="margin: 0">策略模板</span>
-            <div class="spacer" />
-            <el-select
-              v-model="selectedStrategyId"
-              placeholder="一键套用权重"
-              clearable
-              style="width: 100%"
-              @change="applyStrategyTemplate"
-            >
-              <el-option v-for="s in strategyTemplates" :key="s.id" :label="s.name" :value="s.id" />
-            </el-select>
-          </div>
-          <el-form-item label="随机种子（可选，复现）" label-width="auto" style="margin-bottom: 10px">
-            <el-input-number v-model="randomSeed" :min="0" :step="1" controls-position="right" style="width: 100%" clearable />
-          </el-form-item>
-          <div class="weights-title">多目标权重（越小越好）</div>
-          <el-form label-position="top" class="weights-form">
-            <div class="weights-grid">
-              <el-form-item>
-                <template #label>
-                  <div class="wlabel">完工时间（Makespan）</div>
-                </template>
-                <el-input-number v-model="weights.makespan" :step="0.1" :min="0" controls-position="right" style="width: 100%" />
-                <div class="wdesc">最大完工时间</div>
-              </el-form-item>
-
-              <el-form-item>
-                <template #label>
-                  <div class="wlabel">交期违约（加权 Tardiness）</div>
-                </template>
-                <el-input-number v-model="weights.weighted_tardiness_total" :step="0.1" :min="0" controls-position="right" style="width: 100%" />
-                <div class="wdesc">逾期时间按优先级加权</div>
-              </el-form-item>
-
-              <el-form-item>
-                <template #label>
-                  <div class="wlabel">能耗成本（Energy Cost）</div>
-                </template>
-                <el-input-number v-model="weights.energy_cost" :step="0.01" :min="0" controls-position="right" style="width: 100%" />
-                <div class="wdesc">功率 × 分时电价 × 时长</div>
-              </el-form-item>
-
-              <el-form-item>
-                <template #label>
-                  <div class="wlabel">负载均衡（机器忙碌度 CV）</div>
-                </template>
-                <el-input-number v-model="weights.machine_busy_cv" :step="0.5" :min="0" controls-position="right" style="width: 100%" />
-                <div class="wdesc">各机器忙碌度离散程度</div>
-              </el-form-item>
-            </div>
-          </el-form>
-          <el-alert
-            class="whelp"
-            type="info"
-            :closable="false"
-            show-icon
-            title="综合评分 = w1·makespan + w2·加权交期违约 + w3·能耗成本 + w4·负载CV"
-          />
-        </div>
-
-        <el-space direction="vertical" fill style="width:100%">
-          <div v-for="group in solverGroups" :key="group.title">
+          <p class="solver-panel-hint">AI 策略与「开始排程计算」共用此处勾选（最多 12 个）</p>
+          <div v-for="group in solverGroups" :key="group.title" class="solver-group">
             <div class="group-title">{{ group.title }}</div>
             <el-checkbox-group v-model="selectedSolvers" class="solver-list">
-              <el-checkbox v-for="s in group.items" :key="s.id" :label="s.id">
-                <span>{{ s.name }}</span>
-                <el-tag v-if="s.supports_weights_in_search" size="small" type="success" class="solver-tag">多目标搜索</el-tag>
-                <el-tag v-else-if="s.optimization_mode === 'rule_construct'" size="small" type="info" class="solver-tag">规则构造</el-tag>
+              <el-checkbox
+                v-for="s in group.items"
+                :key="s.id"
+                :value="s.id"
+                :label="s.id"
+                class="solver-check"
+              >
+                <div class="solver-item">
+                  <div class="solver-item-name">{{ s.name }}</div>
+                  <div class="solver-item-meta">
+                    <span class="solver-item-id">{{ s.id }}</span>
+                    <el-tag v-if="s.supports_weights_in_search" size="small" type="success" effect="plain">多目标</el-tag>
+                    <el-tag v-else-if="s.optimization_mode === 'rule_construct'" size="small" type="info" effect="plain">规则</el-tag>
+                  </div>
+                </div>
               </el-checkbox>
             </el-checkbox-group>
           </div>
-        </el-space>
+        </div>
+
+        <PlanningWorkbench
+          :disabled="planningJobsDisabled"
+          :jobs="buildPlanningJobs()"
+          :machines="buildPlanningMachines()"
+          :job-ids="planningJobIds"
+          :selected-solvers="selectedSolvers"
+          :solver-groups="solverGroups"
+          @schedule-ready="onPlanningScheduleReady"
+        />
 
         <div style="margin-top:16px">
           <el-checkbox v-model="useAsyncRun" style="margin-bottom: 8px">异步计算（大规模算例推荐，避免页面超时）</el-checkbox>
@@ -468,22 +416,26 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api/client'
 import { useResultsStore } from '../stores/useResultsStore'
 import MaterialCheckDialog from '../components/MaterialCheckDialog.vue'
 import PersistConfirmDialog from '../components/PersistConfirmDialog.vue'
+import PlanningWorkbench from '../components/planning/PlanningWorkbench.vue'
 import { runPipelineAgent } from '../api/client'
 import { useWorkContextStore } from '../stores/useWorkContextStore'
 import { useAssistantStore } from '../stores/useAssistantStore'
 import { usePlanBinding } from '../composables/usePlanBinding'
+import { productionPath } from '../utils/productionRoutes'
 import {
   clearApsLoadScheduleKeys,
   consumeApsLoadSchedule,
   hydrateResultsStoreFromPlan,
+  isValidScheduleResults,
   persistScheduleToPlan,
+  stashScheduleResultsForReports,
 } from '../utils/planScheduleSync'
 
 const router = useRouter()
@@ -528,16 +480,11 @@ const customJobs = ref([
   },
 ])
 
-const strategyTemplates = ref([])
-const selectedStrategyId = ref('')
 const routingTemplates = ref([])
 const selectedRoutingId = ref('')
-const randomSeed = ref(null)
 const useAsyncRun = ref(true)
 const enforceMaterial = ref(true)
 const materialCatalog = ref([])
-const scheduleMessage = ref('')
-const lastPlanner = ref('')
 const materialCheckDialogVisible = ref(false)
 const persistDialogVisible = ref(false)
 const pipelineRunning = ref(false)
@@ -548,6 +495,22 @@ const persistPending = ref({
   summaryZh: '',
 })
 const showTaskAdvanced = ref(false)
+
+const DEFAULT_WEIGHTS = {
+  makespan: 1.0,
+  weighted_tardiness_total: 0.5,
+  energy_cost: 0.05,
+  machine_busy_cv: 10.0,
+}
+
+const planningJobsDisabled = computed(() => {
+  if (inputMode.value === 'custom') return customJobs.value.length === 0
+  return true
+})
+
+const planningJobIds = computed(() =>
+  buildPlanningJobs().map((j) => String(j.job_id || j.name || '')).filter(Boolean),
+)
 
 const bomTemplates = [
   {
@@ -588,17 +551,10 @@ const bomTemplates = [
 const solverGroups = ref([])
 const catalogLoading = ref(false)
 
-const selectedSolvers = ref(['spt', 'ts'])
+const selectedSolvers = ref(['spt', 'ts', 'ga', 'sa'])
 const allSolverIds = computed(() =>
   solverGroups.value.flatMap((g) => g.items.map((x) => x.id)),
 )
-
-const weights = reactive({
-  makespan: 1.0,
-  weighted_tardiness_total: 0.5,
-  energy_cost: 0.05,
-  machine_busy_cv: 10.0,
-})
 
 const isAllSelected = computed(() =>
   allSolverIds.value.length > 0 && selectedSolvers.value.length === allSolverIds.value.length,
@@ -758,31 +714,15 @@ function addTask(jobIdx) {
   j.tasks.push({ name: `Op-${j.tasks.length + 1}`, machine_id: 0, machine_options_text: '0', machine_group: '', duration: 5, setup_time: null, unit_time: null, quantity: null })
 }
 
-function syncStrategyToStore(id) {
-  if (!id) {
-    store.setSchedulingStrategy('', '')
-    return
-  }
-  const t = strategyTemplates.value.find((x) => x.id === id)
-  store.setSchedulingStrategy(id, t?.name || id)
-}
-
-function applyStrategyTemplate(id) {
-  if (!id) return
-  const t = strategyTemplates.value.find((x) => x.id === id)
-  if (!t?.weights) return
-  Object.assign(weights, t.weights)
-  syncStrategyToStore(id)
-  ElMessage.success(`已套用策略：${t.name}`)
-}
-
 function mapTaskPayload(t, job) {
-  const machineOptions = parseMachineOptions(t.machine_options_text, t.machine_id)
+  const machineOptions = Array.isArray(t.machine_options) && t.machine_options.length
+    ? t.machine_options.map((x) => Number(x)).filter((n) => Number.isInteger(n) && n >= 0)
+    : parseMachineOptions(t.machine_options_text, t.machine_id)
   const payload = {
     name: t.name,
     duration: Number(t.duration || 1),
     machine_id: Number.isInteger(t.machine_id) ? t.machine_id : (machineOptions[0] ?? 0),
-    machine_options: machineOptions,
+    machine_options: machineOptions.length ? machineOptions : parseMachineOptions(t.machine_options_text, t.machine_id),
     machine_group: t.machine_group || null,
   }
   const qty = t.quantity ?? job?.quantity
@@ -792,6 +732,30 @@ function mapTaskPayload(t, job) {
   return payload
 }
 
+function buildPlanningJobs() {
+  if (inputMode.value === 'custom') {
+    return customJobs.value.map((j) => {
+      const payload = mapJobPayload(j)
+      payload.job_id = j.job_id || j.name
+      return payload
+    })
+  }
+  return []
+}
+
+function buildPlanningMachines() {
+  const ids = new Set()
+  for (const job of customJobs.value) {
+    for (const t of job.tasks || []) {
+      if (Number.isInteger(t.machine_id) && t.machine_id >= 0) ids.add(String(t.machine_id))
+      for (const mid of parseMachineOptions(t.machine_options_text, t.machine_id)) {
+        ids.add(String(mid))
+      }
+    }
+  }
+  return [...ids].map((id) => ({ machine_id: id, id }))
+}
+
 function mapJobPayload(j) {
   const job = {
     name: j.name,
@@ -799,6 +763,7 @@ function mapJobPayload(j) {
     due_date: j.due_date ?? null,
     tasks: (j.tasks || []).map((t) => mapTaskPayload(t, j)),
   }
+  if (j.job_id != null) job.job_id = j.job_id
   if (j.quantity != null && j.quantity !== '') job.quantity = Number(j.quantity)
   if (j.material_arrival != null && j.material_arrival !== '') job.material_arrival = Number(j.material_arrival)
   if (Array.isArray(j.bom) && j.bom.length) {
@@ -882,6 +847,7 @@ function parseMachineOptions(text, fallbackMachineId) {
 function normalizeJobs(rawJobs) {
   return (rawJobs || []).map((job) => ({
     ...job,
+    job_id: job.job_id || job.name,
     priority: Number(job.priority || 10),
     due_date: job.due_date === null || job.due_date === undefined || job.due_date === ''
       ? null
@@ -896,9 +862,10 @@ function normalizeJobs(rawJobs) {
       const machineOptions = Array.isArray(t.machine_options) ? t.machine_options : null
       const machineId = Number.isInteger(t.machine_id) ? t.machine_id : (Array.isArray(machineOptions) && machineOptions.length ? Number(machineOptions[0]) : 0)
       const optionsText = machineOptions && machineOptions.length ? machineOptions.join(',') : String(machineId)
-      return {
+      const task = {
         name: t.name || `Op-${idx + 1}`,
         machine_id: machineId,
+        machine_options: machineOptions || [machineId],
         machine_options_text: optionsText,
         machine_group: t.machine_group || '',
         duration: Number(t.duration || 1),
@@ -906,38 +873,97 @@ function normalizeJobs(rawJobs) {
         unit_time: t.unit_time ?? null,
         quantity: t.quantity ?? null,
       }
+      return task
     }),
   }))
 }
 
 function loadTemplate() {
+  // 完整演示池：交期/数量/换型/可选机台/多工艺/全物料 BOM，可直接跑 AI 协同排产
+  if (!planName.value?.trim()) {
+    planName.value = '演示计划-机加装配混线'
+  }
   customJobs.value = normalizeJobs([
     {
-      name: '模板工单-1',
+      name: '急单-钢架焊接',
       priority: 100,
+      due_date: 36,
+      quantity: 2,
       bom: [
         { material_id: 'MAT_STEEL', quantity_per_unit: 2.5, consume_mode: 'job_start' },
+        { material_id: 'MAT_SCREW', quantity_per_unit: 8, consume_mode: 'job_start' },
+      ],
+      tasks: [
+        { name: '下料', machine_id: 0, machine_options: [0, 4], machine_group: 'CUT', duration: 6, setup_time: 1 },
+        { name: '焊接', machine_id: 2, machine_options: [2], machine_group: 'WELD', duration: 8, setup_time: 2 },
+        { name: '装配', machine_id: 3, machine_options: [3], machine_group: 'ASM', duration: 4 },
+      ],
+    },
+    {
+      name: '普通-铝壳铣削',
+      priority: 10,
+      due_date: 48,
+      quantity: 4,
+      bom: [
+        { material_id: 'MAT_ALUM', quantity_per_unit: 1.5, consume_mode: 'job_start' },
         { material_id: 'MAT_SCREW', quantity_per_unit: 4, consume_mode: 'job_start' },
       ],
       tasks: [
-        { name: 'Cut', machine_id: 0, machine_options: [0, 4], machine_group: 'CUT', duration: 8 },
-        { name: 'Weld', machine_id: 2, machine_options: [2], machine_group: 'WELD', duration: 6 },
+        { name: '铣削', machine_id: 1, machine_options: [1, 5], machine_group: 'MILL', duration: 7, setup_time: 1 },
+        { name: '钻孔', machine_id: 1, machine_options: [1, 2], machine_group: 'DRILL', duration: 3 },
+        { name: '装配', machine_id: 3, machine_options: [3], machine_group: 'ASM', duration: 3 },
       ],
     },
     {
-      name: '模板工单-2',
-      priority: 10,
+      name: '急单-注塑罩壳',
+      priority: 80,
+      due_date: 30,
+      quantity: 6,
       bom: [
-        { material_id: 'MAT_ALUM', quantity_per_unit: 1.5, consume_mode: 'job_start' },
-        { material_id: 'MAT_PLASTIC', quantity_per_unit: 0.5, consume_mode: 'per_hour' },
+        { material_id: 'MAT_PLASTIC', quantity_per_unit: 0.8, consume_mode: 'job_start' },
+        { material_id: 'MAT_SCREW', quantity_per_unit: 2, consume_mode: 'job_start' },
       ],
       tasks: [
-        { name: 'Mill', machine_id: 1, machine_options: [1, 5], machine_group: 'MILL', duration: 7 },
-        { name: 'Assemble', machine_id: 3, machine_options: [3], machine_group: 'ASM', duration: 5 },
+        { name: '注塑备料', machine_id: 0, machine_options: [0], machine_group: 'CUT', duration: 3 },
+        { name: '精铣', machine_id: 1, machine_options: [1, 5], machine_group: 'MILL', duration: 5, setup_time: 1 },
+        { name: '装配', machine_id: 3, machine_options: [3], machine_group: 'ASM', duration: 2 },
+      ],
+    },
+    {
+      name: '普通-连续耗钢件',
+      priority: 10,
+      due_date: 60,
+      quantity: 1,
+      bom: [
+        { material_id: 'MAT_STEEL', quantity_per_unit: 3, consume_mode: 'per_hour' },
+        { material_id: 'MAT_SCREW', quantity_per_unit: 6, consume_mode: 'job_start' },
+      ],
+      tasks: [
+        { name: '粗加工', machine_id: 0, machine_options: [0, 4], machine_group: 'CUT', duration: 10, setup_time: 2 },
+        { name: '精加工', machine_id: 1, machine_options: [1, 5], machine_group: 'MILL', duration: 8 },
+        { name: '焊接加固', machine_id: 2, machine_options: [2], machine_group: 'WELD', duration: 5 },
+      ],
+    },
+    {
+      name: '综合装配-混料整机',
+      priority: 40,
+      due_date: 54,
+      quantity: 3,
+      bom: [
+        { material_id: 'MAT_STEEL', quantity_per_unit: 1, consume_mode: 'job_start' },
+        { material_id: 'MAT_ALUM', quantity_per_unit: 0.5, consume_mode: 'job_start' },
+        { material_id: 'MAT_PLASTIC', quantity_per_unit: 0.3, consume_mode: 'job_start' },
+        { material_id: 'MAT_SCREW', quantity_per_unit: 12, consume_mode: 'job_start' },
+      ],
+      tasks: [
+        { name: '下料', machine_id: 0, machine_options: [0, 4], machine_group: 'CUT', duration: 4, setup_time: 1 },
+        { name: '机加', machine_id: 1, machine_options: [1, 5], machine_group: 'MILL', duration: 6 },
+        { name: '焊接', machine_id: 2, machine_options: [2], machine_group: 'WELD', duration: 4 },
+        { name: '总装', machine_id: 3, machine_options: [3], machine_group: 'ASM', duration: 7, setup_time: 1 },
       ],
     },
   ])
-  ElMessage.success('已加载示例工单（含 BOM）')
+  ElMessage.success('已加载 5 张演示工单（含交期/数量/换型/BOM）')
 }
 
 function exportJSON() {
@@ -988,6 +1014,45 @@ async function saveScheduleSnapshotToPlan(results, extras = {}) {
     console.warn('save schedule to plan', e)
     ElMessage.warning('排程结果未能写入计划库，分析报表可能无法恢复')
   }
+}
+
+/** AI/模板/参数排产完成后，同步多算法结果到报表/物料/能耗等页 */
+async function onPlanningScheduleReady(payload) {
+  const results = payload?.schedule_results
+  if (!isValidScheduleResults(results)) return
+
+  store.setResults(results)
+  store.setImpactReport(null)
+  store.currentPlanInput = customJobs.value
+  store.currentPlanName = planName.value
+  store.currentPlanId = currentPlanId.value
+
+  const interp = payload?.interpretation
+  if (interp?.strategy_id || interp?.strategy_name) {
+    store.setSchedulingStrategy(interp.strategy_id || '', interp.strategy_name || '')
+  } else {
+    store.setSchedulingStrategy('planning_package', '协同排产')
+  }
+
+  stashScheduleResultsForReports({
+    schedule_results: results,
+    plan_id: currentPlanId.value,
+    plan_name: planName.value,
+    jobs: customJobs.value,
+    interpretation: interp || {
+      strategy_id: 'planning_package',
+      strategy_name: '协同排产',
+    },
+  })
+
+  if (currentPlanId.value && inputMode.value === 'custom') {
+    await saveScheduleSnapshotToPlan(results, {
+      interpretation: interp || undefined,
+    })
+  }
+
+  const n = Object.keys(results).length
+  ElMessage.success(`已同步 ${n} 个算法方案到分析报表 / 物料 / 能耗等资源页`)
 }
 
 function syncWorkContextToStore() {
@@ -1089,7 +1154,7 @@ function openPersistDialog(pendingAction, summaryZh) {
 function onPersistConfirmed() {
   persistPending.value = { confirmToken: '', expiresAt: '', preview: null, summaryZh: '' }
   if (store.results && Object.keys(store.results).length) {
-    router.push('/reports')
+    router.push(productionPath('reports'))
   }
 }
 
@@ -1143,7 +1208,7 @@ async function runPipelineWithHitl() {
           delivery_assessment: data.artifacts?.delivery_assessment,
         })
       }
-      router.push('/reports')
+      router.push(productionPath('reports'))
       return
     }
 
@@ -1216,126 +1281,17 @@ async function postRunMaybeAsync(payload) {
   }
 }
 
-async function previewScheduleIntent() {
-  const msg = scheduleMessage.value?.trim()
-  if (!msg) return ElMessage.warning('请先输入自然语言描述')
-  if (inputMode.value !== 'custom') {
-    return ElMessage.warning('自然语言排程请在「自定义/数据库」模式下使用')
-  }
-  if (!customJobs.value.length) return ElMessage.warning('请先添加工单')
-  try {
-    const { data } = await api.post('/api/agent/schedule', {
-      message: msg,
-      custom_data: customJobs.value.map((j) => mapJobPayload(j)),
-      solvers: selectedSolvers.value,
-      weights: { ...weights },
-      enforce_material: enforceMaterial.value,
-      parse_only: true,
-    })
-    const interp = data.interpretation || {}
-    lastPlanner.value = data.planner || interp.planner || ''
-    const lines = [
-      interp.summary_zh || '',
-      '',
-      `解析方式：${lastPlanner.value || '—'}`,
-      `策略：${interp.strategy_name || interp.strategy_id || '—'}`,
-      `算法：${(interp.solvers || []).join(', ') || '—'}`,
-    ]
-    await ElMessageBox.alert(lines.join('\n'), '排程意图预览', { confirmButtonText: '知道了' })
-  } catch (e) {
-    ElMessage.error(`预览失败: ${e?.response?.data?.detail || e?.message || e}`)
-  }
-}
-
 async function run() {
   store.computing = true
   try {
-    const nlMsg = scheduleMessage.value?.trim()
-    if (nlMsg && inputMode.value === 'custom' && customJobs.value.length) {
-      const agentPayload = {
-        message: nlMsg,
-        custom_data: customJobs.value.map((j) => mapJobPayload(j)),
-        solvers: selectedSolvers.value,
-        weights: { ...weights },
-        enforce_material: enforceMaterial.value,
-      }
-      if (randomSeed.value != null && randomSeed.value !== '') {
-        agentPayload.random_seed = Number(randomSeed.value)
-      }
-      if (useAsyncRun.value) {
-        agentPayload.async_run = true
-      }
-      const { data } = await api.post('/api/agent/schedule', agentPayload)
-      if (data?.error) throw new Error(data.error)
-      if (data.status === 'need_data') {
-        throw new Error(data.message_zh || '缺少工单数据')
-      }
-      if (data.status === 'submitted' && data.task_id) {
-        ElMessage.info('已提交异步任务，正在计算…')
-        const resultPayload = await pollAsyncRun(data.task_id)
-        const sid = data.interpretation?.strategy_id || selectedStrategyId.value
-        if (sid) selectedStrategyId.value = sid
-        syncStrategyToStore(sid)
-        store.lastPayload = {
-          ...agentPayload,
-          strategy_id: sid || undefined,
-          strategy_name: data.interpretation?.strategy_name,
-        }
-        store.setResults(resultPayload.data)
-        store.setMaterialCheck(resultPayload.material_check || null)
-        lastPlanner.value = data.planner || data.interpretation?.planner || ''
-        if (currentPlanId.value) {
-          await saveScheduleSnapshotToPlan(resultPayload.data, {
-            interpretation: data.interpretation || undefined,
-          })
-        }
-        router.push('/reports')
-        return
-      }
-      if (data.status !== 'success') {
-        throw new Error(data.error || data.status || '排程失败')
-      }
-      lastPlanner.value = data.planner || data.interpretation?.planner || ''
-      const sid = data.interpretation?.strategy_id || selectedStrategyId.value
-      if (sid) selectedStrategyId.value = sid
-      syncStrategyToStore(sid)
-      store.lastPayload = {
-        ...agentPayload,
-        strategy_id: sid || undefined,
-        strategy_name: data.interpretation?.strategy_name,
-      }
-      store.currentPlanInput = customJobs.value
-      store.currentPlanName = planName.value
-      store.currentPlanId = currentPlanId.value
-      store.setResults(data.data)
-      store.setImpactReport(null)
-      store.setMaterialCheck(data.material_check || null)
-      if (data.material_check && !data.material_check.feasible) {
-        materialCheckDialogVisible.value = true
-        ElMessage.warning('排程完成，但物料静态预检显示库存不足')
-      }
-      if (currentPlanId.value) {
-        await saveScheduleSnapshotToPlan(data.data, {
-          interpretation: data.interpretation || undefined,
-        })
-      }
-      router.push('/reports')
-      return
-    }
-
     const payload = {
       solvers: selectedSolvers.value,
-      weights: { ...weights },
-      strategy_id: selectedStrategyId.value || undefined,
+      weights: { ...DEFAULT_WEIGHTS },
     }
-    if (selectedStrategyId.value) {
-      const t = strategyTemplates.value.find((x) => x.id === selectedStrategyId.value)
-      if (t?.name) payload.strategy_name = t.name
-    }
-    syncStrategyToStore(selectedStrategyId.value)
-    if (randomSeed.value != null && randomSeed.value !== '') payload.random_seed = Number(randomSeed.value)
-    if (inputMode.value === 'file') payload.benchmark_file = selectedBenchmark.value
-    else {
+    store.setSchedulingStrategy('', '')
+    if (inputMode.value === 'file') {
+      payload.benchmark_file = selectedBenchmark.value
+    } else {
       payload.custom_data = customJobs.value.map((j) => mapJobPayload(j))
       payload.enforce_material = enforceMaterial.value
     }
@@ -1362,7 +1318,7 @@ async function run() {
         interpretation: resultPayload.interpretation || undefined,
       })
     }
-    router.push('/reports')
+    router.push(productionPath('reports'))
   } catch (e) {
     const status = e?.response?.status
     const detail = e?.response?.data?.detail
@@ -1384,7 +1340,8 @@ async function fetchSolverCatalog() {
     if (ids.length) {
       selectedSolvers.value = selectedSolvers.value.filter((id) => ids.includes(id))
       if (selectedSolvers.value.length === 0) {
-        selectedSolvers.value = ids.includes('spt') && ids.includes('ts') ? ['spt', 'ts'] : ids.slice(0, 2)
+        const preferred = ['spt', 'ts', 'ga', 'sa'].filter((id) => ids.includes(id))
+        selectedSolvers.value = preferred.length ? preferred : ids.slice(0, 4)
       }
     }
   } catch (e) {
@@ -1395,15 +1352,6 @@ async function fetchSolverCatalog() {
     ]
   } finally {
     catalogLoading.value = false
-  }
-}
-
-async function fetchStrategyTemplates() {
-  try {
-    const { data } = await api.get('/api/strategy/templates')
-    strategyTemplates.value = data.templates || []
-  } catch (e) {
-    console.warn('strategy templates', e)
   }
 }
 
@@ -1453,7 +1401,6 @@ watch(
 onMounted(async () => {
   fetchBenchmarks()
   fetchSolverCatalog()
-  fetchStrategyTemplates()
   fetchRoutingTemplates()
   fetchMaterialCatalog()
   await fetchPlans()
@@ -1508,10 +1455,6 @@ onMounted(async () => {
 .ops-label { font-size: 11px; color: #909399; margin-bottom: 4px; font-weight: 600; }
 .ops-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .ops-tip { font-size: 11px; color: #909399; margin-top: 4px; line-height: 1.3; }
-.weights-panel { padding: 12px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafcff; margin-bottom: 12px; }
-.weights-title { font-size: 13px; font-weight: 700; color: #303133; margin-bottom: 8px; }
-.weights-form :deep(.el-form-item) { margin-bottom: 10px; }
-.weights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
 .job-card :deep(.el-card__header) { padding: 12px 16px; background: #fafbfc; border-bottom: 1px solid #ebeef5; }
 .job-card :deep(.el-card__body) { padding: 14px 16px; }
 .job-card { border: 1px solid #e4e7ed; margin-bottom: 4px; }
@@ -1610,15 +1553,83 @@ onMounted(async () => {
   border: 1px dashed #dcdfe6;
 }
 .task-block { margin-bottom: 4px; }
-.wlabel { font-weight: 700; color:#303133; font-size: 12px; line-height: 1.3; }
-.wdesc { font-size: 11px; color: #909399; margin-top: 4px; line-height: 1.2; }
-.whelp { margin-top: 2px; }
 .due-label { font-size: 11px; color: #909399; }
-.group-title { font-size: 12px; color: #909399; margin-bottom: 6px; font-weight: 700; }
-.solver-list { display: grid; grid-template-columns: 1fr 1fr; row-gap: 6px; }
-.solver-tag { margin-left: 6px; vertical-align: middle; }
+.group-title { font-size: 12px; color: #909399; margin-bottom: 8px; font-weight: 700; }
+.solver-panel {
+  margin: 12px 0 16px;
+  padding: 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+.solver-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.solver-panel-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
+}
+.solver-group + .solver-group {
+  margin-top: 12px;
+}
+.solver-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+.solver-list :deep(.solver-check) {
+  margin: 0;
+  height: auto;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  background: #fff;
+  align-items: flex-start;
+  white-space: normal;
+}
+.solver-list :deep(.solver-check .el-checkbox__label) {
+  width: 100%;
+  padding-left: 8px;
+  line-height: 1.3;
+  white-space: normal;
+}
+.solver-list :deep(.solver-check.is-checked) {
+  border-color: var(--el-color-primary-light-5);
+  background: var(--el-color-primary-light-9);
+}
+.solver-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.solver-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.solver-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.solver-item-id {
+  font-size: 11px;
+  color: #909399;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 @media (max-width: 1280px) {
-  .weights-grid { grid-template-columns: 1fr; }
   .job-head-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -1631,6 +1642,9 @@ onMounted(async () => {
   }
   .bom-row-cols {
     grid-template-columns: minmax(0, 1.5fr) 96px 120px 68px;
+  }
+  .solver-list {
+    grid-template-columns: 1fr;
   }
 }
 </style>

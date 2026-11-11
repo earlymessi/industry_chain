@@ -1,0 +1,94 @@
+<div class="container">
+    <h2 class="mb-4">参数设置</h2>
+
+    <h4>零售商管理</h4>
+    <table class="table table-sm table-bordered" id="customersTable">
+        <thead>
+            <tr>
+                <th>零售商id</th>
+                <th>零售商名称</th>
+                <th>经度</th>
+                <th>纬度</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <form id="createCustomerForm" class="row g-2 mb-4">
+        <div class="col-md-3">
+            <input class="form-control" name="customer_name" placeholder="零售商名称" required>
+        </div>
+        <div class="col-md-2"><input class="form-control" name="address_X" placeholder="经度"></div>
+        <div class="col-md-2"><input class="form-control" name="address_Y" placeholder="纬度"></div>
+        <div class="col-md-2"><button class="btn btn-primary">新增零售商</button></div>
+    </form>
+
+    <hr>
+
+    <h4>产品管理</h4>
+    <table class="table table-sm table-bordered" id="productsTable">
+        <thead>
+            <tr>
+                <th>产品id</th>
+                <th>产品名名称</th>
+                <th>生产速度</th>
+                <th>产线成本</th>
+                <th>单位产品占据托盘</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <form id="createProductForm" class="row g-2">
+        <div class="col-md-2"><input class="form-control" name="product_name" placeholder="产品名名称" required></div>
+        <div class="col-md-1"><input class="form-control" name="takt" placeholder="生产速度"></div>
+        <div class="col-md-1"><input class="form-control" name="pc" placeholder="产线成本"></div>
+        <div class="col-md-1"><input class="form-control" name="pallet" placeholder="单位产品占据托盘"></div>
+        <div class="col-md-2"><button class="btn btn-primary">新增产品</button></div>
+    </form>
+
+    <hr>
+
+    <h4>车辆管理</h4>
+    <table class="table table-sm table-bordered" id="vehiclesTable">
+        <thead>
+            <tr>
+                <th>车辆id</th>
+                <th>车辆名称</th>
+                <th>车辆容量</th>
+                <th>车辆固定成本</th>
+                <th>车辆可变成本</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <form id="createVehicleForm" class="row g-2 mb-4">
+        <div class="col-md-3"><input class="form-control" name="vehicle_name" placeholder="车辆名称" required></div>
+        <div class="col-md-2"><input class="form-control" name="capacity" placeholder="车辆容量" type="number"></div>
+        <div class="col-md-2"><input class="form-control" name="constcost" placeholder="车辆固定成本" type="number"></div>
+        <div class="col-md-2"><input class="form-control" name="varcost" placeholder="车辆可变成本" type="number"></div>
+        <div class="col-md-2"><button class="btn btn-primary">新增车辆</button></div>
+    </form>
+
+    <hr>
+
+    <h4>模糊旅行时间矩阵（工厂-零售商 & 零售商-零售商）</h4>
+    <div class="d-flex flex-wrap gap-2 mb-2">
+        <button class="btn btn-sm btn-outline-secondary" id="travelTimesReloadBtn" type="button">刷新/从数据库加载</button>
+        <button class="btn btn-sm btn-primary" id="travelTimesSaveBtn" type="button">保存到数据库</button>
+        <button class="btn btn-sm btn-outline-primary" id="travelTimesExcelImportBtn" type="button">从Excel导入</button>
+        <input type="file" id="travelTimesExcelFileInput" accept=".xlsx,.xls" class="d-none" />
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered align-middle" id="travelTimesMatrixTable"></table>
+    </div>
+
+    <div class="text-muted small">
+        说明：每个单元格为(最小/平均/最大)。零售商间旅行时间对称：修改 i→j 会自动同步 j→i；对角线(i→i)固定为 0。
+    </div>
+</div>

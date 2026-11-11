@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from metaforge.agents.base import AgentRequest, PlanStep
 from metaforge.agents.registry_meta import AGENT_REGISTRY
+from metaforge.orchestrator.llm_config import llm_display_label, llm_provider_label_zh
 
 _AGENT_NAME: Dict[str, str] = {a["id"]: a["name_zh"] for a in AGENT_REGISTRY}
 
@@ -23,8 +24,67 @@ def _agent_label(agent_id: str) -> str:
     return _AGENT_NAME.get(agent_id, agent_id)
 
 
+def _llm_label() -> str:
+    return llm_display_label()
+
+
+def _llm_short() -> str:
+    return llm_provider_label_zh()
+
+
+def build_scope_guidance_trace(route: Dict[str, Any]) -> Dict[str, Any]:
+    lines = [
+        "问题超出六个业务 Agent 能力范围，已拦截执行",
+        f"类别：{route.get('scope_category', 'unknown')}",
+    ]
+    if route.get("llm_misroute"):
+        lines.append(f"原 {_llm_short()} 误识别 intent：{route['llm_misroute']}")
+    if route.get("reason_zh"):
+        lines.append(route["reason_zh"])
+    guidance = route.get("guidance_zh") or ""
+    for part in guidance.split("\n"):
+        part = part.strip()
+        if part:
+            lines.append(part)
+    return {
+        "phase": "scope",
+        "title": "② 能力范围提示",
+        "planner": route.get("router") or "scope_block",
+        "lines": lines,
+        "scope_category": route.get("scope_category"),
+    }
+
+
 def build_route_trace(route: Dict[str, Any]) -> Dict[str, Any]:
     router = route.get("router") or "rule"
+    if route.get("out_of_scope"):
+        agent_id = None
+        intent = route.get("intent") or "unsupported"
+        lines: List[str] = ["意图识别后触发能力范围护栏（不进入任何 Agent）"]
+        if router in ("llm", "llm_guard"):
+            lines[0] = f"意图识别（{_llm_label()}）→ 能力范围纠正"
+            for step in route.get("reasoning_steps") or []:
+                lines.append(f"· {step}")
+        if route.get("llm_misroute"):
+            lines.append(f"原 {_llm_short()} intent：{route['llm_misroute']}")
+        if route.get("reason_zh"):
+            lines.append(f"结论：{route['reason_zh']}")
+        lines.append(f"识别 intent：超出范围（{intent}）")
+        lines.append("未选中业务 Agent（问题已拦截）")
+        build_id = route.get("router_build_id")
+        if build_id:
+            lines.append(f"路由版本：{build_id}")
+        return {
+            "phase": "route",
+            "title": "① 意图路由",
+            "planner": router,
+            "lines": lines,
+            "agent_id": agent_id,
+            "intent": intent,
+            "out_of_scope": True,
+            "scope_category": route.get("scope_category"),
+        }
+
     agent_id = route.get("agent_id") or "scheduling"
     intent = route.get("intent")
     lines: List[str] = []
@@ -32,7 +92,7 @@ def build_route_trace(route: Dict[str, Any]) -> Dict[str, Any]:
     if router == "explicit" and intent:
         lines.append(f"用户指定意图：{_INTENT_LABEL.get(intent, intent)}（{intent}）")
     elif router in ("llm", "llm_guard"):
-        lines.append("意图识别（智谱 GLM）")
+        lines.append(f"意图识别（{_llm_label()}）")
         for step in route.get("reasoning_steps") or []:
             lines.append(f"· {step}")
         if route.get("reason_zh"):
@@ -40,21 +100,21 @@ def build_route_trace(route: Dict[str, Any]) -> Dict[str, Any]:
         if intent:
             lines.append(f"识别 intent：{_INTENT_LABEL.get(intent, intent)}（{intent}）")
     elif router == "rule_override":
-        lines.append("GLM 路由已纠正（计划库话术不得进入排程 Agent）")
+        lines.append(f"{_llm_short()} 路由已纠正（计划库话术不得进入排程 Agent）")
         if route.get("reason_zh"):
             lines.append(route["reason_zh"])
         if route.get("llm_misroute"):
-            lines.append(f"原 GLM intent：{route['llm_misroute']}")
+            lines.append(f"原 {_llm_short()} intent：{route['llm_misroute']}")
         if intent:
             lines.append(f"纠正为：{_INTENT_LABEL.get(intent, intent)}（{intent}）")
     elif router == "rule_fallback":
-        lines.append("GLM 路由失败，回退规则关键词匹配")
+        lines.append(f"{_llm_short()} 路由失败，回退规则关键词匹配")
         if route.get("llm_error"):
             lines.append(f"原因：{str(route['llm_error'])[:200]}")
         if route.get("rule_reason_zh"):
             lines.append(route["rule_reason_zh"])
     else:
-        lines.append("规则匹配（计划库/离线回退，未调用 GLM 路由）")
+        lines.append(f"规则匹配（计划库/离线回退，未调用 {_llm_short()} 路由）")
         if route.get("rule_reason_zh"):
             lines.append(route["rule_reason_zh"])
 
@@ -84,9 +144,15 @@ def build_plan_trace(
         for s in steps
     ]
     planner_note = {
-        "llm": "由 GLM 生成 Tool 调用链（白名单校验）",
+        "llm": f"由 {_llm_label()} 生成 Tool 调用链（白名单校验）",
         "rule": "使用 Agent 内置规则模板",
-        "rule_fallback": "GLM 计划失败，回退规则模板",
+        "rule_fallback": f"{_llm_short()} 计划失败，回退规则模板",
+        "events_collab": "异常重排固定阶段编排（events_collab）",
+        "kitting_collab": "齐套固定阶段编排（kitting_collab）",
+        "commitment_collab": "交期承诺固定阶段编排（commitment_collab）",
+        "whatif_collab": "方案对比固定阶段编排（whatif_collab）",
+        "plans_collab": "计划管理固定阶段编排（plans_collab）",
+        "planning_collab": "协同排产 Supervisor 编排（planning_collab）",
     }.get(plan_planner, plan_planner)
 
     return {
@@ -196,3 +262,10 @@ def merge_run_trace(
     out = list(preview_trace)
     out.append(build_execution_trace(plan_log))
     return out
+
+
+def build_strategy_trace_block(run: Dict[str, Any]) -> Dict[str, Any]:
+    """Thin wrapper: planning run → SSE-mergeable strategy trace block."""
+    from metaforge.strategy.trace import build_strategy_trace
+
+    return build_strategy_trace(run)
