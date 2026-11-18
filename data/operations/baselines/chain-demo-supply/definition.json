@@ -1,0 +1,53 @@
+{
+  "id": "chain-demo-supply",
+  "name": "test2",
+  "product_id": "CASE-FRIDGE-01",
+  "spec": "案例冰箱A型",
+  "units": 5,
+  "production_plan_id": "86e1571d842607c783b9330d",
+  "solver_id": "q",
+  "time_unit": "hours",
+  "factories": [
+    {
+      "factory_id": "CASE-FACTORY-A",
+      "name": "自有工厂A · 内部层架",
+      "job_indices": [
+        0
+      ],
+      "job_names": [
+        "订单109-内部层架"
+      ],
+      "source_zero_offset_hours": 0,
+      "material_id": "CASE-SHELF-SET",
+      "spec": "案例冰箱A型层架总成",
+      "uom": "件",
+      "process_id": 6
+    },
+    {
+      "factory_id": "CASE-FACTORY-B",
+      "name": "自有工厂B · 制冰机支架",
+      "job_indices": [
+        1
+      ],
+      "job_names": [
+        "订单112-制冰机支架"
+      ],
+      "source_zero_offset_hours": 0,
+      "material_id": "CASE-ICE-BRACKET",
+      "spec": "案例冰箱A型支架",
+      "uom": "件",
+      "process_id": 6
+    }
+  ],
+  "assumptions": [
+    "生产基于原Q算法已保存工单8/11；保留各工单的工序、机器与工时，统一减30小时，并按案例显式增加工厂B的计划释放偏移；每批5件。",
+    "组装为原9工序/18工位规则排程的已发布结果，非QMIX；可在组装页面查看同一份45任务甘特。",
+    "配送引用完整基线已实际求解的相同5台客户需求和路线，保留原发布版本，不冒充三次新求解。",
+    "工厂、BOM、采购、库存与运输为显式案例数据；各环节按同一执行起点映射，启用前重新校验。",
+    "周计划：工厂B在第6天释放生产，外购同周到货，7天内交付。"
+  ],
+  "description": "周计划：工厂B在第6天释放生产，外购同周到货，7天内交付。",
+  "calendar_days": 7,
+  "factory_b_release_hours": 120,
+  "supplier_delay_minutes": 7200
+}

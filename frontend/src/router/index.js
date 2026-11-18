@@ -14,6 +14,7 @@ import AnalysisView from '../views/AnalysisView.vue'
 import EnergyView from '../views/EnergyView.vue'
 
 import DataCenterView from '../views/DataCenterView.vue'
+import ModuleDataCenterView from '../views/ModuleDataCenterView.vue'
 
 import LogisticsView from '../views/LogisticsView.vue'
 
@@ -88,6 +89,7 @@ export default createRouter({
         { path: '', component: AssemblyIntegrationView },
         { path: 'outsourced-supply', component: OutsourcedSupplyView },
         { path: 'logistics-resource', redirect: '/home/logistics-resource/experiment' },
+        {path:'logistics-resource/database',component:ModuleDataCenterView,props:{module:'delivery'}},
         { path: 'logistics-resource/:tab', component: LogisticsVrpEmbedView },
         { path: 'logistics-vrp', redirect: '/home/logistics-resource/experiment' },
         {
@@ -103,6 +105,7 @@ export default createRouter({
         { path: 'supply-chain', redirect: '/home/supply-chain/dashboard' },
         { path: 'supply-chain/:tab', component: SupplyChainEmbedView },
         { path: 'assembly', redirect: '/home/assembly/dashboard' },
+        {path:'assembly/database',component:ModuleDataCenterView,props:{module:'assembly'}},
         { path: 'assembly/:tab', component: AssemblyEmbedView },
       ],
     },

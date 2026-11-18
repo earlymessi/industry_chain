@@ -1,0 +1,4 @@
+﻿run_id,scheme,total_routes,total_dist_km,total_cost,route_operating_cost,dispatch_cost,fixed_cost,dist_cost,penalty_cost,tw_late_min,depot_late_min,cap_excess,tw_late_cost,depot_late_cost,capacity_cost,mean_worktime_min,var_worktime,max_worktime_min,min_worktime_min
+0,Baseline1,1,21.4594,2214.594,2214.594,0.0,2000.0,214.594,0.0,0.0,0.0,0.0,0.0,0.0,0.0,48.41583333333333,7032.2787520833335,193.66333333333333,0.0
+0,Baseline2,1,21.4594,2214.594,2214.594,0.0,2000.0,214.594,0.0,0.0,0.0,0.0,0.0,0.0,0.0,48.41583333333333,7032.2787520833335,193.66333333333333,0.0
+0,Stage2_Balanced,1,21.4594,2214.594,2214.594,0.0,2000.0,214.594,0.0,0.0,0.0,0.0,0.0,0.0,0.0,48.41583333333333,7032.2787520833335,193.66333333333333,0.0

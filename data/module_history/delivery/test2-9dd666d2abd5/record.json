@@ -1,0 +1,15 @@
+{
+  "id": "test2-9dd666d2abd5",
+  "module": "delivery",
+  "name": "test2",
+  "created_at": "2026-11-17T09:48:42.921332+00:00",
+  "version": "82d807111f14e59be81eafa0715ddd137ce6e312fbea17d7d233d3f138e90b53",
+  "algorithm": "CCDR-PSO + MO-ALNS",
+  "units": 5,
+  "task_count": 4,
+  "compatible": true,
+  "test_case": true,
+  "case_id": "chain-demo-supply",
+  "horizon_days": 7,
+  "span_minutes": 9793.663333332539
+}

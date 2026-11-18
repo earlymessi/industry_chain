@@ -1,0 +1,15 @@
+{
+  "id": "test1-d2fc5daefa37",
+  "module": "assembly",
+  "name": "test1",
+  "created_at": "2026-11-17T09:48:42.588877+00:00",
+  "version": "5ff3bb422d848652d3e9cb0c00822a51d9239e919dded553910c24f34253d1ba",
+  "algorithm": "原工艺约束规则排程",
+  "units": 5,
+  "task_count": 45,
+  "compatible": true,
+  "test_case": true,
+  "case_id": "chain-demo-normal",
+  "horizon_days": 7,
+  "span_minutes": 1207.0
+}

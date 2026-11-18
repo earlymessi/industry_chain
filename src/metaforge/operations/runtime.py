@@ -71,7 +71,7 @@ def advance(state: dict, target: float) -> tuple[dict, list]:
                 for line in tasks[tid].get("outputs", []):
                     key = material_key(line, p["resource_id"])
                     state["inventory"][key] = state["inventory"].get(key, 0) + line["quantity"]
-                if tasks[tid]["kind"] in {"delivery", "return"}:
+                if tasks[tid]["kind"] in {"transport", "delivery", "return"}:
                     state["resources"][p["resource_id"]]["location"] = rows[tid]["to_node"]
                 record("task_completed", tid, at)
             elif p["status"] == "running" and not _open(state["resources"][p["resource_id"]], at):
@@ -109,6 +109,9 @@ def advance(state: dict, target: float) -> tuple[dict, list]:
                 continue
             if t["kind"] in {"delivery", "return"} and p["status"] != "paused" and state["resources"][rid].get("location") != row.get("from_node"):
                 p["blocked_reason"] = "车辆当前位置与计划起点不符"
+                continue
+            if t['kind'] == 'transport' and not p['inputs_consumed'] and state['resources'][rid].get('location') != t['from_node']:
+                p['blocked_reason'] = '入厂车辆未到达供给地点，不能跨地点瞬移'
                 continue
             setup, work = timing(t, rid, p)
             if p['status'] == 'pending' and (at > t.get('latest_start_at', float('inf')) + EPS or at + setup + work > t.get('latest_end_at', float('inf')) + EPS):
@@ -234,6 +237,13 @@ def apply_event(state: dict, event: dict, now: float) -> tuple[dict, list]:
         t = task_map[target]
         if typ == "release_change":
             t["release_at"] = timestamp(data["release_at"])
+            if t.get('latest_start_at') is not None and t['kind'] in {'transport', 'delivery'}:
+                # An explicit new departure is a logged operations decision, not an automatic window shift.
+                t['latest_start_at'] = t['release_at']
+                if t['kind'] == 'delivery':
+                    group = next((g for g in state['plan']['route_groups'] if target == g['delivery_tasks'][0]), None)
+                    if group:
+                        next(x for x in state['plan']['tasks'] if x['id'] == group['loading_task'])['latest_end_at'] = t['release_at']
         elif typ == "service_change":
             if t["kind"] != "delivery":
                 raise ValueError("请选择客户配送任务")

@@ -1,0 +1,15 @@
+{
+  "id": "test3-c41eeb514cc4",
+  "module": "assembly",
+  "name": "test3",
+  "created_at": "2026-11-17T09:48:43.216092+00:00",
+  "version": "b18714371c60051c766f24fdfb80056b34ccffbb77c298b025d8004ae3854a12",
+  "algorithm": "原工艺约束规则排程",
+  "units": 5,
+  "task_count": 45,
+  "compatible": true,
+  "test_case": true,
+  "case_id": "chain-demo-transport",
+  "horizon_days": 28,
+  "span_minutes": 31387.0
+}

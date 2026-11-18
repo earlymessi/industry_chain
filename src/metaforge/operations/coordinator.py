@@ -288,7 +288,11 @@ def schedule(state: dict, now: float, policy: str = "original", *, rank: dict | 
                         start = max(start, t.get("window_start", start) - road)
                     start = first_slot(r, start, setup + work, bookings[mid], now=now)
                 end = start + setup + work
-                if start > t.get('latest_start_at', float('inf')) + 1e-7 or end > t.get('latest_end_at', float('inf')) + 1e-7:
+                # The slot describes remaining work; an existing departure is an execution fact.
+                departure = progress.get('actual_start_at')
+                if departure is None:
+                    departure = start
+                if departure > t.get('latest_start_at', float('inf')) + 1e-7 or end > t.get('latest_end_at', float('inf')) + 1e-7:
                     raise Infeasible(f'{t["name"]}错过固定发运/交接时限，需确认新计划，不能平移原时限')
                 window_check = (progress.get('service_started_at') or start + setup + max(0, work - t.get('service_seconds', 0))) if t.get('window_policy') == 'service_start' else end
                 if t.get('window_hard', True) and window_check > t.get("window_end", float("inf")) + 1e-7:
@@ -309,6 +313,8 @@ def schedule(state: dict, now: float, policy: str = "original", *, rank: dict | 
             row["travel_seconds"] = plan["travel_seconds"][f"{row['from_node']}|{row['to_node']}"]
             row["arrive_at"] = start + row["travel_seconds"]
             row["service_start_at"] = max(row["arrive_at"], t.get("window_start", row["arrive_at"]))
+        if t['kind'] == 'transport':
+            row['from_node'], row['to_node'] = t['from_node'], t['to_node']
         bookings[mid].append((start, end))
         if not progress["inputs_consumed"]:
             for line in t.get("inputs", []):

@@ -15,6 +15,7 @@ from .plans import prepare_standard, normalize_plan
 from .coordinator import schedule, metrics
 from .runtime import advance, apply_event
 from .validator import validate
+from .adjustments import adjustment_trigger
 from .store import Conflict, FencedOut
 
 
@@ -116,14 +117,34 @@ class OperationsService:
         now = self.clock()
         body = command["payload"]
         logs = []
-        if command["kind"] == "activate":
+        if command["kind"] in {'activate', 'reload_case'}:
+            reloading = command['kind'] == 'reload_case'
+            if reloading:
+                from .cases import rebase_case
+                if not state or body.get('run_id') != state['run_id'] or body.get('confirmed') is not True:
+                    raise Conflict('请明确确认重新加载当前案例，运行实例必须一致')
+                if state['plan'].get('mode') != 'simulation':
+                    raise Conflict('现场实例不能重新加载为演示')
+                seed = state.get('case_seed')
+                if seed is None:
+                    if state['plan'].get('source') == 'standard':
+                        seed = getattr(self, 'case_seed_factory', prepare_standard)(state['plan']['start_at'])
+                        if seed['id'] != state['plan']['id']:
+                            raise Conflict('旧案例原始快照缺失，请在计划衔接中明确选择新案例')
+                    elif state['plan'].get('scope') == 'production' and getattr(self, 'production_loader', None):
+                        from .production_sync import source_link
+                        link = source_link(state['plan'])
+                        seed = await self.production_loader({**link, 'source_version': link['source_version']}, link['anchor_at'])
+                    else:
+                        raise Conflict('该旧案例没有原始快照，不能把本轮修改当作原案例；请重新选择并保存案例')
+                body = {**body, 'plan': rebase_case(seed, self.clock() + 5), 'source': 'case_reload'}
             if body.get('source') == 'chain':
                 if not getattr(self, 'chain_loader', None):
                     raise Conflict('计划衔接读取器未配置')
                 body = {**body, 'plan': await self.chain_loader(body.get('preview_id'), state)}
             replace_legacy = bool(state and state['plan']['id'] == 'REFRIGERATOR-STANDARD-v1' and body.get('replace_legacy') and body.get('previous_run_id') == state['run_id'] and body['plan'].get('alignment_version') == 2)
             switch_source = bool(state and body.get('confirm_new_run') and body.get('source') in {'production', 'chain'} and body.get('previous_run_id') == state['run_id'])
-            if state and not replace_legacy and not switch_source and not (state["status"] == "idle" and body.get("archive_previous") and body.get("previous_run_id") == state["run_id"]):
+            if state and not reloading and not replace_legacy and not switch_source and not (state["status"] == "idle" and body.get("archive_previous") and body.get("previous_run_id") == state["run_id"]):
                 raise Conflict("已有持续运行实例；不允许刷新或重复初始化覆盖当前现场")
             previous_state = state
             plan = normalize_plan(body["plan"])
@@ -138,15 +159,16 @@ class OperationsService:
                 archived, archive_transitions = advance(previous_state, now)
                 archived['archived_at'] = now
                 archived['archive_transitions'] = archive_transitions
-                archived['archive_reason'] = '旧独立算例替换为原系统对齐基线，旧事件不冒充真实设备反馈' if replace_legacy else '用户确认启用新计划，原进度与事件归档' if switch_source else '运行完成归档'
+                archived['archive_reason'] = '重新加载模拟案例，上一轮故障、进度及事件完整归档' if reloading else '旧独立算例替换为原系统对齐基线，旧事件不冒充真实设备反馈' if replace_legacy else '用户确认启用新计划，原进度与事件归档' if switch_source else '运行完成归档'
                 await self.store.archive(archived)
                 logs.append({'type': 'legacy_baseline_archived' if replace_legacy else 'previous_run_archived', 'occurred_at': now,
                              'target_id': previous_state['run_id'], 'source': 'operator', 'reason': archived['archive_reason']})
             state["schedule"], state["routes"] = initial["schedule"], initial["routes"]
             state["plan"]["schedule"] = copy.deepcopy(initial["schedule"])
+            state['case_seed'] = copy.deepcopy(state['plan'])
             state, log = advance(state, now)
             logs += log
-            logs.append({"type": "plan_activated", "occurred_at": now, "source": plan["source"], "target_id": plan["id"], "operator": body.get("operator", "operator")})
+            logs.append({"type": 'case_reloaded' if reloading else "plan_activated", "occurred_at": now, "source": plan["source"], "target_id": plan["id"], "operator": body.get("operator", "operator")})
             result = {"run_id": state["run_id"], "message": "已启用计划，时钟读取服务器当前时间"}
         else:
             if not state or body.get("run_id") != state["run_id"]:
@@ -205,7 +227,7 @@ class OperationsService:
                 state["schedule"], state["routes"] = updated["schedule"], updated["routes"]
                 state["plan_revision"] += 1
                 state["constraint_version"] += 1
-                state["last_adjustment"] = {"job_id": body["job_id"], "candidate_id": c["id"], "applied_at": now, "validation": report, "metrics": updated["metrics"]}
+                state["last_adjustment"] = {"job_id": body["job_id"], "candidate_id": c["id"], "applied_at": now, "source_event_seq":job["snapshot"].get("event_seq",0), "validation": report, "metrics": updated["metrics"]}
                 logs.append({"type": "adjustment_applied", "occurred_at": now, "target_id": body["job_id"], "candidate_id": c["id"], "source": "operator", "operator": body.get("operator", "operator"), "metrics": updated["metrics"]})
                 result = {"job_id": body["job_id"], "candidate_id": c["id"], "run_id": state["run_id"], "message": "已按当前时刻重校验并发布未来差异"}
             else:
@@ -266,12 +288,14 @@ class OperationsService:
                     'policy': 'original', 'metrics': metrics(state, state['plan']['schedule']), 'assumptions': []}
         return schedule(state, now)
 
-    async def request_adjustment(self, run_id, jid=None):
+    async def request_adjustment(self, run_id, jid=None, expected_constraint_version=None):
         if not self.enabled:
             raise Conflict("运维服务已停用，不能创建调整任务")
         state, _ = await self.store.read()
         if not state or state["run_id"] != run_id:
             raise Conflict("运行实例不存在或已变化")
+        if expected_constraint_version is not None and state['constraint_version'] != expected_constraint_version:
+            raise Conflict('分析后运行约束已变化，请重新分析')
         if jid:
             existing = await self.store.job(jid)
             if existing:
@@ -280,7 +304,7 @@ class OperationsService:
                 return existing
         now = self.clock()
         snapshot, _ = advance(state, now)
-        job = {"_id": jid or uuid4().hex, "run_id": run_id, "created_at": now, "status": "queued", "snapshot": snapshot, "snapshot_at": now}
+        job = {"_id": jid or uuid4().hex, "run_id": run_id, "created_at": now, "status": "queued", "snapshot": snapshot, "snapshot_at": now, "trigger":adjustment_trigger(snapshot)}
         return await self.store.put_job(job)
 
     async def _solve(self, job):

@@ -452,6 +452,18 @@ dist_assets_dir = BASE_DIR / "templates" / "dist" / "assets"
 if dist_assets_dir.exists():
     app.mount("/assets", StaticFiles(directory=str(dist_assets_dir)), name="assets")
 
+@app.get("/favicon.svg", include_in_schema=False)
+@app.get("/icons.svg", include_in_schema=False)
+async def frontend_icon(request: Request):
+    name = request.url.path.rsplit("/", 1)[-1]
+    path = BASE_DIR / "templates" / "dist" / name
+    if not path.is_file():
+        path = _REPO_ROOT / "frontend" / "public" / name
+    if not path.is_file():
+        raise HTTPException(404, "图标不存在")
+    return FileResponse(path, media_type="image/svg+xml")
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

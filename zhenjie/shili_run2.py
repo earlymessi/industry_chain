@@ -2029,8 +2029,11 @@ def make_map_multi_day(depots: List[Depot],
             }}
         }}
     }}
-    {map_name}.on('zoomend', toggleCustomerLabels_{map_name});
-    toggleCustomerLabels_{map_name}();
+    // customer-labels-ready
+    document.addEventListener('DOMContentLoaded', function() {{
+        {map_name}.on('zoomend', toggleCustomerLabels_{map_name});
+        toggleCustomerLabels_{map_name}();
+    }});
     </script>
     """
     m.get_root().html.add_child(folium.Element(js))

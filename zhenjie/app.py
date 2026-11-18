@@ -7,6 +7,12 @@
 from __future__ import annotations
 
 import copy
+import re
+import sys
+from pathlib import Path
+_SHARED_ROOT = Path(__file__).resolve().parents[1]
+for _path in (str(_SHARED_ROOT), str(_SHARED_ROOT / 'src')):
+    if _path not in sys.path: sys.path.insert(0, _path)
 import os
 import subprocess
 import threading
@@ -17,7 +23,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from bson import ObjectId
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 from pymongo import ASCENDING, MongoClient
 from pymongo.errors import PyMongoError, ServerSelectionTimeoutError
 
@@ -242,7 +248,7 @@ def _import_csv_to_mongo(force: bool = False) -> Dict[str, Any]:
     T = int(engine.CFG["T"])
     for t in range(1, T + 1):
         path = engine.CFG["CSV_PATTERN"].format(t)
-        full = os.path.join(BASE_DIR, path)
+        full = os.path.join(root or BASE_DIR, path)
         if not os.path.exists(full):
             continue
         df = engine.read_csv_smart(full)
@@ -306,8 +312,8 @@ def _ensure_orders_seeded():
         pass
 
 
-def _read_csv_safe(path: str) -> List[Dict[str, Any]]:
-    full = os.path.join(BASE_DIR, path)
+def _read_csv_safe(path: str, root=None) -> List[Dict[str, Any]]:
+    full = os.path.join(root or BASE_DIR, path)
     if not os.path.exists(full):
         return []
     try:
@@ -317,14 +323,15 @@ def _read_csv_safe(path: str) -> List[Dict[str, Any]]:
         return []
 
 
-def _load_existing_results() -> Optional[Dict[str, Any]]:
-    summary = _read_csv_safe(engine.CFG["RUN_SUMMARY_CSV"])
+def _load_existing_results(root=None) -> Optional[Dict[str, Any]]:
+    read = lambda path: _read_csv_safe(path, root)
+    summary = read(engine.CFG["RUN_SUMMARY_CSV"])
     if not summary:
         return None
-    runs = _read_csv_safe(engine.CFG["RUN_RESULTS_CSV"])
-    best_runs = _read_csv_safe(engine.CFG["BEST_RUN_SUMMARY_CSV"])
-    alns = _read_csv_safe(engine.CFG["ALNS_IMPROV_PER_RUN_CSV"])
-    alns_summary = _read_csv_safe(engine.CFG["ALNS_IMPROV_SUMMARY_CSV"])
+    runs = read(engine.CFG["RUN_RESULTS_CSV"])
+    best_runs = read(engine.CFG["BEST_RUN_SUMMARY_CSV"])
+    alns = read(engine.CFG["ALNS_IMPROV_PER_RUN_CSV"])
+    alns_summary = read(engine.CFG["ALNS_IMPROV_SUMMARY_CSV"])
     n_runs = 0
     if runs:
         n_runs = int(max(int(r.get("run_id", 0)) for r in runs) + 1)
@@ -399,7 +406,8 @@ def _run_worker(n_runs: int, overrides: Dict[str, Any], use_mongo: bool):
         if use_mongo:
             _push_log("从 MongoDB 加载订单数据...")
             day_frames = _load_day_frames_from_mongo()
-            _export_mongo_to_csv()
+            for index, frame in enumerate(day_frames, 1):
+                frame.to_csv(os.path.join(BASE_DIR, engine.CFG['CSV_PATTERN'].format(index)), index=False, encoding='utf-8-sig')
             _push_log("订单已同步到 CSV，开始构建路网矩阵...")
 
         cfg_overrides = {"N_RUNS": n_runs}
@@ -407,12 +415,23 @@ def _run_worker(n_runs: int, overrides: Dict[str, Any], use_mongo: bool):
         # 不改变进程工作目录，读写均限定在本模块目录。
         for key in ("CSV_PATTERN", *OUTPUT_PATH_KEYS):
             cfg_overrides[key] = os.path.join(BASE_DIR, engine.CFG[key])
+        try:
+            from zhenjie.result_versions import capture_inputs, publish
+        except ModuleNotFoundError:
+            from result_versions import capture_inputs, publish
+        input_versions = capture_inputs(BASE_DIR)
         result = engine.run_pipeline(
             cfg_overrides=cfg_overrides,
             on_progress=on_progress,
             should_stop=_stop_event.is_set,
             day_frames=day_frames,
         )
+        if not _stop_event.is_set():
+            effective = {**engine.CFG, **overrides, 'N_RUNS': n_runs}
+            effective = {k: v for k, v in effective.items() if k not in OUTPUT_PATH_KEYS and k != 'CSV_PATTERN'}
+            result['publication'] = publish(BASE_DIR, input_versions, effective)
+            from metaforge.operations.history import archive_delivery
+            result['history_id'] = archive_delivery(BASE_DIR, result=result)['id']
         result["outputs"] = {
             key: os.path.basename(path) for key, path in result.get("outputs", {}).items()
         }
@@ -448,6 +467,55 @@ def _run_worker(n_runs: int, overrides: Dict[str, Any], use_mongo: bool):
             _job["error"] = err
             _job["finished_at"] = datetime.now().isoformat(timespec="seconds")
             _push_log(f"<span style='color:#f56c6c'>ERROR: {e}</span>", "error")
+
+
+@app.before_request
+def paired_example_snapshot():
+    """Request-scoped example view; never changes global engine configuration or orders."""
+    key = request.args.get('example', '')
+    record_id = request.args.get('record', '')
+    if not key and not record_id: return None
+    from metaforge.operations.baselines import dataset_root, list_baselines
+    from metaforge.operations.chain_sources import csv_rows
+    if __package__:
+        from .result_versions import status
+    else:
+        from result_versions import status
+    try:
+        if record_id:
+            from metaforge.operations.history import read_record, delivery_dataset
+            case = read_record('delivery', record_id); key = record_id
+            root = delivery_dataset(record_id) / 'zhenjie'
+        else:
+            case = next((c for c in list_baselines() if c['id'] == key and c.get('example')), None)
+            if case is None: return jsonify({'error':'未知示范案例'}), 422
+            root = dataset_root(key) / 'zhenjie'
+        if not request.path.startswith('/api/'): return None
+        if request.method not in ('GET','HEAD'): return jsonify({'error':'当前为已发布示范结果；请清除顶部案例选择后编辑或重新计算。'}), 409
+        path = request.path
+        if path == '/api/config':
+            defaults = {**engine.CFG, **status(root).get('effective_config', {})}
+            count = sum(len(csv_rows(path)) for path in root.glob('customers_day*.csv'))
+            return jsonify({'defaults':defaults,'csv_files':[p.name for p in sorted(root.glob('customers_day*.csv'))],'has_cached_results':True,
+                'mongo':{'connected':True,'uri':'示范CSV只读快照','db':key,'collection':'customers_day1.csv','order_count':count,'message':'已发布示范数据，清除案例选择可返回原模块'},'order_fields':ORDER_FIELDS})
+        if path == '/api/orders':
+            rows = [{**r,'id':f'{path.stem}:{r["cust_id"]}','day':int(path.stem.removeprefix('customers_day'))} for path in sorted(root.glob('customers_day*.csv')) for r in csv_rows(path)]
+            day=request.args.get('day'); keyword=(request.args.get('q') or '').strip().lower()
+            if day not in (None,'','all'): rows=[r for r in rows if r['day']==int(day)]
+            if keyword: rows=[r for r in rows if keyword in (str(r.get('cust_id',''))+' '+str(r.get('cust_name',''))).lower()]
+            return jsonify({'items':rows,'total':len(rows)})
+        if path == '/api/orders/stats':
+            groups=[(int(p.stem.removeprefix('customers_day')),csv_rows(p)) for p in sorted(root.glob('customers_day*.csv'))]
+            return jsonify({'total':sum(len(r) for _,r in groups),'by_day':[{'day':d,'total':len(rows),'active':sum(float(r['demand'])>0 for r in rows)} for d,rows in groups],'work_minutes':engine.CFG['WORK_MINUTES']})
+        if path == '/api/status':
+            return jsonify({'status':'cached','progress':100,'has_result':True,'n_runs':1,'current_run':1,'message':'已发布示范结果（引用原求解版本）','logs':[],'stop_requested':False})
+        if path == '/api/results': return jsonify({'status':'cached','data':_load_existing_results(str(root))})
+        if path.startswith('/api/artifact/'):
+            name=path.removeprefix('/api/artifact/')
+            if name != os.path.basename(name) or name not in {engine.CFG[k] for k in OUTPUT_PATH_KEYS}: return jsonify({'error':'文件不存在'}),404
+            return _serve_artifact(root,name)
+        return jsonify({'error':'示范快照不支持此接口'}),404
+    except (ValueError, OSError, KeyError) as exc: return jsonify({'error':str(exc)}),422
 
 
 @app.route("/")
@@ -711,6 +779,22 @@ def api_results():
     return jsonify({"status": "empty", "data": None})
 
 
+def _serve_artifact(directory, name):
+    # Historical snapshots stay immutable; repair legacy map bootstrap only in the response.
+    if name.lower().endswith('.html'):
+        path = Path(directory) / name
+        if path.is_file():
+            html = path.read_text(encoding='utf-8')
+            if 'customer-labels-ready' not in html:
+                pattern = (r"(?P<map>map_[a-f0-9]+)\.on\('zoomend', "
+                           r"(?P<toggle>toggleCustomerLabels_(?P=map))\);\s*(?P=toggle)\(\);")
+                html, count = re.subn(pattern, lambda m: "// customer-labels-ready\n"
+                    "document.addEventListener('DOMContentLoaded', function() {\n"+m[0]+"\n});", html)
+                if count:
+                    return Response(html, mimetype='text/html')
+    return send_from_directory(str(directory), name)
+
+
 @app.route("/api/artifact/<path:filename>", methods=["GET"])
 def api_artifact(filename: str):
     safe = os.path.basename(filename)
@@ -720,7 +804,7 @@ def api_artifact(filename: str):
     path = os.path.join(BASE_DIR, safe)
     if not os.path.exists(path):
         return jsonify({"error": "文件不存在"}), 404
-    return send_from_directory(BASE_DIR, safe)
+    return _serve_artifact(BASE_DIR, safe)
 
 
 if __name__ == "__main__":

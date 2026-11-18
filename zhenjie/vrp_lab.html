@@ -153,7 +153,7 @@
                 </button>
             </div>
             <div class="p-3 text-muted" style="font-size:12px; border-top:1px solid #34495e;">
-                MongoDB:
+                {{ exampleMode ? '历史快照（只读）:' : 'MongoDB:' }}
                 <strong :style="{color: mongo.connected ? '#67c23a' : '#f56c6c'}">
                     {{ mongo.connected ? '已连接' : '未连接' }}
                 </strong>
@@ -219,9 +219,9 @@
                                 </select>
                                 <input class="form-control-mes" style="width:180px;" v-model="orderKeyword" placeholder="搜索客户ID/名称" @keyup.enter="loadOrders">
                                 <button class="btn btn-mes btn-mes-outline" @click="loadOrders"><i class="fas fa-search"></i></button>
-                                <button class="btn btn-mes btn-mes-primary" @click="openOrderEditor()"><i class="fas fa-plus me-1"></i>新增</button>
-                                <button class="btn btn-mes btn-mes-outline" @click="importOrdersCsv" title="从 CSV 导入到 MongoDB"><i class="fas fa-file-import me-1"></i>导入CSV</button>
-                                <button class="btn btn-mes btn-mes-outline" @click="exportOrdersCsv" title="同步回 CSV"><i class="fas fa-file-export me-1"></i>同步CSV</button>
+                                <button class="btn btn-mes btn-mes-primary" v-if="!exampleMode" @click="openOrderEditor()"><i class="fas fa-plus me-1"></i>新增</button>
+                                <button class="btn btn-mes btn-mes-outline" v-if="!exampleMode" @click="importOrdersCsv" title="从 CSV 导入到 MongoDB"><i class="fas fa-file-import me-1"></i>导入CSV</button>
+                                <button class="btn btn-mes btn-mes-outline" v-if="!exampleMode" @click="exportOrdersCsv" title="同步回 CSV"><i class="fas fa-file-export me-1"></i>同步CSV</button>
                             </div>
                         </div>
                         <div class="panel-body p-0">
@@ -259,8 +259,8 @@
                                             <td class="text-mono">{{ row.tw_start }}</td>
                                             <td class="text-mono">{{ row.tw_end }}</td>
                                             <td>
-                                                <button class="btn btn-mes btn-mes-outline btn-sm me-1" @click="openOrderEditor(row)">编辑</button>
-                                                <button class="btn btn-mes btn-mes-outline btn-sm text-danger" @click="deleteOrder(row)">删除</button>
+                                                <button class="btn btn-mes btn-mes-outline btn-sm me-1" v-if="!exampleMode" @click="openOrderEditor(row)">编辑</button>
+                                                <button class="btn btn-mes btn-mes-outline btn-sm text-danger" v-if="!exampleMode" @click="deleteOrder(row)">删除</button>
                                             </td>
                                         </tr>
                                         <tr v-if="orders.length===0">
@@ -456,7 +456,7 @@
 
                                     <button class="btn btn-mes btn-mes-primary w-100 py-2 fw-bold mb-2"
                                             @click="startExperiment"
-                                            :disabled="computing || !form.n_runs">
+                                            :disabled="exampleMode || computing || !form.n_runs">
                                         <i class="fas fa-play me-2"></i>
                                         {{ computing ? '实验进行中...' : '开始实验' }}
                                     </button>
@@ -636,7 +636,7 @@
                                     <a class="btn btn-mes btn-mes-outline btn-sm" :href="artifactUrl('representative_pareto_front.png')" target="_blank">打开原图</a>
                                 </div>
                                 <div class="panel-body">
-                                    <img class="img-preview" :src="artifactUrl('representative_pareto_front.png') + '?t=' + cacheBust" alt="帕累托前沿">
+                                    <img class="img-preview" :src="artifactUrl('representative_pareto_front.png')" alt="帕累托前沿">
                                 </div>
                             </div>
                         </div>
@@ -647,7 +647,7 @@
                                     <a class="btn btn-mes btn-mes-outline btn-sm" :href="artifactUrl('representative_vehicle_worktime_hist.png')" target="_blank">打开原图</a>
                                 </div>
                                 <div class="panel-body">
-                                    <img class="img-preview" :src="artifactUrl('representative_vehicle_worktime_hist.png') + '?t=' + cacheBust" alt="工时直方图">
+                                    <img class="img-preview" :src="artifactUrl('representative_vehicle_worktime_hist.png')" alt="工时直方图">
                                 </div>
                             </div>
                         </div>
@@ -680,7 +680,7 @@
                         </div>
                         <div class="panel-body flex-grow-1 p-0" style="min-height:0;">
                             <iframe v-if="hasMap"
-                                    :src="artifactUrl('best_stage2_routes_map.html') + '?t=' + cacheBust"
+                                    :src="artifactUrl('best_stage2_routes_map.html')"
                                     style="width:100%; height:calc(100vh - 160px); border:none;"></iframe>
                             <div v-else class="empty-state">
                                 <i class="fas fa-map-marked-alt"></i>
@@ -695,6 +695,8 @@
 </div>
 
 <script>
+const HISTORY_RECORD = new URLSearchParams(location.search).get('record') || '';
+const EXAMPLE_CASE = new URLSearchParams(location.search).get('example') || '';
 const EMBED_MODE = new URLSearchParams(location.search).get('embed') === '1';
 const API_BASE = (() => {
     const marker = '/logistics-vrp';
@@ -704,7 +706,10 @@ const API_BASE = (() => {
 })();
 function apiUrl(path) {
     const p = path.startsWith('/') ? path : `/${path}`;
-    return `${API_BASE}${p}`;
+    const url = new URL(`${API_BASE}${p}`, location.origin);
+    if (EXAMPLE_CASE) url.searchParams.set('example', EXAMPLE_CASE);
+    if (HISTORY_RECORD) url.searchParams.set('record', HISTORY_RECORD);
+    return url.href;
 }
 
 const { createApp, reactive, ref, computed, onMounted, onUnmounted, nextTick, watch } = Vue;
@@ -712,6 +717,7 @@ const { createApp, reactive, ref, computed, onMounted, onUnmounted, nextTick, wa
 createApp({
     setup() {
         const embedMode = ref(EMBED_MODE);
+        const exampleMode = !!(EXAMPLE_CASE || HISTORY_RECORD);
         const validTabs = ['orders', 'experiment', 'results', 'charts', 'map'];
         const initialTab = new URLSearchParams(location.search).get('tab');
         const page = ref(validTabs.includes(initialTab) ? initialTab : 'experiment');
@@ -791,7 +797,7 @@ createApp({
             return n.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: 0 });
         };
         const schemeClass = (s) => ({ Baseline1: 'scheme-b1', Baseline2: 'scheme-b2', Stage2_Balanced: 'scheme-s2' }[s] || '');
-        const artifactUrl = (name) => apiUrl(`/api/artifact/${name}`);
+        const artifactUrl = (name) => apiUrl(`/api/artifact/${name}?t=${cacheBust.value}`);
 
         const scrollTerminal = async () => {
             await nextTick();
@@ -850,7 +856,7 @@ createApp({
                 const params = new URLSearchParams();
                 if (orderDay.value) params.set('day', orderDay.value);
                 if (orderKeyword.value) params.set('q', orderKeyword.value);
-                const res = await fetch(apiUrl('/api/orders?') + params.toString());
+                const res = await fetch(apiUrl('/api/orders?' + params.toString()));
                 const json = await res.json();
                 if (!res.ok) throw new Error(json.error || '加载失败');
                 orders.value = json.items || [];
@@ -1087,6 +1093,7 @@ createApp({
         });
 
         return {
+            exampleMode,
             page, pageTitle, embedMode, computing, engineOnline, currentTime, cacheBust, mongo,
             config, form, status, resultData, filterScheme, filteredRuns,
             hasCharts, hasMap, terminalRef, downloadFiles, dayOptions,

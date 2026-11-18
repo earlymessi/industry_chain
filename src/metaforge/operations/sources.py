@@ -20,6 +20,13 @@ def fingerprint(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False, default=str, separators=(',', ':')).encode()).hexdigest()
 
 
+def production_fingerprint(doc, result):
+    data = {'jobs': doc.get('jobs') or [], 'gantt': result.get('gantt_data')}
+    if doc.get('factory_id') is not None:
+        data['factory_id'] = doc['factory_id']
+    return fingerprint(data)
+
+
 def selected_result(doc, solver=None):
     results = doc.get('schedule_results') or {}
     single = doc.get('schedule_result') or {}
@@ -39,6 +46,70 @@ def selected_result(doc, solver=None):
     raise ValueError('请明确选择已保存的算法结果')
 
 
+
+def gantt_job_rows(jobs, rows):
+    """Resolve native solver IDs without treating a display name as a primary key.
+
+    The production builder sorts initial jobs by priority; manual insertions append
+    solver IDs without renumbering that prefix. Accept only one complete mapping
+    under those native rules, or an explicit business ID mapping. Never zip rows.
+    """
+    if not jobs:
+        raise ValueError('该计划没有生产工单，请先在生产模块保存完整计划')
+    ids = [str(j['job_id']) for j in jobs if j.get('job_id') is not None and str(j['job_id']).strip()]
+    order_ids = [str(j['job_id']) if j.get('job_id') is not None and str(j['job_id']).strip() else str(i) for i, j in enumerate(jobs)]
+    if len(order_ids) != len(set(order_ids)):
+        raise ValueError('原计划的job_id重复，请在生产模块修正工单标识')
+    names = [str(j.get('name') or '') for j in jobs]
+    if all(names) and len(names) == len(set(names)) and all(r.get('job_name') in names for r in rows):
+        return [[ri for ri, r in enumerate(rows) if r.get('job_name') == name] for name in names]
+    grouped = {}
+    for ri, row in enumerate(rows):
+        if row.get('job_id') is None:
+            raise ValueError('重名或未命名工单的甘特缺少job_id，无法可靠区分；请在生产模块重新排程保存')
+        grouped.setdefault(str(row['job_id']), []).append(ri)
+    if len(grouped) != len(jobs):
+        raise ValueError('甘特的工单编号与原工单数量不符，请在生产模块重新排程保存')
+
+    def matches(ji, indices):
+        job = jobs[ji]; tasks = job.get('tasks') or []
+        if len(indices) != len(tasks):
+            return False
+        found = set()
+        op_names = [t.get('name') or f'Op-{i+1}' for i, t in enumerate(tasks)]
+        for ri in indices:
+            row = rows[ri]
+            if row.get('job_name') and names[ji] and row['job_name'] != names[ji]:
+                return False
+            if row.get('priority') is not None and float(row['priority']) != float(job.get('priority') or 10):
+                return False
+            possible = [oi for oi, task in enumerate(tasks) if oi not in found and
+                ((row.get('operation_name') == op_names[oi] and op_names.count(op_names[oi]) == 1) or
+                 (row.get('operation_id') == oi and (not row.get('operation_name') or row['operation_name'] == op_names[oi]))) and
+                int(row['machine_id']) in [int(m) for m in [*(task.get('machine_options') or []), task.get('machine_id')] if m is not None]]
+            if len(possible) != 1:
+                return False
+            found.add(possible[0])
+        return len(found) == len(tasks)
+
+    compatible = {(ji, key): matches(ji, indices) for key, indices in grouped.items() for ji in range(len(jobs))}
+    resolved = set()
+    def consider(keys):
+        if len(set(keys)) == len(jobs) and set(keys) == set(grouped) and all(compatible.get((ji, key)) for ji, key in enumerate(keys)):
+            resolved.add(tuple(keys))
+    if len(ids) == len(jobs):
+        consider([str(j['job_id']) for j in jobs])
+    for prefix in range(len(jobs) + 1):
+        order = sorted(range(prefix), key=lambda i: int(jobs[i].get('priority') or 10), reverse=True) + list(range(prefix, len(jobs)))
+        keys = [''] * len(jobs)
+        for solver_id, ji in enumerate(order):
+            keys[ji] = str(solver_id)
+        consider(keys)
+    if len(resolved) != 1:
+        raise ValueError('无法从原甘特编号唯一确定重名工单的对应关系，请在生产模块重新排程保存；不会按同名顺序猜测')
+    return [grouped[key] for key in next(iter(resolved))]
+
+
 def production_plan(doc, machines, materials, start_at, *, solver=None, time_unit='hours'):
     """Import an unstarted simulation copy, keeping the saved Gantt exactly."""
     from metaforge.utils.problem_builder import resolve_task_duration
@@ -50,9 +121,8 @@ def production_plan(doc, machines, materials, start_at, *, solver=None, time_uni
         raise ValueError('缺少原计划ID')
     solver, result = selected_result(doc, solver)
     jobs = doc.get('jobs') or []
-    names = [j['name'] for j in jobs]
-    if not jobs or len(names) != len(set(names)):
-        raise ValueError('工单为空或重名，无法可靠关联原甘特，请补充唯一工单标识')
+    rows = result.get('gantt_data') or []
+    row_indices = gantt_job_rows(jobs, rows)
     catalog = {int(m['id']): m for m in machines}
     stock = [{'location': 'production', 'material_id': m['id'], 'quantity': m.get('current_stock', 0),
               'name': m.get('name', m['id']), 'unit': m.get('unit', ''),
@@ -65,28 +135,33 @@ def production_plan(doc, machines, materials, start_at, *, solver=None, time_uni
             'coverage': {'production': 'bound', 'material': 'not_provided', 'assembly': 'unbound', 'delivery': 'unbound'},
             'provenance': '原生产计划的未开工仿真副本；按确认单位平移日期，保留原设备、工序与甘特，不导入旧MES运行进度。',
             'source_manifest': [{'module': 'production', 'collection': 'work_orders', 'id': sid, 'solver': solver,
-                                 'time_unit': time_unit, 'sha256': fingerprint({'jobs': jobs, 'gantt': result.get('gantt_data')})}]}
+                                 'time_unit': time_unit, 'sha256': production_fingerprint(doc, result)}]}
     used = set()
-    rows = result.get('gantt_data') or []
     calendar_end = start_at + max(7 * 86400, max((float(r['end']) * factor for r in rows), default=0) + 86400)
     consumed_rows = set()
     for ji, job in enumerate(jobs):
-        jid = str(job.get('job_id') or ji)
+        jid = str(job['job_id']) if job.get('job_id') is not None and str(job['job_id']).strip() else str(ji)
+        job_name = str(job.get('name') or f'工单{ji + 1}')
+        display_name = f'{job_name}（工单{ji + 1}）' if sum(j.get('name') == job.get('name') for j in jobs) > 1 else job_name
         oid = f'production:{sid}:job:{jid}'
         quantity = job.get('quantity') or 1
-        order = {'id': oid, 'name': job['name'], 'quantity': quantity, 'priority': job.get('priority', 10),
+        order = {'id': oid, 'name': display_name, 'quantity': quantity, 'priority': job.get('priority', 10),
                  'due_at': start_at + float(job['due_date']) * factor if job.get('due_date') is not None else None,
                  'fulfillment_stage': 'production', 'quantity_unit': '件' if job.get('quantity') else '批',
                  'source_ref': {'module': 'production', 'plan_id': sid, 'job_index': ji, 'job_id': job.get('job_id')}}
+        order['business_source'] = {key: value for key, value in {
+            'factory_id': job.get('factory_id') or doc.get('factory_id'),
+            'output_material_id': job.get('output_material_id') or job.get('product_id') or job.get('part_id'),
+            'spec': job.get('spec'), 'uom': job.get('unit') or job.get('uom')}.items() if value is not None}
         previous = None
         op_names = [t.get('name') or f'Op-{oi+1}' for oi, t in enumerate(job['tasks'])]
         for oi, task in enumerate(job['tasks']):
             name = op_names[oi]
-            matches = [(ri, row) for ri, row in enumerate(rows) if ri not in consumed_rows and row.get('job_name') == job['name'] and
+            matches = [(ri, row) for ri, row in enumerate(rows) if ri in row_indices[ji] and ri not in consumed_rows and
                        ((row.get('operation_name') == name and op_names.count(name) == 1) or
                         (row.get('operation_id') == oi and (not row.get('operation_name') or row['operation_name'] == name)))]
             if len(matches) != 1:
-                raise ValueError(f'{job["name"]}/{name}无法唯一关联已保存甘特，拒绝猜测工序')
+                raise ValueError(f'{job_name}/{name}无法唯一关联已保存甘特，拒绝猜测工序')
             ri, row = matches[0]
             consumed_rows.add(ri)
             options = list(task.get('machine_options') or [task.get('machine_id')])
@@ -99,7 +174,7 @@ def production_plan(doc, machines, materials, start_at, *, solver=None, time_uni
             duration = resolve_task_duration(task, job_quantity=job.get('quantity'))
             tid = f'{oid}:op:{oi}'
             ref = {'module': 'production', 'plan_id': sid, 'job_index': ji, 'job_id': job.get('job_id'),
-                   'job_name': job['name'],
+                   'job_name': job_name,
                    'operation_index': oi, 'operation_name': name, 'solver_job_id': row.get('job_id'), 'time_unit': time_unit}
             alternatives = []
             for mid in options:
@@ -108,7 +183,7 @@ def production_plan(doc, machines, materials, start_at, *, solver=None, time_uni
                 d = float(durations.get(str(mid), durations.get(mid, duration)))
                 alternatives.append({'resource_id': f'production:machine:{mid}', 'duration_seconds': d * factor, 'setup_seconds': 0,
                                      'duration_source': 'duration_by_machine' if durations else '原工序统一工时'})
-            entry = {'id': tid, 'name': f'{job["name"]} · {name}', 'kind': 'production', 'order_id': oid, 'quantity': quantity,
+            entry = {'id': tid, 'name': f'{display_name} · {name}', 'kind': 'production', 'order_id': oid, 'quantity': quantity,
                      'quantity_unit': order['quantity_unit'], 'duration_mode': 'batch', 'alternatives': alternatives,
                      'predecessors': [previous] if previous else [], 'release_at': start_at + float(job.get('material_arrival') or 0) * factor,
                      'resumable': bool(task.get('resumable', False)), 'inputs': [], 'outputs': [], 'source_ref': ref,
@@ -128,9 +203,9 @@ def production_plan(doc, machines, materials, start_at, *, solver=None, time_uni
             if oi == 0:
                 for line in job.get('bom') or []:
                     if line.get('consume_mode', 'job_start') != 'job_start':
-                        raise ValueError(f'{job["name"]}含连续耗料，当前适配器不能把它改成一次扣料')
+                        raise ValueError(f'{job_name}含连续耗料，当前适配器不能把它改成一次扣料')
                     if not job.get('quantity'):
-                        raise ValueError(f'{job["name"]}的BOM缺少批量，请先在原计划补齐')
+                        raise ValueError(f'{job_name}的BOM缺少批量，请先在原计划补齐')
                     mid = line['material_id']
                     if not any(s['material_id'] == mid for s in stock):
                         raise ValueError(f'原物料目录缺少{mid}')
@@ -157,6 +232,35 @@ def production_plan(doc, machines, materials, start_at, *, solver=None, time_uni
     for order in plan['orders']:
         order['source_baseline'] = baseline_fields(order, ORDER_FIELDS)
     return plan
+
+
+def select_production_jobs(plan, job_indices=None, source_zero_offset_hours=0):
+    """Select a declared factory's jobs without cloning machine IDs or changing Gantt intervals."""
+    selected = copy.deepcopy(plan)
+    indices = None
+    if job_indices is not None:
+        if not isinstance(job_indices, list) or not job_indices or any(type(i) is not int or i < 0 for i in job_indices) or len(set(job_indices)) != len(job_indices):
+            raise ValueError('工厂工单范围必须是非空且不重复的原工单序号')
+        indices = sorted(job_indices)
+        known = {o['source_ref']['job_index'] for o in plan['orders']}
+        if not set(indices) <= known:
+            raise ValueError('工厂工单范围超出原生产计划')
+        selected['orders'] = [o for o in selected['orders'] if o['source_ref']['job_index'] in indices]
+        order_ids = {o['id'] for o in selected['orders']}
+        selected['tasks'] = [t for t in selected['tasks'] if t.get('order_id') in order_ids]
+        task_ids = {t['id'] for t in selected['tasks']}
+        selected['schedule'] = [r for r in selected['schedule'] if r['task_id'] in task_ids]
+        resources = {a['resource_id'] for t in selected['tasks'] for a in t['alternatives']}
+        selected['resources'] = [r for r in selected['resources'] if r['id'] in resources]
+    offset = float(source_zero_offset_hours or 0)
+    if not 0 <= offset <= 672:
+        raise ValueError('原甘特零点偏移须为0至672小时')
+    manifest = selected['source_manifest'][0]
+    if indices is not None or offset:
+        original_hash = manifest['sha256']
+        manifest.update(source_sha256=original_hash, job_indices=indices, source_zero_offset_hours=offset)
+        manifest['sha256'] = fingerprint({'source_sha256': original_hash, 'job_indices': indices, 'source_zero_offset_hours': offset})
+    return selected
 
 
 @lru_cache(maxsize=1)

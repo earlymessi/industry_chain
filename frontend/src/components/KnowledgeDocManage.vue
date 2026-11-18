@@ -19,7 +19,7 @@
           <el-button :loading="loading" @click="loadDocuments">刷新</el-button>
         </div>
         <div class="toolbar-right">
-          <span class="meta">向量片段 {{ docCount }}</span>
+          <span class="meta">知识片段 {{ docCount }}</span>
           <el-tag :type="ragOnline ? 'success' : 'warning'" size="small">
             {{ ragOnline ? 'RAG 在线' : 'RAG 离线' }}
           </el-tag>
@@ -35,7 +35,7 @@
         <el-table-column label="大小" width="100">
           <template #default="{ row }">{{ formatSize(row.size) }}</template>
         </el-table-column>
-        <el-table-column prop="chunk_count" label="向量片段" width="96" align="center" />
+        <el-table-column prop="chunk_count" label="知识片段" width="96" align="center" />
         <el-table-column label="入库状态" width="108" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.indexed" type="success" size="small">已入库</el-tag>
@@ -45,7 +45,7 @@
         <el-table-column label="文件" width="88" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.on_disk" type="info" size="small">本地</el-tag>
-            <el-tag v-else type="warning" size="small">仅向量</el-tag>
+            <el-tag v-else type="warning" size="small">仅索引</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="updated_at" label="更新时间" width="168" show-overflow-tooltip />

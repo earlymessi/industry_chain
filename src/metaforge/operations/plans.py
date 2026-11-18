@@ -48,7 +48,7 @@ def normalize_plan(raw: dict) -> dict:
         o["quantity"] = number(o["quantity"], "订单数量", 0.000001)
         o["priority"] = number(o.get("priority", 1), "优先级", 0.000001)
     for t in plan["tasks"]:
-        if t["kind"] not in {"production", "assembly", "loading", "delivery", "return"}:
+        if t["kind"] not in {"production", "assembly", "transport", "loading", "delivery", "return"}:
             raise ValueError("未知任务类型")
         if t.get("order_id") and t["order_id"] not in orders:
             raise ValueError("任务引用不存在的订单")
@@ -68,7 +68,7 @@ def normalize_plan(raw: dict) -> dict:
             field = "unit_seconds" if t["duration_mode"] == "per_unit" else "duration_seconds"
             alt[field] = number(alt.get(field, 0), "有效工时", 0 if t["kind"] in {"delivery", "return"} else 0.000001)
             resource = next(r for r in plan["resources"] if r["id"] == alt["resource_id"])
-            expected_kind = "vehicle" if t["kind"] in {"loading", "delivery", "return"} else t["kind"]
+            expected_kind = "vehicle" if t["kind"] in {"transport", "loading", "delivery", "return"} else t["kind"]
             if resource["kind"] != expected_kind:
                 raise ValueError("工序与资源业务类型不匹配")
         for key in ("inputs", "outputs"):

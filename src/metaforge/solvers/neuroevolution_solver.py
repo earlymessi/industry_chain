@@ -132,6 +132,9 @@ def evaluate_network_weighted(problem, net, device, priority_vector):
 class NeuroevolutionSolver(BaseSolver):
     def __init__(self, problem, pop_size=30, generations=50, mutation_rate=0.1, elite_size=2, hidden_sizes=[64, 32]):
         super().__init__(problem)
+        for label, value in (("pop_size", pop_size), ("generations", generations), ("elite_size", elite_size)):
+            if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+                raise ValueError(f"{label}必须为正整数")
         self.pop_size = pop_size
         self.generations = generations
         self.mutation_rate = mutation_rate
@@ -194,8 +197,10 @@ class NeuroevolutionSolver(BaseSolver):
             elites = scored[:self.elite_size]
             next_gen = [e[0] for e in elites]
 
+            # Elitism may retain one individual; mating still needs a valid parent pool.
+            parents = scored[:max(2, self.elite_size)]
             while len(next_gen) < self.pop_size:
-                p1, p2 = random.sample(elites, 2)
+                p1, p2 = random.sample(parents, 2) if len(parents) > 1 else (parents[0], parents[0])
                 child = self.crossover(p1[0], p2[0])
                 child = self.mutate(child)
                 next_gen.append(child)

@@ -93,8 +93,11 @@ def validate(state: dict, candidate: dict, now: float) -> dict:
             continue
         check("future", start >= now - 1e-5, tid, "不下发已过开始时刻的未来动作", start, now)
         check("release", start >= t["release_at"] - 1e-5, tid, "满足任务最早释放")
-        check('fixed_deadline', start <= t.get('latest_start_at', float('inf')) + 1e-5 and end <= t.get('latest_end_at', float('inf')) + 1e-5,
-              tid, '固定发运/交接时限保持，不随上游延期自动后移')
+        departure = progress.get('actual_start_at')
+        if departure is None:
+            departure = start
+        check('fixed_deadline', departure <= t.get('latest_start_at', float('inf')) + 1e-5 and end <= t.get('latest_end_at', float('inf')) + 1e-5,
+              tid, '发运按实际首次开始或拟发运时刻校验，交接时限保持')
         if not r["available"]:
             expected = r.get("expected_recovery_at")
             check("recovery_assumption", expected is not None and expected > now and start >= expected - 1e-5, tid, "实际不可用资源仅可按有效恢复估计推演，不能实际提前开工", start, expected)
@@ -148,6 +151,23 @@ def validate(state: dict, candidate: dict, now: float) -> dict:
         intervals.sort()
         for left, right in zip(intervals, intervals[1:]):
             check("exclusive", left[1] <= right[0] + 1e-5, rid, f"{left[2]}与{right[2]}不重叠")
+    for rid, intervals in bookings.items():
+        if resources[rid]['kind'] != 'vehicle':
+            continue
+        location = resources[rid].get('location')
+        for _, _, tid in sorted(intervals):
+            t, row = tasks[tid], rows[tid]
+            if t['kind'] == 'loading':
+                check('vehicle_site', location == t.get('at_node', 'D'), tid, '车辆在出库仓，不跨地点瞬移')
+            elif t['kind'] in {'transport', 'delivery', 'return'}:
+                origin = t.get('from_node') if t['kind'] == 'transport' else row.get('from_node')
+                destination = t.get('to_node') if t['kind'] == 'transport' else row.get('to_node')
+                check('vehicle_site', location == origin and row.get('from_node') == origin and row.get('to_node') == destination,
+                      tid, '车辆前后地点和运输起讫对应，不凭空跨仓/跨厂')
+                if t['kind'] == 'transport':
+                    check('inbound_capacity', t['quantity'] <= resources[rid]['capacity'] + 1e-7, tid, '入厂运输数量不超过车辆容量')
+                    check('inbound_capacity_unit', t.get('load_uom') == resources[rid].get('capacity_uom'), tid, '运输载荷与车辆容量单位一致')
+                location = destination
     for key, events in movements.items():
         qty = state["inventory"].get(key, 0)
         grouped = defaultdict(float)

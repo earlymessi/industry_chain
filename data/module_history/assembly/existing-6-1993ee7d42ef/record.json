@@ -1,0 +1,13 @@
+{
+  "id": "existing-6-1993ee7d42ef",
+  "module": "assembly",
+  "name": "QMIX 6台 · 已有结果",
+  "created_at": "2026-11-17T10:02:25.471967+00:00",
+  "version": "1993ee7d42ef49ee9d33222b758c7431c44501dfc2776ebcb20d94e74cf2ea2d",
+  "legacy_key": "existing-6",
+  "algorithm": "QMIX",
+  "units": 6,
+  "task_count": 54,
+  "episode_count": 8,
+  "compatible": false
+}

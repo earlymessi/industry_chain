@@ -1,0 +1,37 @@
+{
+  "materials": {
+    "compressor": {
+      "on_hand": 1
+    },
+    "circuit_board": {
+      "on_hand": 2
+    },
+    "sensor": {
+      "on_hand": 0
+    },
+    "wire_harness": {
+      "on_hand": 0
+    },
+    "foam_material": {
+      "on_hand": 0
+    },
+    "door_gasket": {
+      "on_hand": 0
+    },
+    "hinge_kit": {
+      "on_hand": 0
+    },
+    "metal_panel": {
+      "on_hand": 0
+    },
+    "copper_tube": {
+      "on_hand": 0
+    },
+    "packing_box": {
+      "on_hand": 0
+    }
+  },
+  "deliveries": [],
+  "updated_at": "2026-11-17T00:00:00+08:00",
+  "provenance": "已确认的案例期初库存，独立于原模块实际库存；新增采购和运输由本案例配置提供"
+}

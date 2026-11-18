@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import sqlite3
+from datetime import datetime
+from contextlib import closing
 import os
 import subprocess
 import threading
@@ -62,10 +65,11 @@ def _env_configured() -> bool:
 
 
 def _manifest_doc_count() -> int:
-    if not _MANIFEST.is_file():
+    manifest_path = _kb_configured_path('manifest_store', _MANIFEST)
+    if not manifest_path.is_file():
         return 0
     try:
-        data = json.loads(_MANIFEST.read_text(encoding="utf-8"))
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             return 0
         return sum(int(item.get("chunk_count") or 0) for item in data.values() if isinstance(item, dict))
@@ -75,12 +79,13 @@ def _manifest_doc_count() -> int:
 
 def _chroma_sqlite_count() -> int:
     """不加载 embedding 模型，直接读 Chroma SQLite 中的向量条数。"""
-    if not _CHROMA_SQLITE.is_file():
+    sqlite_path = _kb_sqlite_file()
+    if not sqlite_path.is_file():
         return 0
     try:
         import sqlite3
 
-        conn = sqlite3.connect(str(_CHROMA_SQLITE), timeout=2)
+        conn = sqlite3.connect(sqlite_path.resolve().as_uri()+'?mode=ro', uri=True, timeout=2)
         try:
             row = conn.execute("SELECT COUNT(*) FROM embeddings").fetchone()
             return int(row[0]) if row else 0
@@ -91,6 +96,8 @@ def _chroma_sqlite_count() -> int:
 
 
 def _indexed_doc_count() -> int:
+    if _keyword_mode():
+        return sum(int(count) for _,count in _kb_sqlite_rows())
     manifest_count = _manifest_doc_count()
     if manifest_count > 0:
         return manifest_count
@@ -100,13 +107,15 @@ def _indexed_doc_count() -> int:
 def _fast_status() -> Dict[str, Any]:
     doc_count = _indexed_doc_count()
     env_ok = _env_configured()
-    chroma_ok = _CHROMA_DIR.is_dir()
+    chroma_ok = doc_count > 0 if _keyword_mode() else _kb_sqlite_file().parent.is_dir()
     worker_ok = _worker_ready and _worker_proc is not None and _worker_proc.poll() is None
     return {
         "available": env_ok and doc_count > 0 and chroma_ok,
         "detail": "" if env_ok else "缺少 DEEPSEEK_API_KEY / LLM_API_KEY / DASHSCOPE_API_KEY",
         "root": str(_RAG_ROOT),
         "mode": "fast",
+        "retrieval_mode": "keyword" if _keyword_mode() else "hybrid",
+        "chat_provider": os.getenv('RAG_CHAT_PROVIDER','deepseek'),
         "python": _rag_python(),
         "doc_count": doc_count,
         "env_ok": env_ok,
@@ -300,7 +309,7 @@ def status(*, deep: bool = False) -> Dict[str, Any]:
 
 
 def knowledge_data_dir() -> Path:
-    return _RAG_ROOT / "data"
+    return _kb_configured_path('data_path', _RAG_ROOT / 'data')
 
 
 ALLOWED_KB_EXTENSIONS = {".txt", ".pdf", ".docx", ".json"}
@@ -331,15 +340,146 @@ def kb_documents(action: str, *, path: str = "", max_chars: int = 8000) -> Dict[
     return _run_rag_script(_KB_DOCS_CLI, payload, timeout=timeout)
 
 
+def _kb_settings() -> dict:
+    config = _RAG_ROOT / 'config' / 'chroma.yaml'
+    if not config.is_file():return {}
+    import yaml
+    return yaml.safe_load(config.read_text(encoding='utf-8')) or {}
+
+
+def _kb_collection_name() -> str:
+    return str(_kb_settings().get('collection_name') or 'agent')
+
+
+def _kb_configured_path(key: str, fallback: Path) -> Path:
+    configured=_kb_settings().get(key)
+    if not configured:return fallback
+    path=Path(str(configured).replace('\\','/'))
+    return path if path.is_absolute() else _RAG_ROOT/path
+
+
+def _kb_sqlite_file() -> Path:
+    configured=_kb_settings().get('persist_directory')
+    if not configured:return _CHROMA_SQLITE
+    return _kb_configured_path('persist_directory',_CHROMA_DIR)/'chroma.sqlite3'
+
+
+def _keyword_mode() -> bool:
+    return os.getenv('RAG_RETRIEVAL_MODE', 'hybrid').strip().lower() == 'keyword'
+
+
+def _keyword_database() -> Path:
+    return _kb_configured_path('keyword_store_path', _RAG_ROOT/'storage/keyword_documents.sqlite3')
+
+
+def _keyword_metadata() -> tuple[set,dict]:
+    path=_keyword_database()
+    if not _keyword_mode() or not path.is_file():return set(),{}
+    with closing(sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True,timeout=2)) as conn:
+        conn.execute('BEGIN')
+        hidden={r[0] for r in conn.execute('SELECT source FROM overrides')}
+        counts=dict(conn.execute('SELECT source,COUNT(*) FROM documents GROUP BY source'))
+    return hidden,counts
+
+
+def _kb_sqlite_rows(*, source: str | None = None) -> list:
+    """Read metadata only; local keyword documents override their legacy source."""
+    rows=[]
+    hidden,local_counts=_keyword_metadata()
+    if source is not None and source in hidden:
+        with closing(sqlite3.connect(_keyword_database().resolve().as_uri()+'?mode=ro',uri=True,timeout=2)) as conn:
+            return conn.execute('SELECT content FROM documents WHERE source=? ORDER BY rowid',(source,)).fetchall()
+    sqlite_path = _kb_sqlite_file()
+    if sqlite_path.is_file():
+        with closing(sqlite3.connect(sqlite_path.resolve().as_uri()+'?mode=ro',uri=True,timeout=2)) as conn:
+            base = (" FROM embedding_metadata s JOIN embeddings e ON e.id=s.id "
+                    "JOIN segments g ON g.id=e.segment_id JOIN collections c ON c.id=g.collection ")
+            if source is None:
+                rows=conn.execute("SELECT s.string_value, COUNT(*)"+base+
+                    "WHERE s.key='source' AND c.name=? GROUP BY s.string_value",(_kb_collection_name(),)).fetchall()
+            else:
+                return conn.execute("SELECT d.string_value"+base+
+                    "JOIN embedding_metadata d ON d.id=s.id AND d.key='chroma:document' "
+                    "WHERE s.key='source' AND s.string_value IN (?,?) AND c.name=? ORDER BY e.id",
+                    (source,source.replace('/','\\'),_kb_collection_name())).fetchall()
+    if source is None:
+        rows=[(key,count) for key,count in rows if str(key).replace('\\','/') not in hidden]
+        rows.extend(local_counts.items())
+    return rows
+
+
+def _kb_relative_path(path: str) -> tuple[str,Path]:
+    rel=(path or '').strip().replace('\\','/')
+    root=knowledge_data_dir().resolve()
+    target=(root/rel).resolve()
+    if not rel or '..' in rel.split('/') or not target.is_relative_to(root) or target==root:
+        raise ValueError('非法文档路径')
+    return target.relative_to(root).as_posix(),target
+
+
 def preview_kb_document(path: str, *, max_chars: int = 8000) -> Dict[str, Any]:
-    rel = (path or "").strip().replace("\\", "/")
-    if not rel:
-        raise ValueError("path 不能为空")
-    return kb_documents("preview", path=rel, max_chars=max_chars)
+    rel,target=_kb_relative_path(path)
+    limit=max(1,min(int(max_chars),50000))
+    if target.is_file():
+        suffix=target.suffix.lower()
+        if suffix in {'.txt','.json'}:
+            try: text=target.read_text(encoding='utf-8-sig')
+            except UnicodeError: text=target.read_text(encoding='gb18030',errors='replace')
+        elif suffix=='.pdf':
+            from pypdf import PdfReader
+            parts=[];length=0
+            for page in PdfReader(str(target)).pages:
+                part=page.extract_text() or '';parts.append(part);length+=len(part)
+                if length>limit:break
+            text='\n\n'.join(parts)
+        elif suffix=='.docx':
+            import zipfile
+            from xml.etree import ElementTree
+            with zipfile.ZipFile(target) as archive:
+                document=ElementTree.fromstring(archive.read('word/document.xml'))
+            ns={'w':'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+            text='\n'.join(''.join(n.text or '' for n in p.findall('.//w:t',ns))
+                           for p in document.findall('.//w:p',ns))
+        else:
+            raise ValueError('不支持预览该文件格式')
+    else:
+        text='\n\n'.join(str(r[0]) for r in _kb_sqlite_rows(source=rel) if r[0])
+        if not text:raise ValueError('文件不存在且无可用索引正文: '+rel)
+    preview=text[:limit]+('\n…（内容已截断）' if len(text)>limit else '')
+    return {'ok':True,'path':rel,'preview':preview}
 
 
 def list_kb_documents() -> Dict[str, Any]:
-    return kb_documents("list")
+    """File listing is metadata I/O, independent of embedding and chat availability."""
+    manifest_path = _kb_configured_path('manifest_store',_MANIFEST)
+    try: manifest=json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.is_file() else {}
+    except (OSError,ValueError):manifest={}
+    if not isinstance(manifest,dict):manifest={}
+    manifest={str(k).replace('\\','/'):v for k,v in manifest.items() if isinstance(v,dict)}
+    if _keyword_mode():
+        hidden,_=_keyword_metadata()
+        manifest={key:item for key,item in manifest.items() if key not in hidden}
+        keyword_manifest=_kb_configured_path('keyword_manifest_store',_RAG_ROOT/'storage/keyword_manifest.json')
+        if keyword_manifest.is_file():
+            try:
+                extra=json.loads(keyword_manifest.read_text(encoding='utf-8'))
+                if isinstance(extra,dict):manifest.update({k:v for k,v in extra.items() if isinstance(v,dict)})
+            except (OSError,ValueError):pass
+
+    try: counts={str(source).replace('\\','/'):int(count) for source,count in _kb_sqlite_rows() if source}
+    except (sqlite3.Error,OSError,ValueError):counts={}
+    root=knowledge_data_dir().resolve()
+    files={p.relative_to(root).as_posix():p for p in root.rglob('*')
+           if p.is_file() and p.suffix.lower() in ALLOWED_KB_EXTENSIONS and p.resolve().is_relative_to(root)}
+    rows=[]
+    for rel in sorted(set(files)|set(manifest)|set(counts)):
+        path=files.get(rel);item=manifest.get(rel,{})
+        stat=path.stat() if path else None
+        rows.append({'path':rel,'name':Path(rel).name,'size':stat.st_size if stat else 0,
+            'updated_at':item.get('updated_at') or (datetime.fromtimestamp(stat.st_mtime).isoformat(timespec='seconds') if stat else ''),
+            'chunk_count':int(item.get('chunk_count') or counts.get(rel,0)),
+            'indexed':bool(item) or rel in counts,'on_disk':stat is not None})
+    return {'ok':True,'documents':rows,'doc_count':sum(counts.values()) if counts else sum(r['chunk_count'] for r in rows),'message':'','retrieval_mode':'keyword' if _keyword_mode() else 'hybrid'}
 
 
 def ingest_kb_document(path: str) -> Dict[str, Any]:

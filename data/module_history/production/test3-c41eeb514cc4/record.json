@@ -1,0 +1,15 @@
+{
+  "id": "test3-c41eeb514cc4",
+  "module": "production",
+  "name": "test3",
+  "created_at": "2026-11-17T09:48:43.200180+00:00",
+  "version": "6e2e1943d9f3786955b21c99a3572b65c0688f6b378954f39b93cee28dc38ef7",
+  "algorithm": "Q工单模板 + 计划释放时间",
+  "units": 5,
+  "task_count": 7,
+  "compatible": true,
+  "test_case": true,
+  "case_id": "chain-demo-transport",
+  "horizon_days": 28,
+  "span_minutes": 31260.0
+}

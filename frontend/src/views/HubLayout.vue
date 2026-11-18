@@ -66,10 +66,6 @@
           text-color="#e8eef5"
           active-text-color="#ffffff"
         >
-          <el-menu-item index="/home/operations-tools" class="nav-item">
-            <HubMenuIcon tone="production"><FirstAidKit /></HubMenuIcon>
-            <span>产业链运维系统</span>
-          </el-menu-item>
           <el-sub-menu
             index="supply-chain"
             class="hub-submenu"
@@ -155,6 +151,7 @@
               <HubMenuIcon tone="assembly"><Connection /></HubMenuIcon>
               <span>组装资源管控</span>
             </template>
+            <el-menu-item index="/home/assembly/database"><HubMenuIcon tone="assembly"><FolderOpened /></HubMenuIcon><span>数据中心</span></el-menu-item>
             <el-menu-item index="/home/assembly/dashboard">
               <HubMenuIcon tone="assembly"><Monitor /></HubMenuIcon>
               <span>组装看板</span>
@@ -186,6 +183,7 @@
               <HubMenuIcon tone="logistics"><Guide /></HubMenuIcon>
               <span>物流资源管控</span>
             </template>
+            <el-menu-item index="/home/logistics-resource/database"><HubMenuIcon tone="logistics"><FolderOpened /></HubMenuIcon><span>数据中心</span></el-menu-item>
             <el-menu-item index="/home/logistics-resource/orders">
               <HubMenuIcon tone="logistics"><List /></HubMenuIcon>
               <span>订单管理</span>
@@ -207,6 +205,10 @@
               <span>路径地图</span>
             </el-menu-item>
           </el-sub-menu>
+          <el-menu-item index="/home/operations-tools" class="nav-item">
+            <HubMenuIcon tone="production"><FirstAidKit /></HubMenuIcon>
+            <span>产业链运维智能体</span>
+          </el-menu-item>
         </el-menu>
       </div>
 
@@ -335,7 +337,7 @@ const hubActive = computed(() => {
 const menuActive = computed(() => route.path)
 
 const routeTitleMap = {
-  '/home/operations-tools': '产业链运维系统',
+  '/home/operations-tools': '产业链运维智能体',
   '/home/production/dashboard': '生产看板',
   '/home/production/database': '数据中心',
   '/home/production/aps': '智能排程',
@@ -351,11 +353,13 @@ const routeTitleMap = {
   '/home/supply-chain/order-input': '信息录入',
   '/home/supply-chain/orders': '订单管理',
   '/home/supply-chain/params': '参数设置',
+  '/home/assembly/database': '组装数据中心',
   '/home/assembly/dashboard': '组装看板',
   '/home/assembly/materials': '物料管理',
   '/home/assembly/gantt': '甘特图',
   '/home/assembly/charts': '数据统计',
   '/home/assembly/dynamic': '动态演示',
+  '/home/logistics-resource/database': '配送数据中心',
   '/home/logistics-resource/orders': '物流资源管控 · 订单管理',
   '/home/logistics-resource/experiment': '物流资源管控 · 实验配置',
   '/home/logistics-resource/results': '物流资源管控 · 结果汇总',

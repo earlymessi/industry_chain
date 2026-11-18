@@ -1,4 +1,8 @@
 import os
+import sys
+from pathlib import Path
+_SHARED_SRC = str(Path(__file__).resolve().parents[1] / 'src')
+if _SHARED_SRC not in sys.path: sys.path.insert(0, _SHARED_SRC)
 import glob
 import json
 import pickle
@@ -290,6 +294,8 @@ def run_evaluation(n_agents: int, model_num: str, evaluate_epoch: int) -> Dict[s
             "loss": loss_file,
         },
     }
+    from metaforge.operations.history import archive_assembly
+    result['history_id'] = archive_assembly(result)['id']
     return result
 
 
@@ -544,6 +550,8 @@ def run_joint_evaluation(n_agents: int, n_agvs: int, model_num: str, evaluate_ep
                 "timestamp": __import__('time').time()
             }, f)
 
+        from metaforge.operations.history import archive_assembly
+        result['history_id'] = archive_assembly(result)['id']
         return result
 
     except Exception as e:

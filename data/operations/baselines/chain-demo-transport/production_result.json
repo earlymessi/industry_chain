@@ -1,0 +1,282 @@
+{
+  "id": "02d8904b755f3cc5bd2dff69",
+  "plan_name": "test3",
+  "jobs": [
+    {
+      "name": "订单109-内部层架",
+      "priority": 10,
+      "tasks": [
+        {
+          "machine_id": 2,
+          "duration": 7,
+          "name": "网格冲压"
+        },
+        {
+          "machine_id": 4,
+          "duration": 5,
+          "name": "边框焊接"
+        },
+        {
+          "machine_id": 5,
+          "duration": 4,
+          "name": "浸塑处理"
+        }
+      ],
+      "quantity": 5
+    },
+    {
+      "name": "订单112-制冰机支架",
+      "priority": 10,
+      "tasks": [
+        {
+          "machine_id": 0,
+          "duration": 3,
+          "name": "激光精切"
+        },
+        {
+          "machine_id": 3,
+          "duration": 1,
+          "name": "去毛刺"
+        },
+        {
+          "machine_id": 1,
+          "duration": 2,
+          "name": "精密折弯"
+        },
+        {
+          "machine_id": 6,
+          "duration": 2,
+          "name": "配件组装"
+        }
+      ],
+      "quantity": 5
+    }
+  ],
+  "schedule_results": {
+    "q": {
+      "solver_id": "q",
+      "name": "Q工单模板 + 计划释放时间",
+      "algorithm": "Q工单模板 + 计划释放时间",
+      "family": "saved_template",
+      "makespan": 521,
+      "gantt_data": [
+        {
+          "job_id": 0,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "网格冲压",
+          "machine_id": 2,
+          "machine_options": [
+            2
+          ],
+          "machine_group": null,
+          "start": 0,
+          "end": 7,
+          "job_name": "订单109-内部层架"
+        },
+        {
+          "job_id": 1,
+          "priority": 10,
+          "operation_id": 0,
+          "operation_name": "激光精切",
+          "machine_id": 0,
+          "machine_options": [
+            0
+          ],
+          "machine_group": null,
+          "start": 506,
+          "end": 509,
+          "job_name": "订单112-制冰机支架"
+        },
+        {
+          "job_id": 0,
+          "priority": 10,
+          "operation_id": 1,
+          "operation_name": "边框焊接",
+          "machine_id": 4,
+          "machine_options": [
+            4
+          ],
+          "machine_group": null,
+          "start": 7,
+          "end": 12,
+          "job_name": "订单109-内部层架"
+        },
+        {
+          "job_id": 1,
+          "priority": 10,
+          "operation_id": 1,
+          "operation_name": "去毛刺",
+          "machine_id": 3,
+          "machine_options": [
+            3
+          ],
+          "machine_group": null,
+          "start": 511,
+          "end": 512,
+          "job_name": "订单112-制冰机支架"
+        },
+        {
+          "job_id": 1,
+          "priority": 10,
+          "operation_id": 2,
+          "operation_name": "精密折弯",
+          "machine_id": 1,
+          "machine_options": [
+            1
+          ],
+          "machine_group": null,
+          "start": 516,
+          "end": 518,
+          "job_name": "订单112-制冰机支架"
+        },
+        {
+          "job_id": 0,
+          "priority": 10,
+          "operation_id": 2,
+          "operation_name": "浸塑处理",
+          "machine_id": 5,
+          "machine_options": [
+            5
+          ],
+          "machine_group": null,
+          "start": 14,
+          "end": 18,
+          "job_name": "订单109-内部层架"
+        },
+        {
+          "job_id": 1,
+          "priority": 10,
+          "operation_id": 3,
+          "operation_name": "配件组装",
+          "machine_id": 6,
+          "machine_options": [
+            6
+          ],
+          "machine_group": null,
+          "start": 519,
+          "end": 521,
+          "job_name": "订单112-制冰机支架"
+        }
+      ],
+      "sequence": [
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1
+      ],
+      "metrics": {
+        "makespan": 521
+      },
+      "meta": {
+        "source_plan_id": "693c1376a4c27d96652ad849",
+        "source_job_indices": [
+          8,
+          11
+        ],
+        "release_offset_hours": 504
+      }
+    }
+  },
+  "machines": [
+    {
+      "id": 0,
+      "name": "Machine-0",
+      "x": -125.0,
+      "y": 7.5,
+      "z": -50,
+      "status": "idle"
+    },
+    {
+      "id": 1,
+      "name": "Machine-1",
+      "x": -75.0,
+      "y": 7.5,
+      "z": -50,
+      "status": "idle"
+    },
+    {
+      "id": 2,
+      "name": "Machine-2",
+      "x": -25.0,
+      "y": 7.5,
+      "z": -50,
+      "status": "idle"
+    },
+    {
+      "id": 3,
+      "name": "Machine-3",
+      "x": 25.0,
+      "y": 7.5,
+      "z": -50,
+      "status": "idle"
+    },
+    {
+      "id": 4,
+      "name": "Machine-4",
+      "x": 75.0,
+      "y": 7.5,
+      "z": -50,
+      "status": "idle"
+    },
+    {
+      "id": 5,
+      "name": "Machine-5",
+      "x": 125.0,
+      "y": 7.5,
+      "z": -50,
+      "status": "idle"
+    },
+    {
+      "id": 6,
+      "name": "Machine-6",
+      "x": -125.0,
+      "y": 7.5,
+      "z": 50,
+      "status": "idle"
+    },
+    {
+      "id": 7,
+      "name": "Machine-7",
+      "x": -75.0,
+      "y": 7.5,
+      "z": 50,
+      "status": "idle"
+    },
+    {
+      "id": 8,
+      "name": "Machine-8",
+      "x": -25.0,
+      "y": 7.5,
+      "z": 50,
+      "status": "idle"
+    },
+    {
+      "id": 9,
+      "name": "Machine-9",
+      "x": 25.0,
+      "y": 7.5,
+      "z": 50,
+      "status": "idle"
+    },
+    {
+      "id": 10,
+      "name": "Machine-10",
+      "x": 75.0,
+      "y": 7.5,
+      "z": 50,
+      "status": "idle"
+    },
+    {
+      "id": 11,
+      "name": "Machine-11",
+      "x": 125.0,
+      "y": 7.5,
+      "z": 50,
+      "status": "idle"
+    }
+  ]
+}

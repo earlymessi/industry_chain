@@ -1,0 +1,1561 @@
+{
+  "case_id": "chain-demo-transport",
+  "definition": {
+    "id": "chain-demo-transport",
+    "name": "test3",
+    "product_id": "CASE-FRIDGE-01",
+    "spec": "案例冰箱A型",
+    "units": 5,
+    "production_plan_id": "02d8904b755f3cc5bd2dff69",
+    "solver_id": "q",
+    "time_unit": "hours",
+    "factories": [
+      {
+        "factory_id": "CASE-FACTORY-A",
+        "name": "自有工厂A · 内部层架",
+        "job_indices": [
+          0
+        ],
+        "job_names": [
+          "订单109-内部层架"
+        ],
+        "source_zero_offset_hours": 0,
+        "material_id": "CASE-SHELF-SET",
+        "spec": "案例冰箱A型层架总成",
+        "uom": "件",
+        "process_id": 6
+      },
+      {
+        "factory_id": "CASE-FACTORY-B",
+        "name": "自有工厂B · 制冰机支架",
+        "job_indices": [
+          1
+        ],
+        "job_names": [
+          "订单112-制冰机支架"
+        ],
+        "source_zero_offset_hours": 0,
+        "material_id": "CASE-ICE-BRACKET",
+        "spec": "案例冰箱A型支架",
+        "uom": "件",
+        "process_id": 6
+      }
+    ],
+    "assumptions": [
+      "生产基于原Q算法已保存工单8/11；保留各工单的工序、机器与工时，统一减30小时，并按案例显式增加工厂B的计划释放偏移；每批5件。",
+      "组装为原9工序/18工位规则排程的已发布结果，非QMIX；可在组装页面查看同一份45任务甘特。",
+      "配送引用完整基线已实际求解的相同5台客户需求和路线，保留原发布版本，不冒充三次新求解。",
+      "工厂、BOM、采购、库存与运输为显式案例数据；各环节按同一执行起点映射，启用前重新校验。",
+      "四周计划：工厂B在第4周释放生产，外购按该周备货，齐套后组装配送。"
+    ],
+    "description": "四周计划：工厂B在第4周释放生产，外购按该周备货，齐套后组装配送。",
+    "calendar_days": 28,
+    "factory_b_release_hours": 504,
+    "supplier_delay_minutes": 30240
+  },
+  "chain_config": {
+    "coherence_version": 1,
+    "source_dataset": "record:test3-c41eeb514cc4",
+    "baseline_case": "chain-demo-transport",
+    "name": "test3",
+    "units": 5,
+    "start_at": 1800000000.0,
+    "production": {
+      "factory_id": "CASE-FACTORY-A",
+      "job_indices": [
+        0
+      ],
+      "source_zero_offset_hours": 0,
+      "job_names": [
+        "订单109-内部层架"
+      ],
+      "plan_id": "02d8904b755f3cc5bd2dff69",
+      "solver_id": "q",
+      "time_unit": "hours",
+      "origin_offset_hours": 0
+    },
+    "production_sources": [
+      {
+        "factory_id": "CASE-FACTORY-A",
+        "job_indices": [
+          0
+        ],
+        "source_zero_offset_hours": 0,
+        "job_names": [
+          "订单109-内部层架"
+        ],
+        "plan_id": "02d8904b755f3cc5bd2dff69",
+        "solver_id": "q",
+        "time_unit": "hours",
+        "origin_offset_hours": 0,
+        "source_version": "4dc4ed1e73a50227804eccf05ae327c2a45858c83a2b91b8fbe59cae414d41ce"
+      },
+      {
+        "factory_id": "CASE-FACTORY-B",
+        "job_indices": [
+          1
+        ],
+        "source_zero_offset_hours": 0,
+        "job_names": [
+          "订单112-制冰机支架"
+        ],
+        "plan_id": "02d8904b755f3cc5bd2dff69",
+        "solver_id": "q",
+        "time_unit": "hours",
+        "origin_offset_hours": 0,
+        "source_version": "e44ae8d1f718801704a55c35005da8d091b168d9c95379ddb904193bd9e065a7"
+      }
+    ],
+    "assembly_mode": "saved",
+    "assembly_id": "history:test3-c41eeb514cc4:1",
+    "assembly_origin_at": 1800000000.0,
+    "assembly_time_unit": "minutes",
+    "delivery_mode": "saved",
+    "route_id": "Stage2_Balanced:1:0",
+    "calendar": {
+      "mode": "continuous",
+      "days": 28,
+      "begin_hour": 8,
+      "end_hour": 20
+    },
+    "transfer_minutes": 5,
+    "post_minutes": 5,
+    "loading_minutes": 15,
+    "confirmed": false,
+    "parts": [
+      {
+        "order_id": "production:02d8904b755f3cc5bd2dff69:job:0",
+        "name": "订单109-内部层架",
+        "enabled": true,
+        "material_id": "self:production:02d8904b755f3cc5bd2dff69:job:0",
+        "produced_quantity": 5,
+        "per_unit": 1,
+        "process_id": 6,
+        "factory_id": "CASE-FACTORY-A",
+        "business_source": {
+          "factory_id": "CASE-FACTORY-A"
+        },
+        "bom_line_id": "SELF-CASE-FACTORY-A",
+        "business_material_id": "CASE-SHELF-SET",
+        "spec": "案例冰箱A型层架总成",
+        "uom": "件",
+        "mapping_confirmed": true,
+        "quantity_source": "confirmed_case_batch"
+      },
+      {
+        "order_id": "production:02d8904b755f3cc5bd2dff69:job:1",
+        "name": "订单112-制冰机支架",
+        "enabled": true,
+        "material_id": "self:production:02d8904b755f3cc5bd2dff69:job:1",
+        "produced_quantity": 5,
+        "per_unit": 1,
+        "process_id": 6,
+        "factory_id": "CASE-FACTORY-B",
+        "business_source": {
+          "factory_id": "CASE-FACTORY-B"
+        },
+        "bom_line_id": "SELF-CASE-FACTORY-B",
+        "business_material_id": "CASE-ICE-BRACKET",
+        "spec": "案例冰箱A型支架",
+        "uom": "件",
+        "mapping_confirmed": true,
+        "quantity_source": "confirmed_case_batch"
+      }
+    ],
+    "purchased": [
+      {
+        "material_id": "compressor",
+        "name": "压缩机",
+        "enabled": true,
+        "per_unit": 1,
+        "process_id": 3,
+        "bom_line_id": "BUY-compressor",
+        "business_material_id": "compressor",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "supplier_id": "压缩机供应商",
+        "mapping_confirmed": true
+      },
+      {
+        "material_id": "circuit_board",
+        "name": "主控板",
+        "enabled": true,
+        "per_unit": 1,
+        "process_id": 5,
+        "bom_line_id": "BUY-circuit_board",
+        "business_material_id": "circuit_board",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "supplier_id": "电气元件供应商",
+        "mapping_confirmed": true
+      },
+      {
+        "material_id": "sensor",
+        "name": "温度传感器",
+        "enabled": true,
+        "per_unit": 1,
+        "process_id": 5,
+        "bom_line_id": "BUY-sensor",
+        "business_material_id": "sensor",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "supplier_id": "电气元件供应商",
+        "mapping_confirmed": true
+      },
+      {
+        "material_id": "wire_harness",
+        "name": "线束总成",
+        "enabled": true,
+        "per_unit": 1,
+        "process_id": 5,
+        "bom_line_id": "BUY-wire_harness",
+        "business_material_id": "wire_harness",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "supplier_id": "电气元件供应商",
+        "mapping_confirmed": true
+      },
+      {
+        "material_id": "foam_material",
+        "name": "聚氨酯发泡料",
+        "enabled": true,
+        "per_unit": 0.8,
+        "process_id": 2,
+        "bom_line_id": "BUY-foam_material",
+        "business_material_id": "foam_material",
+        "spec": "聚氨酯A组分",
+        "uom": "kg",
+        "supplier_id": "发泡料供应商",
+        "mapping_confirmed": true
+      },
+      {
+        "material_id": "door_gasket",
+        "name": "门体密封条",
+        "enabled": true,
+        "per_unit": 1,
+        "process_id": 6,
+        "bom_line_id": "BUY-door_gasket",
+        "business_material_id": "door_gasket",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "supplier_id": "门体配件供应商",
+        "mapping_confirmed": true
+      },
+      {
+        "material_id": "hinge_kit",
+        "name": "门体铰链组件",
+        "enabled": true,
+        "per_unit": 1,
+        "process_id": 6,
+        "bom_line_id": "BUY-hinge_kit",
+        "business_material_id": "hinge_kit",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "supplier_id": "门体配件供应商",
+        "mapping_confirmed": true
+      },
+      {
+        "material_id": "metal_panel",
+        "name": "钣金外协件",
+        "enabled": true,
+        "per_unit": 1,
+        "process_id": 0,
+        "bom_line_id": "BUY-metal_panel",
+        "business_material_id": "metal_panel",
+        "spec": "案例冰箱A型外壳坯件",
+        "uom": "件",
+        "supplier_id": "钣金件供应商",
+        "mapping_confirmed": true
+      },
+      {
+        "material_id": "copper_tube",
+        "name": "铜管组件",
+        "enabled": true,
+        "per_unit": 1,
+        "process_id": 4,
+        "bom_line_id": "BUY-copper_tube",
+        "business_material_id": "copper_tube",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "supplier_id": "压缩机供应商",
+        "mapping_confirmed": true
+      },
+      {
+        "material_id": "packing_box",
+        "name": "包装箱",
+        "enabled": true,
+        "per_unit": 1,
+        "process_id": 8,
+        "bom_line_id": "BUY-packing_box",
+        "business_material_id": "packing_box",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "supplier_id": "包装材料供应商",
+        "mapping_confirmed": true
+      }
+    ],
+    "stock_overrides": {
+      "compressor": 1.0,
+      "circuit_board": 2.0,
+      "sensor": 0.0,
+      "wire_harness": 0.0,
+      "foam_material": 0.0,
+      "door_gasket": 0.0,
+      "hinge_kit": 0.0,
+      "metal_panel": 0.0,
+      "copper_tube": 0.0,
+      "packing_box": 0.0
+    },
+    "arrival_overrides": {},
+    "additional_supplies": [
+      {
+        "id": "CASE-SUPPLY-compressor",
+        "name": "压缩机采购到货",
+        "material_id": "compressor",
+        "quantity": 4.0,
+        "available_at": 1801819500.0
+      },
+      {
+        "id": "CASE-SUPPLY-circuit_board",
+        "name": "主控板采购到货",
+        "material_id": "circuit_board",
+        "quantity": 3.0,
+        "available_at": 1801819800.0
+      },
+      {
+        "id": "CASE-SUPPLY-sensor",
+        "name": "温度传感器采购到货",
+        "material_id": "sensor",
+        "quantity": 5.0,
+        "available_at": 1801819800.0
+      },
+      {
+        "id": "CASE-SUPPLY-wire_harness",
+        "name": "线束总成采购到货",
+        "material_id": "wire_harness",
+        "quantity": 5.0,
+        "available_at": 1801819800.0
+      },
+      {
+        "id": "CASE-SUPPLY-foam_material",
+        "name": "聚氨酯发泡料采购到货",
+        "material_id": "foam_material",
+        "quantity": 4.0,
+        "available_at": 1801820100.0
+      },
+      {
+        "id": "CASE-SUPPLY-door_gasket",
+        "name": "门体密封条采购到货",
+        "material_id": "door_gasket",
+        "quantity": 5.0,
+        "available_at": 1801820400.0
+      },
+      {
+        "id": "CASE-SUPPLY-hinge_kit",
+        "name": "门体铰链组件采购到货",
+        "material_id": "hinge_kit",
+        "quantity": 5.0,
+        "available_at": 1801820400.0
+      },
+      {
+        "id": "CASE-SUPPLY-metal_panel",
+        "name": "钣金外协件采购到货",
+        "material_id": "metal_panel",
+        "quantity": 5.0,
+        "available_at": 1801820700.0
+      },
+      {
+        "id": "CASE-SUPPLY-copper_tube",
+        "name": "铜管组件采购到货",
+        "material_id": "copper_tube",
+        "quantity": 5.0,
+        "available_at": 1801819500.0
+      },
+      {
+        "id": "CASE-SUPPLY-packing_box",
+        "name": "包装箱采购到货",
+        "material_id": "packing_box",
+        "quantity": 5.0,
+        "available_at": 1801821000.0
+      }
+    ],
+    "procurement_orders": [
+      {
+        "id": "CASE-PO-compressor",
+        "material_id": "compressor",
+        "supplier_id": "压缩机供应商",
+        "quantity": 4.0,
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "origin_site": "压缩机供应商",
+        "delivery_site": "CASE-ASSEMBLY",
+        "ready_at": 1800001200.0
+      },
+      {
+        "id": "CASE-PO-circuit_board",
+        "material_id": "circuit_board",
+        "supplier_id": "电气元件供应商",
+        "quantity": 3.0,
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "origin_site": "电气元件供应商",
+        "delivery_site": "CASE-ASSEMBLY",
+        "ready_at": 1800001200.0
+      },
+      {
+        "id": "CASE-PO-sensor",
+        "material_id": "sensor",
+        "supplier_id": "电气元件供应商",
+        "quantity": 5.0,
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "origin_site": "电气元件供应商",
+        "delivery_site": "CASE-ASSEMBLY",
+        "ready_at": 1800001200.0
+      },
+      {
+        "id": "CASE-PO-wire_harness",
+        "material_id": "wire_harness",
+        "supplier_id": "电气元件供应商",
+        "quantity": 5.0,
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "origin_site": "电气元件供应商",
+        "delivery_site": "CASE-ASSEMBLY",
+        "ready_at": 1800001200.0
+      },
+      {
+        "id": "CASE-PO-foam_material",
+        "material_id": "foam_material",
+        "supplier_id": "发泡料供应商",
+        "quantity": 4.0,
+        "spec": "聚氨酯A组分",
+        "uom": "kg",
+        "origin_site": "发泡料供应商",
+        "delivery_site": "CASE-ASSEMBLY",
+        "ready_at": 1800001200.0
+      },
+      {
+        "id": "CASE-PO-door_gasket",
+        "material_id": "door_gasket",
+        "supplier_id": "门体配件供应商",
+        "quantity": 5.0,
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "origin_site": "门体配件供应商",
+        "delivery_site": "CASE-ASSEMBLY",
+        "ready_at": 1800001200.0
+      },
+      {
+        "id": "CASE-PO-hinge_kit",
+        "material_id": "hinge_kit",
+        "supplier_id": "门体配件供应商",
+        "quantity": 5.0,
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "origin_site": "门体配件供应商",
+        "delivery_site": "CASE-ASSEMBLY",
+        "ready_at": 1800001200.0
+      },
+      {
+        "id": "CASE-PO-metal_panel",
+        "material_id": "metal_panel",
+        "supplier_id": "钣金件供应商",
+        "quantity": 5.0,
+        "spec": "案例冰箱A型外壳坯件",
+        "uom": "件",
+        "origin_site": "钣金件供应商",
+        "delivery_site": "CASE-ASSEMBLY",
+        "ready_at": 1800001200.0
+      },
+      {
+        "id": "CASE-PO-copper_tube",
+        "material_id": "copper_tube",
+        "supplier_id": "压缩机供应商",
+        "quantity": 5.0,
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "origin_site": "压缩机供应商",
+        "delivery_site": "CASE-ASSEMBLY",
+        "ready_at": 1800001200.0
+      },
+      {
+        "id": "CASE-PO-packing_box",
+        "material_id": "packing_box",
+        "supplier_id": "包装材料供应商",
+        "quantity": 5.0,
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "origin_site": "包装材料供应商",
+        "delivery_site": "CASE-ASSEMBLY",
+        "ready_at": 1800001200.0
+      }
+    ],
+    "procurement_links": {
+      "chain:manual-supply:CASE-SUPPLY-compressor": "CASE-PO-compressor",
+      "chain:manual-supply:CASE-SUPPLY-circuit_board": "CASE-PO-circuit_board",
+      "chain:manual-supply:CASE-SUPPLY-sensor": "CASE-PO-sensor",
+      "chain:manual-supply:CASE-SUPPLY-wire_harness": "CASE-PO-wire_harness",
+      "chain:manual-supply:CASE-SUPPLY-foam_material": "CASE-PO-foam_material",
+      "chain:manual-supply:CASE-SUPPLY-door_gasket": "CASE-PO-door_gasket",
+      "chain:manual-supply:CASE-SUPPLY-hinge_kit": "CASE-PO-hinge_kit",
+      "chain:manual-supply:CASE-SUPPLY-metal_panel": "CASE-PO-metal_panel",
+      "chain:manual-supply:CASE-SUPPLY-copper_tube": "CASE-PO-copper_tube",
+      "chain:manual-supply:CASE-SUPPLY-packing_box": "CASE-PO-packing_box"
+    },
+    "inbound_shipments": [
+      {
+        "id": "CASE-FACTORY-A",
+        "trip_group": "CASE-FACTORY-A",
+        "source_id": "production:02d8904b755f3cc5bd2dff69:job:0",
+        "vehicle_id": "CASE-TRUCK-CASE-FACTORY-A",
+        "from_site": "CASE-FACTORY-A",
+        "to_site": "CASE-ASSEMBLY",
+        "material_id": "CASE-SHELF-SET",
+        "spec": "案例冰箱A型层架总成",
+        "uom": "件",
+        "quantity": 5,
+        "load_units": 5,
+        "capacity": 10,
+        "capacity_uom": "标准箱",
+        "ship_at": 1800065700.0,
+        "loading_minutes": 10,
+        "travel_minutes": 45,
+        "unloading_minutes": 10,
+        "arrival_at": 1800069600.0
+      },
+      {
+        "id": "CASE-FACTORY-B",
+        "trip_group": "CASE-FACTORY-B",
+        "source_id": "production:02d8904b755f3cc5bd2dff69:job:1",
+        "vehicle_id": "CASE-TRUCK-CASE-FACTORY-B",
+        "from_site": "CASE-FACTORY-B",
+        "to_site": "CASE-ASSEMBLY",
+        "material_id": "CASE-ICE-BRACKET",
+        "spec": "案例冰箱A型支架",
+        "uom": "件",
+        "quantity": 5,
+        "load_units": 5,
+        "capacity": 10,
+        "capacity_uom": "标准箱",
+        "ship_at": 1801876500.0,
+        "loading_minutes": 10,
+        "travel_minutes": 45,
+        "unloading_minutes": 10,
+        "arrival_at": 1801880400.0
+      },
+      {
+        "id": "CASE-IN-compressor",
+        "trip_group": "CASE-SUPPLIER-0",
+        "source_id": "chain:manual-supply:CASE-SUPPLY-compressor",
+        "vehicle_id": "CASE-SUPPLIER-0",
+        "from_site": "压缩机供应商",
+        "to_site": "CASE-ASSEMBLY",
+        "material_id": "compressor",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "quantity": 4.0,
+        "load_units": 4.0,
+        "capacity": 12,
+        "capacity_uom": "标准箱",
+        "ship_at": 1801816200.0,
+        "loading_minutes": 10,
+        "travel_minutes": 35,
+        "unloading_minutes": 10,
+        "arrival_at": 1801819500.0
+      },
+      {
+        "id": "CASE-IN-circuit_board",
+        "trip_group": "CASE-SUPPLIER-1",
+        "source_id": "chain:manual-supply:CASE-SUPPLY-circuit_board",
+        "vehicle_id": "CASE-SUPPLIER-1",
+        "from_site": "电气元件供应商",
+        "to_site": "CASE-ASSEMBLY",
+        "material_id": "circuit_board",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "quantity": 3.0,
+        "load_units": 0.30000000000000004,
+        "capacity": 12,
+        "capacity_uom": "标准箱",
+        "ship_at": 1801816500.0,
+        "loading_minutes": 10,
+        "travel_minutes": 35,
+        "unloading_minutes": 10,
+        "arrival_at": 1801819800.0
+      },
+      {
+        "id": "CASE-IN-sensor",
+        "trip_group": "CASE-SUPPLIER-1",
+        "source_id": "chain:manual-supply:CASE-SUPPLY-sensor",
+        "vehicle_id": "CASE-SUPPLIER-1",
+        "from_site": "电气元件供应商",
+        "to_site": "CASE-ASSEMBLY",
+        "material_id": "sensor",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "quantity": 5.0,
+        "load_units": 0.25,
+        "capacity": 12,
+        "capacity_uom": "标准箱",
+        "ship_at": 1801816500.0,
+        "loading_minutes": 10,
+        "travel_minutes": 35,
+        "unloading_minutes": 10,
+        "arrival_at": 1801819800.0
+      },
+      {
+        "id": "CASE-IN-wire_harness",
+        "trip_group": "CASE-SUPPLIER-1",
+        "source_id": "chain:manual-supply:CASE-SUPPLY-wire_harness",
+        "vehicle_id": "CASE-SUPPLIER-1",
+        "from_site": "电气元件供应商",
+        "to_site": "CASE-ASSEMBLY",
+        "material_id": "wire_harness",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "quantity": 5.0,
+        "load_units": 0.5,
+        "capacity": 12,
+        "capacity_uom": "标准箱",
+        "ship_at": 1801816500.0,
+        "loading_minutes": 10,
+        "travel_minutes": 35,
+        "unloading_minutes": 10,
+        "arrival_at": 1801819800.0
+      },
+      {
+        "id": "CASE-IN-foam_material",
+        "trip_group": "CASE-SUPPLIER-2",
+        "source_id": "chain:manual-supply:CASE-SUPPLY-foam_material",
+        "vehicle_id": "CASE-SUPPLIER-2",
+        "from_site": "发泡料供应商",
+        "to_site": "CASE-ASSEMBLY",
+        "material_id": "foam_material",
+        "spec": "聚氨酯A组分",
+        "uom": "kg",
+        "quantity": 4.0,
+        "load_units": 0.8,
+        "capacity": 12,
+        "capacity_uom": "标准箱",
+        "ship_at": 1801816800.0,
+        "loading_minutes": 10,
+        "travel_minutes": 35,
+        "unloading_minutes": 10,
+        "arrival_at": 1801820100.0
+      },
+      {
+        "id": "CASE-IN-door_gasket",
+        "trip_group": "CASE-SUPPLIER-3",
+        "source_id": "chain:manual-supply:CASE-SUPPLY-door_gasket",
+        "vehicle_id": "CASE-SUPPLIER-3",
+        "from_site": "门体配件供应商",
+        "to_site": "CASE-ASSEMBLY",
+        "material_id": "door_gasket",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "quantity": 5.0,
+        "load_units": 0.5,
+        "capacity": 12,
+        "capacity_uom": "标准箱",
+        "ship_at": 1801817100.0,
+        "loading_minutes": 10,
+        "travel_minutes": 35,
+        "unloading_minutes": 10,
+        "arrival_at": 1801820400.0
+      },
+      {
+        "id": "CASE-IN-hinge_kit",
+        "trip_group": "CASE-SUPPLIER-3",
+        "source_id": "chain:manual-supply:CASE-SUPPLY-hinge_kit",
+        "vehicle_id": "CASE-SUPPLIER-3",
+        "from_site": "门体配件供应商",
+        "to_site": "CASE-ASSEMBLY",
+        "material_id": "hinge_kit",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "quantity": 5.0,
+        "load_units": 0.5,
+        "capacity": 12,
+        "capacity_uom": "标准箱",
+        "ship_at": 1801817100.0,
+        "loading_minutes": 10,
+        "travel_minutes": 35,
+        "unloading_minutes": 10,
+        "arrival_at": 1801820400.0
+      },
+      {
+        "id": "CASE-IN-metal_panel",
+        "trip_group": "CASE-SUPPLIER-4",
+        "source_id": "chain:manual-supply:CASE-SUPPLY-metal_panel",
+        "vehicle_id": "CASE-SUPPLIER-4",
+        "from_site": "钣金件供应商",
+        "to_site": "CASE-ASSEMBLY",
+        "material_id": "metal_panel",
+        "spec": "案例冰箱A型外壳坯件",
+        "uom": "件",
+        "quantity": 5.0,
+        "load_units": 5.0,
+        "capacity": 12,
+        "capacity_uom": "标准箱",
+        "ship_at": 1801817400.0,
+        "loading_minutes": 10,
+        "travel_minutes": 35,
+        "unloading_minutes": 10,
+        "arrival_at": 1801820700.0
+      },
+      {
+        "id": "CASE-IN-copper_tube",
+        "trip_group": "CASE-SUPPLIER-0",
+        "source_id": "chain:manual-supply:CASE-SUPPLY-copper_tube",
+        "vehicle_id": "CASE-SUPPLIER-0",
+        "from_site": "压缩机供应商",
+        "to_site": "CASE-ASSEMBLY",
+        "material_id": "copper_tube",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "quantity": 5.0,
+        "load_units": 1.25,
+        "capacity": 12,
+        "capacity_uom": "标准箱",
+        "ship_at": 1801816200.0,
+        "loading_minutes": 10,
+        "travel_minutes": 35,
+        "unloading_minutes": 10,
+        "arrival_at": 1801819500.0
+      },
+      {
+        "id": "CASE-IN-packing_box",
+        "trip_group": "CASE-SUPPLIER-5",
+        "source_id": "chain:manual-supply:CASE-SUPPLY-packing_box",
+        "vehicle_id": "CASE-SUPPLIER-5",
+        "from_site": "包装材料供应商",
+        "to_site": "CASE-ASSEMBLY",
+        "material_id": "packing_box",
+        "spec": "案例冰箱A型配套件",
+        "uom": "件",
+        "quantity": 5.0,
+        "load_units": 1.25,
+        "capacity": 12,
+        "capacity_uom": "标准箱",
+        "ship_at": 1801817700.0,
+        "loading_minutes": 10,
+        "travel_minutes": 35,
+        "unloading_minutes": 10,
+        "arrival_at": 1801821000.0
+      }
+    ],
+    "customer_commitments": {
+      "38": 1801972800.0,
+      "36": 1801976400.0
+    },
+    "customer_windows_hard": true,
+    "assembly_bom": {
+      "product_id": "CASE-FRIDGE-01",
+      "spec": "案例冰箱A型",
+      "uom": "台",
+      "revision": "CASE-BOM-1",
+      "assembly_site": "CASE-ASSEMBLY",
+      "lines": [
+        {
+          "id": "SELF-CASE-FACTORY-A",
+          "material_id": "CASE-SHELF-SET",
+          "spec": "案例冰箱A型层架总成",
+          "uom": "件",
+          "per_unit": 1,
+          "process_id": 6
+        },
+        {
+          "id": "SELF-CASE-FACTORY-B",
+          "material_id": "CASE-ICE-BRACKET",
+          "spec": "案例冰箱A型支架",
+          "uom": "件",
+          "per_unit": 1,
+          "process_id": 6
+        },
+        {
+          "id": "BUY-compressor",
+          "material_id": "compressor",
+          "spec": "案例冰箱A型配套件",
+          "uom": "件",
+          "per_unit": 1,
+          "process_id": 3
+        },
+        {
+          "id": "BUY-circuit_board",
+          "material_id": "circuit_board",
+          "spec": "案例冰箱A型配套件",
+          "uom": "件",
+          "per_unit": 1,
+          "process_id": 5
+        },
+        {
+          "id": "BUY-sensor",
+          "material_id": "sensor",
+          "spec": "案例冰箱A型配套件",
+          "uom": "件",
+          "per_unit": 1,
+          "process_id": 5
+        },
+        {
+          "id": "BUY-wire_harness",
+          "material_id": "wire_harness",
+          "spec": "案例冰箱A型配套件",
+          "uom": "件",
+          "per_unit": 1,
+          "process_id": 5
+        },
+        {
+          "id": "BUY-foam_material",
+          "material_id": "foam_material",
+          "spec": "聚氨酯A组分",
+          "uom": "kg",
+          "per_unit": 0.8,
+          "process_id": 2
+        },
+        {
+          "id": "BUY-door_gasket",
+          "material_id": "door_gasket",
+          "spec": "案例冰箱A型配套件",
+          "uom": "件",
+          "per_unit": 1,
+          "process_id": 6
+        },
+        {
+          "id": "BUY-hinge_kit",
+          "material_id": "hinge_kit",
+          "spec": "案例冰箱A型配套件",
+          "uom": "件",
+          "per_unit": 1,
+          "process_id": 6
+        },
+        {
+          "id": "BUY-metal_panel",
+          "material_id": "metal_panel",
+          "spec": "案例冰箱A型外壳坯件",
+          "uom": "件",
+          "per_unit": 1,
+          "process_id": 0
+        },
+        {
+          "id": "BUY-copper_tube",
+          "material_id": "copper_tube",
+          "spec": "案例冰箱A型配套件",
+          "uom": "件",
+          "per_unit": 1,
+          "process_id": 4
+        },
+        {
+          "id": "BUY-packing_box",
+          "material_id": "packing_box",
+          "spec": "案例冰箱A型配套件",
+          "uom": "件",
+          "per_unit": 1,
+          "process_id": 8
+        }
+      ]
+    },
+    "dispatch_product_id": "CASE-FRIDGE-01",
+    "dispatch_spec": "案例冰箱A型",
+    "dispatch_uom": "台",
+    "dispatch_depot_id": "3",
+    "case_assumptions": [
+      "生产基于原Q算法已保存工单8/11；保留各工单的工序、机器与工时，统一减30小时，并按案例显式增加工厂B的计划释放偏移；每批5件。",
+      "组装为原9工序/18工位规则排程的已发布结果，非QMIX；可在组装页面查看同一份45任务甘特。",
+      "配送引用完整基线已实际求解的相同5台客户需求和路线，保留原发布版本，不冒充三次新求解。",
+      "工厂、BOM、采购、库存与运输为显式案例数据；各环节按同一执行起点映射，启用前重新校验。",
+      "四周计划：工厂B在第4周释放生产，外购按该周备货，齐套后组装配送。"
+    ],
+    "vehicle_capacity": 12.0,
+    "delivery_date": "2027-02-07",
+    "delivery_origin_at": 1801958400.0
+  },
+  "timeline": [
+    {
+      "id": "chain:unit:0:process:0",
+      "name": "整机1 · 钣金成型",
+      "resource": "钣金成型 · 工位0",
+      "resource_id": "assembly:workstation:0",
+      "start": 30345.0,
+      "end": 30353.0
+    },
+    {
+      "id": "chain:unit:1:process:0",
+      "name": "整机2 · 钣金成型",
+      "resource": "钣金成型 · 工位1",
+      "resource_id": "assembly:workstation:1",
+      "start": 30345.0,
+      "end": 30353.0
+    },
+    {
+      "id": "chain:unit:0:process:1",
+      "name": "整机1 · 内胆吸塑",
+      "resource": "内胆吸塑 · 工位2",
+      "resource_id": "assembly:workstation:2",
+      "start": 30353.0,
+      "end": 30359.0
+    },
+    {
+      "id": "chain:unit:1:process:1",
+      "name": "整机2 · 内胆吸塑",
+      "resource": "内胆吸塑 · 工位3",
+      "resource_id": "assembly:workstation:3",
+      "start": 30353.0,
+      "end": 30359.0
+    },
+    {
+      "id": "chain:unit:2:process:0",
+      "name": "整机3 · 钣金成型",
+      "resource": "钣金成型 · 工位0",
+      "resource_id": "assembly:workstation:0",
+      "start": 30353.0,
+      "end": 30361.0
+    },
+    {
+      "id": "chain:unit:3:process:0",
+      "name": "整机4 · 钣金成型",
+      "resource": "钣金成型 · 工位1",
+      "resource_id": "assembly:workstation:1",
+      "start": 30353.0,
+      "end": 30361.0
+    },
+    {
+      "id": "chain:unit:0:process:2",
+      "name": "整机1 · 发泡填充",
+      "resource": "发泡填充 · 工位4",
+      "resource_id": "assembly:workstation:4",
+      "start": 30359.0,
+      "end": 30371.0
+    },
+    {
+      "id": "chain:unit:1:process:2",
+      "name": "整机2 · 发泡填充",
+      "resource": "发泡填充 · 工位5",
+      "resource_id": "assembly:workstation:5",
+      "start": 30359.0,
+      "end": 30371.0
+    },
+    {
+      "id": "chain:unit:2:process:1",
+      "name": "整机3 · 内胆吸塑",
+      "resource": "内胆吸塑 · 工位2",
+      "resource_id": "assembly:workstation:2",
+      "start": 30361.0,
+      "end": 30367.0
+    },
+    {
+      "id": "chain:unit:3:process:1",
+      "name": "整机4 · 内胆吸塑",
+      "resource": "内胆吸塑 · 工位3",
+      "resource_id": "assembly:workstation:3",
+      "start": 30361.0,
+      "end": 30367.0
+    },
+    {
+      "id": "chain:unit:4:process:0",
+      "name": "整机5 · 钣金成型",
+      "resource": "钣金成型 · 工位0",
+      "resource_id": "assembly:workstation:0",
+      "start": 30361.0,
+      "end": 30369.0
+    },
+    {
+      "id": "chain:unit:2:process:2",
+      "name": "整机3 · 发泡填充",
+      "resource": "发泡填充 · 工位6",
+      "resource_id": "assembly:workstation:6",
+      "start": 30367.0,
+      "end": 30379.0
+    },
+    {
+      "id": "chain:unit:4:process:1",
+      "name": "整机5 · 内胆吸塑",
+      "resource": "内胆吸塑 · 工位2",
+      "resource_id": "assembly:workstation:2",
+      "start": 30369.0,
+      "end": 30375.0
+    },
+    {
+      "id": "chain:unit:0:process:3",
+      "name": "整机1 · 压缩机安装",
+      "resource": "压缩机安装 · 工位7",
+      "resource_id": "assembly:workstation:7",
+      "start": 30371.0,
+      "end": 30381.0
+    },
+    {
+      "id": "chain:unit:1:process:3",
+      "name": "整机2 · 压缩机安装",
+      "resource": "压缩机安装 · 工位8",
+      "resource_id": "assembly:workstation:8",
+      "start": 30371.0,
+      "end": 30381.0
+    },
+    {
+      "id": "chain:unit:3:process:2",
+      "name": "整机4 · 发泡填充",
+      "resource": "发泡填充 · 工位4",
+      "resource_id": "assembly:workstation:4",
+      "start": 30371.0,
+      "end": 30383.0
+    },
+    {
+      "id": "chain:unit:4:process:2",
+      "name": "整机5 · 发泡填充",
+      "resource": "发泡填充 · 工位5",
+      "resource_id": "assembly:workstation:5",
+      "start": 30375.0,
+      "end": 30387.0
+    },
+    {
+      "id": "chain:unit:0:process:4",
+      "name": "整机1 · 管路焊接",
+      "resource": "管路焊接 · 工位10",
+      "resource_id": "assembly:workstation:10",
+      "start": 30381.0,
+      "end": 30390.0
+    },
+    {
+      "id": "chain:unit:0:process:5",
+      "name": "整机1 · 电气元件装配",
+      "resource": "电气元件装配 · 工位11",
+      "resource_id": "assembly:workstation:11",
+      "start": 30381.0,
+      "end": 30388.0
+    },
+    {
+      "id": "chain:unit:1:process:4",
+      "name": "整机2 · 管路焊接",
+      "resource": "管路焊接 · 工位9",
+      "resource_id": "assembly:workstation:9",
+      "start": 30381.0,
+      "end": 30390.0
+    },
+    {
+      "id": "chain:unit:1:process:5",
+      "name": "整机2 · 电气元件装配",
+      "resource": "电气元件装配 · 工位12",
+      "resource_id": "assembly:workstation:12",
+      "start": 30381.0,
+      "end": 30388.0
+    },
+    {
+      "id": "chain:unit:2:process:3",
+      "name": "整机3 · 压缩机安装",
+      "resource": "压缩机安装 · 工位7",
+      "resource_id": "assembly:workstation:7",
+      "start": 30381.0,
+      "end": 30391.0
+    },
+    {
+      "id": "chain:unit:3:process:3",
+      "name": "整机4 · 压缩机安装",
+      "resource": "压缩机安装 · 工位8",
+      "resource_id": "assembly:workstation:8",
+      "start": 30383.0,
+      "end": 30393.0
+    },
+    {
+      "id": "chain:unit:2:process:4",
+      "name": "整机3 · 管路焊接",
+      "resource": "管路焊接 · 工位10",
+      "resource_id": "assembly:workstation:10",
+      "start": 30391.0,
+      "end": 30400.0
+    },
+    {
+      "id": "chain:unit:2:process:5",
+      "name": "整机3 · 电气元件装配",
+      "resource": "电气元件装配 · 工位11",
+      "resource_id": "assembly:workstation:11",
+      "start": 30391.0,
+      "end": 30398.0
+    },
+    {
+      "id": "chain:unit:4:process:3",
+      "name": "整机5 · 压缩机安装",
+      "resource": "压缩机安装 · 工位7",
+      "resource_id": "assembly:workstation:7",
+      "start": 30391.0,
+      "end": 30401.0
+    },
+    {
+      "id": "chain:unit:3:process:4",
+      "name": "整机4 · 管路焊接",
+      "resource": "管路焊接 · 工位9",
+      "resource_id": "assembly:workstation:9",
+      "start": 30393.0,
+      "end": 30402.0
+    },
+    {
+      "id": "chain:unit:3:process:5",
+      "name": "整机4 · 电气元件装配",
+      "resource": "电气元件装配 · 工位12",
+      "resource_id": "assembly:workstation:12",
+      "start": 30393.0,
+      "end": 30400.0
+    },
+    {
+      "id": "chain:unit:4:process:4",
+      "name": "整机5 · 管路焊接",
+      "resource": "管路焊接 · 工位10",
+      "resource_id": "assembly:workstation:10",
+      "start": 30401.0,
+      "end": 30410.0
+    },
+    {
+      "id": "chain:unit:4:process:5",
+      "name": "整机5 · 电气元件装配",
+      "resource": "电气元件装配 · 工位11",
+      "resource_id": "assembly:workstation:11",
+      "start": 30401.0,
+      "end": 30408.0
+    },
+    {
+      "id": "chain:unit:0:process:6",
+      "name": "整机1 · 总装合箱",
+      "resource": "总装合箱 · 工位13",
+      "resource_id": "assembly:workstation:13",
+      "start": 31345.0,
+      "end": 31356.0
+    },
+    {
+      "id": "chain:unit:1:process:6",
+      "name": "整机2 · 总装合箱",
+      "resource": "总装合箱 · 工位14",
+      "resource_id": "assembly:workstation:14",
+      "start": 31345.0,
+      "end": 31356.0
+    },
+    {
+      "id": "chain:unit:0:process:7",
+      "name": "整机1 · 检测调试",
+      "resource": "检测调试 · 工位15",
+      "resource_id": "assembly:workstation:15",
+      "start": 31356.0,
+      "end": 31361.0
+    },
+    {
+      "id": "chain:unit:1:process:7",
+      "name": "整机2 · 检测调试",
+      "resource": "检测调试 · 工位16",
+      "resource_id": "assembly:workstation:16",
+      "start": 31356.0,
+      "end": 31361.0
+    },
+    {
+      "id": "chain:unit:2:process:6",
+      "name": "整机3 · 总装合箱",
+      "resource": "总装合箱 · 工位13",
+      "resource_id": "assembly:workstation:13",
+      "start": 31356.0,
+      "end": 31367.0
+    },
+    {
+      "id": "chain:unit:3:process:6",
+      "name": "整机4 · 总装合箱",
+      "resource": "总装合箱 · 工位14",
+      "resource_id": "assembly:workstation:14",
+      "start": 31356.0,
+      "end": 31367.0
+    },
+    {
+      "id": "chain:unit:0:process:8",
+      "name": "整机1 · 打包入库",
+      "resource": "打包入库 · 工位17",
+      "resource_id": "assembly:workstation:17",
+      "start": 31361.0,
+      "end": 31365.0
+    },
+    {
+      "id": "chain:unit:1:process:8",
+      "name": "整机2 · 打包入库",
+      "resource": "打包入库 · 工位17",
+      "resource_id": "assembly:workstation:17",
+      "start": 31365.0,
+      "end": 31369.0
+    },
+    {
+      "id": "chain:unit:2:process:7",
+      "name": "整机3 · 检测调试",
+      "resource": "检测调试 · 工位15",
+      "resource_id": "assembly:workstation:15",
+      "start": 31367.0,
+      "end": 31372.0
+    },
+    {
+      "id": "chain:unit:3:process:7",
+      "name": "整机4 · 检测调试",
+      "resource": "检测调试 · 工位16",
+      "resource_id": "assembly:workstation:16",
+      "start": 31367.0,
+      "end": 31372.0
+    },
+    {
+      "id": "chain:unit:4:process:6",
+      "name": "整机5 · 总装合箱",
+      "resource": "总装合箱 · 工位13",
+      "resource_id": "assembly:workstation:13",
+      "start": 31367.0,
+      "end": 31378.0
+    },
+    {
+      "id": "chain:unit:2:process:8",
+      "name": "整机3 · 打包入库",
+      "resource": "打包入库 · 工位17",
+      "resource_id": "assembly:workstation:17",
+      "start": 31372.0,
+      "end": 31376.0
+    },
+    {
+      "id": "chain:unit:3:process:8",
+      "name": "整机4 · 打包入库",
+      "resource": "打包入库 · 工位17",
+      "resource_id": "assembly:workstation:17",
+      "start": 31376.0,
+      "end": 31380.0
+    },
+    {
+      "id": "chain:unit:4:process:7",
+      "name": "整机5 · 检测调试",
+      "resource": "检测调试 · 工位15",
+      "resource_id": "assembly:workstation:15",
+      "start": 31378.0,
+      "end": 31383.0
+    },
+    {
+      "id": "chain:unit:4:process:8",
+      "name": "整机5 · 打包入库",
+      "resource": "打包入库 · 工位17",
+      "resource_id": "assembly:workstation:17",
+      "start": 31383.0,
+      "end": 31387.0
+    }
+  ],
+  "units": 5,
+  "time_unit": "minutes",
+  "episodes": [
+    [
+      [
+        30345.0,
+        8.0,
+        0,
+        0,
+        0
+      ],
+      [
+        30353.0,
+        6.0,
+        2,
+        0,
+        1
+      ],
+      [
+        30359.0,
+        12.0,
+        4,
+        0,
+        2
+      ],
+      [
+        30371.0,
+        10.0,
+        7,
+        0,
+        3
+      ],
+      [
+        30381.0,
+        9.0,
+        10,
+        0,
+        4
+      ],
+      [
+        30381.0,
+        7.0,
+        11,
+        0,
+        5
+      ],
+      [
+        30345.0,
+        8.0,
+        1,
+        1,
+        0
+      ],
+      [
+        30353.0,
+        6.0,
+        3,
+        1,
+        1
+      ],
+      [
+        30359.0,
+        12.0,
+        5,
+        1,
+        2
+      ],
+      [
+        30371.0,
+        10.0,
+        8,
+        1,
+        3
+      ],
+      [
+        30381.0,
+        9.0,
+        9,
+        1,
+        4
+      ],
+      [
+        30381.0,
+        7.0,
+        12,
+        1,
+        5
+      ],
+      [
+        30353.0,
+        8.0,
+        0,
+        2,
+        0
+      ],
+      [
+        30361.0,
+        6.0,
+        2,
+        2,
+        1
+      ],
+      [
+        30367.0,
+        12.0,
+        6,
+        2,
+        2
+      ],
+      [
+        30381.0,
+        10.0,
+        7,
+        2,
+        3
+      ],
+      [
+        30391.0,
+        9.0,
+        10,
+        2,
+        4
+      ],
+      [
+        30391.0,
+        7.0,
+        11,
+        2,
+        5
+      ],
+      [
+        30353.0,
+        8.0,
+        1,
+        3,
+        0
+      ],
+      [
+        30361.0,
+        6.0,
+        3,
+        3,
+        1
+      ],
+      [
+        30371.0,
+        12.0,
+        4,
+        3,
+        2
+      ],
+      [
+        30383.0,
+        10.0,
+        8,
+        3,
+        3
+      ],
+      [
+        30393.0,
+        9.0,
+        9,
+        3,
+        4
+      ],
+      [
+        30393.0,
+        7.0,
+        12,
+        3,
+        5
+      ],
+      [
+        30361.0,
+        8.0,
+        0,
+        4,
+        0
+      ],
+      [
+        30369.0,
+        6.0,
+        2,
+        4,
+        1
+      ],
+      [
+        30375.0,
+        12.0,
+        5,
+        4,
+        2
+      ],
+      [
+        30391.0,
+        10.0,
+        7,
+        4,
+        3
+      ],
+      [
+        30401.0,
+        9.0,
+        10,
+        4,
+        4
+      ],
+      [
+        30401.0,
+        7.0,
+        11,
+        4,
+        5
+      ],
+      [
+        31345.0,
+        11.0,
+        13,
+        0,
+        6
+      ],
+      [
+        31356.0,
+        5.0,
+        15,
+        0,
+        7
+      ],
+      [
+        31361.0,
+        4.0,
+        17,
+        0,
+        8
+      ],
+      [
+        31345.0,
+        11.0,
+        14,
+        1,
+        6
+      ],
+      [
+        31356.0,
+        5.0,
+        16,
+        1,
+        7
+      ],
+      [
+        31365.0,
+        4.0,
+        17,
+        1,
+        8
+      ],
+      [
+        31356.0,
+        11.0,
+        13,
+        2,
+        6
+      ],
+      [
+        31367.0,
+        5.0,
+        15,
+        2,
+        7
+      ],
+      [
+        31372.0,
+        4.0,
+        17,
+        2,
+        8
+      ],
+      [
+        31356.0,
+        11.0,
+        14,
+        3,
+        6
+      ],
+      [
+        31367.0,
+        5.0,
+        16,
+        3,
+        7
+      ],
+      [
+        31376.0,
+        4.0,
+        17,
+        3,
+        8
+      ],
+      [
+        31367.0,
+        11.0,
+        13,
+        4,
+        6
+      ],
+      [
+        31378.0,
+        5.0,
+        15,
+        4,
+        7
+      ],
+      [
+        31383.0,
+        4.0,
+        17,
+        4,
+        8
+      ]
+    ]
+  ],
+  "mode": "saved_rule_example",
+  "duration_note": "原9工序标准加工时间；入厂运输与交接单独计时",
+  "compatibility": [
+    ""
+  ]
+}

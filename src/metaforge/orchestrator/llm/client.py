@@ -47,6 +47,8 @@ class LlmClient:
         system: str,
         user: str,
         temperature: Optional[float] = None,
+        thinking: Optional[bool] = None,
+        max_tokens: Optional[int] = None,
     ) -> Dict[str, Any]:
         temp = temperature if temperature is not None else float(os.getenv("LLM_TEMPERATURE", "0.2"))
         url = f"{self.base_url.rstrip('/')}/chat/completions"
@@ -59,6 +61,10 @@ class LlmClient:
             "temperature": temp,
             "response_format": {"type": "json_object"},
         }
+        if thinking is not None:
+            payload["thinking"] = {"type": "enabled" if thinking else "disabled"}
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
         resp = requests.post(
             url,
             headers={

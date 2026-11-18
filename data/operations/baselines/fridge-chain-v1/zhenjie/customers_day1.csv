@@ -1,0 +1,3 @@
+﻿cust_id,lon,lat,demand,service,tw_start,tw_end,cust_name,product_id,spec,uom
+36,120.028,36.267,3.0,40.0,120.0,360.0,渤海湾花园,CASE-FRIDGE-01,案例冰箱A型,台
+38,120.029,36.254,2.0,60.0,80.0,200.0,浮翠园,CASE-FRIDGE-01,案例冰箱A型,台

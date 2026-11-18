@@ -1,70 +1,59 @@
 # 基于强化学习的产业链分布式资源适配与调度管控系统
 
-本系统是一个面向产业链协同场景的分布式资源适配与调度管控系统，当前仓库交付形态为：
+面向生产、组装和配送的协同调度平台。各环节生成并保存计划，产业链运维智能体将关联结果汇成统一执行基线，持续跟踪运行变化，计算并校验调整方案。
 
-- Python 求解器能力
-- FastAPI 后端
-- MongoDB 数据存储
-- Vue 3 前端
-- 多智能体车间助手
+## 启动
 
-## 快速启动
-
-详细步骤见 **[部署启动.md](docs/部署启动.md)**（含环境配置、知识库、排障）。
+环境已安装时，在项目根目录打开 PowerShell：
 
 ```powershell
-# 1. 环境与依赖（项目根目录）
-python -m venv .\metaforge-test-env --system-site-packages
-.\metaforge-test-env\Scripts\Activate.ps1
-pip install -r .\requirements.txt
-pip install -e . --no-build-isolation --no-deps
-pip install flask flask-cors gym==0.26.2
-
-# 2. 配置（复制后填写 API Key）
-copy .env.example .env
-copy .\rag\langchain-agent\.env.example .\rag\langchain-agent\.env
-
-# 3. 构建前端
-cd .\frontend
-npm install
-npm run build
-cd ..
-
-# 4. 启动
-Start-Service MongoDB
+Start-Service MongoDB                             # 已运行可跳过；启动服务需要相应权限
 cd .\tests
-python .\main.py
+..\metaforge-test-env\Scripts\python.exe .\main.py  # 启动主后端及集成模块
 ```
 
-启动后访问：
+打开 **http://127.0.0.1:8008/go**。保持终端运行，按 `Ctrl+C` 停止服务。首次安装与模型配置见[开发文档](docs/开发文档.md#setup)。
 
-- 主系统：**http://127.0.0.1:8008/new-ui/home**
-- 知识库（随主后端自动嵌入 Streamlit；也可手动 `.\scripts\start_rag_streamlit.ps1`）→ `/new-ui/home/knowledge`
-- 物流资源管控（集成 `zhenjie` 多周期车辆路径优化，随主后端挂载，无需单独启动）→ `/new-ui/home/logistics-resource/experiment`，侧边栏提供订单管理、实验配置、结果汇总、图表分析和路径地图。
+修改前端后，在项目根目录重新构建：
 
-## 核心文档
+```powershell
+cd .\frontend
+npm run build                                    # 输出到后端托管目录
+```
 
-- [文档索引](docs/README.md)
-- [部署启动](docs/部署启动.md)
-- [软件说明书](docs/软件说明书.md)
-- [功能清单](docs/智能体功能清单.md)
-- [产品需求文档](docs/PRD.md)
+## 系统架构
 
-## 系统能力
+```mermaid
+flowchart TB
+    UI["Vue 3 统一工作台"] --> API["FastAPI 主后端 · 8008"]
+    API --> PLAN["业务工具与调度算法<br/>订单、生产、组装、配送"]
+    API --> OPS["产业链运维智能体<br/>统一基线、持续执行、异常调整"]
+    OPS -->|候选计算与校验| PLAN
+    API --> RAG["知识库服务<br/>RAG / Streamlit · 8501"]
+    PLAN --> DATA["MongoDB / 文件快照<br/>业务计划、历史结果、运行记录"]
+    OPS --> DATA
+    PLAN -.-> LLM["大模型服务<br/>意图理解、问答与解释"]
+    OPS -.-> LLM
+    RAG -.-> LLM
+```
 
-- 多算法排程与结果对比
-- MES 执行仿真与异常重排
-- 交期评估、物料检查、资源协同
-- 计划库管理与排程结果落库
-- 自然语言驱动的多智能体助手
-- 生产资源管控已同步 `earlymessi/metaforge_agent` 的 `V1@08874218`：协同策略工作台、计划包执行、定时异常与方案对比；详见 [同步记录](docs/生产资源管控模块升级对照记录.md)。
+供应链、组装和物流模块随主后端挂载；知识库问答由独立 Streamlit 进程提供。大模型辅助分析，具体排程由算法计算并校验。
 
-## 目录说明
+## 功能介绍
 
-- `src/metaforge/`: 后端核心能力与求解器
-- `frontend/`: Vue 3 前端
-- `tests/main.py`: 本地后端启动入口
-- `docs/`: 精简后的核心交付文档
+| 功能 | 主要用途 |
+|---|---|
+| 产业链主控台 | 查看各环节状态及协同信息 |
+| 供应链订单调度 | 订单录入、参数配置与产运优化 |
+| 生产资源管控 | 多算法排程、方案对比、MES 仿真及设备、能耗、物料等资源管理 |
+| 组装资源管控 | 组装排程、物料管理、甘特图、统计与动态演示 |
+| 外协供应商管控 | 外购供给、供应商发运与到货衔接 |
+| 物流资源管控 | 配送订单、多周期车辆路径优化、路线地图与结果分析 |
+| 数据中心 | 查看、保存并复用生产、组装和配送结果，提供 test1、test2、test3 配套案例 |
+| 产业链知识库 | 文档管理、检索与问答 |
+| 产业链运维智能体 | 关联全链路计划、实时模拟、登记异常、大模型问答及调整方案确认 |
+
+当前全链路运行属于真实时钟下的模拟执行。安装配置、代码结构、接口与能力边界统一见 **[开发文档](docs/开发文档.md)**。
 
 ## License
 

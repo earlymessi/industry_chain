@@ -76,7 +76,17 @@ def test_worker_uses_module_paths_without_changing_cwd(web, monkeypatch, tmp_pat
         }
 
     monkeypatch.setattr(vrp.engine, "run_pipeline", fake_pipeline)
-    day_frames = [object()]
+    class Frame:
+        def to_csv(self, path, **kwargs):
+            captured['input_csv_path'] = path
+    day_frames = [Frame()]
+    from zhenjie import result_versions
+    monkeypatch.setattr(result_versions, 'capture_inputs', lambda root: {'fixture': 'input-version'})
+    monkeypatch.setattr(result_versions, 'publish', lambda root, inputs, config: {'run_id': 'fixture-run', 'inputs': inputs, 'effective_config': config})
+    from metaforge.operations import history
+    def archive(root, result=None):
+        captured['archived_result']=copy.deepcopy(result);return {'id':'saved-fixture'}
+    monkeypatch.setattr(history,'archive_delivery',archive)
     monkeypatch.setattr(vrp, "_load_day_frames_from_mongo", lambda: day_frames)
     monkeypatch.setattr(vrp, "_export_mongo_to_csv", lambda: None)
     try:
@@ -89,8 +99,65 @@ def test_worker_uses_module_paths_without_changing_cwd(web, monkeypatch, tmp_pat
         for key in ("CSV_PATTERN", *vrp.OUTPUT_PATH_KEYS):
             assert Path(cfg[key]).parent == REPO_ROOT / "zhenjie"
         assert captured["day_frames"] is (day_frames if use_mongo else None)
+        assert captured["archived_result"]["publication"]["run_id"]=="fixture-run"
+        assert vrp._job["result"]["history_id"]=="saved-fixture"
         assert vrp._job["result"]["outputs"]["run_summary"] == "multi_run_summary.csv"
     finally:
         os.chdir(original_cwd)
         vrp._job.clear()
         vrp._job.update(saved_job)
+
+
+@pytest.mark.parametrize('key',['chain-demo-normal','chain-demo-supply','chain-demo-transport'])
+def test_paired_example_snapshot_is_scoped_and_cannot_modify_original_module(web,key):
+    from zhenjie import app as vrp
+    original_cfg=copy.deepcopy(vrp.engine.CFG); original_job=copy.deepcopy(vrp._job)
+    base='/logistics-vrp/api/'
+    data=web.get(base+'results',params={'example':key})
+    assert data.status_code==200 and data.json()['data']['summary']
+    config=web.get(base+'config',params={'example':key}).json()
+    assert config['mongo']['db']==key and config['defaults']['T']==1
+    orders=web.get(base+'orders',params={'example':key}).json()['items']
+    assert sum(float(r['demand']) for r in orders)==5
+    assert web.get(base+'artifact/best_stage2_routes_map.html',params={'example':key}).status_code==200
+    assert web.head(base+'artifact/representative_pareto_front.png',params={'example':key}).status_code==200
+    assert web.get(base+'artifact/solver_source.py',params={'example':key}).status_code==404
+    for path in ['run','stop','orders','orders/import-csv']:
+        assert web.post(base+path,params={'example':key},json={'n_runs':1}).status_code==409
+    assert vrp.engine.CFG==original_cfg and vrp._job==original_job
+    assert web.get(base+'results',params={'example':'../../outside'}).status_code==422
+
+
+def test_delivery_data_center_can_reuse_all_three_historical_results_without_global_writes(web):
+    from metaforge.operations.history import records
+    from zhenjie import app as vrp
+    original_cfg=copy.deepcopy(vrp.engine.CFG); original_job=copy.deepcopy(vrp._job)
+    rows=[r for r in records('delivery') if r.get('test_case')]
+    assert [r['name'] for r in rows]==['test1','test2','test3']
+    for row in rows:
+        query={'record':row['id']}
+        result=web.get('/logistics-vrp/api/results',params=query)
+        assert result.status_code==200 and result.json()['data']['summary']
+        orders=web.get('/logistics-vrp/api/orders',params=query).json()['items']
+        assert sum(float(r['demand']) for r in orders)==5
+        assert web.get('/logistics-vrp/api/artifact/best_stage2_routes_map.html',params=query).status_code==200
+        assert web.post('/logistics-vrp/api/run',params=query,json={'n_runs':1}).status_code==409
+    assert vrp.engine.CFG==original_cfg and vrp._job==original_job
+
+
+@pytest.mark.parametrize('query',[{}, {'example':'chain-demo-normal'}, {'example':'chain-demo-supply'}, {'example':'chain-demo-transport'}])
+def test_map_label_bootstrap_waits_for_map_and_keeps_published_files_immutable(web,query):
+    import re,subprocess
+    from metaforge.operations.baselines import dataset_root
+    directory=(dataset_root(query['example'])/'zhenjie') if query else REPO_ROOT/'zhenjie'
+    artifact=directory/'best_stage2_routes_map.html'
+    before=artifact.read_bytes()
+    response=web.get('/logistics-vrp/api/artifact/best_stage2_routes_map.html',params=query)
+    assert response.status_code==200 and 'text/html' in response.headers['content-type']
+    html=response.text
+    code=next(m for m in re.findall(r'<script[^>]*>(.*?)</script>',html,re.S) if 'toggleCustomerLabels_' in m)
+    # Execute the early body script before map/feature globals exist, as a browser does.
+    js="const vm=require('node:vm');const assert=require('node:assert/strict');const handlers=[];vm.runInNewContext(process.argv[1],{document:{addEventListener:(name,callback)=>{assert.equal(name,'DOMContentLoaded');handlers.push(callback)}}});assert.equal(handlers.length,1);"
+    done=subprocess.run(['node','-e',js,code],capture_output=True,text=True)
+    assert done.returncode==0,done.stderr
+    assert artifact.read_bytes()==before

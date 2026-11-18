@@ -1,0 +1,2 @@
+﻿scheme,day,route_id,vehicle_id,start_depot,end_depot,start_time_min,end_time_min,start_time_clock,end_time_clock,customer_seq_internal,customer_seq_cust_id
+Stage2_Balanced,1,0,1,3,3,0.0,193.66333333333333,08:00,11:14,"[1, 0]","[38, 36]"

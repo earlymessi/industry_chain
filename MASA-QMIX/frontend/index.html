@@ -353,7 +353,7 @@
             <div class="control-label">评估轮数</div>
             <input type="number" class="control-input" v-model.number="form.evaluate_epoch" min="1">
           </div>
-          <button class="btn btn-primary" style="width:100%;margin-top:8px" @click="submit" :disabled="loading">
+          <button class="btn btn-primary" style="width:100%;margin-top:8px" @click="submit" :disabled="loading || !!result?.example_id">
             {{ loading ? '评估中...' : '开始评估' }}
           </button>
           <div v-if="error" class="alert alert-error" style="margin-top:12px">{{ error }}</div>
@@ -403,7 +403,7 @@
                 </tbody>
               </table>
               <div style="margin-top:8px;font-size:12px;color:#606266">
-                计划：{{ readinessData.plan_name }} · {{ readinessData.product_units }} 台 · 状态：{{ readinessData.status === 'ready' ? '待组装' : '已消费' }}
+                计划：{{ readinessData.plan_name }} · {{ readinessData.product_units }} 台 · 状态：{{ readinessData.status === 'planned' ? '已排计划（未执行）' : readinessData.status === 'ready' ? '待组装' : '已消费' }}
               </div>
             </div>
             <div class="readiness-col">
@@ -529,7 +529,7 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
                 最近评估结果
               </div>
-              <div style="font-size:12px;color:#6b7280">智能体: {{ result.n_agents }} | 模型: {{ result.model_num }} | 轮数: {{ result.evaluate_epoch }}</div>
+              <div style="font-size:12px;color:#6b7280"><template v-if="result.example_name">{{ result.example_name }} · {{ result.algorithm }}{{ result.is_qmix ? '' : '（非QMIX）' }}</template><template v-else>智能体: {{ result.n_agents }} | 模型: {{ result.model_num }} | 轮数: {{ result.evaluate_epoch }}</template></div>
             </div>
             <div class="panel-body">
               <div class="stats-grid">
@@ -1189,6 +1189,7 @@ createApp({
     const loading = ref(false);
     const error = ref('');
     const result = ref(null);
+    let selectedExample = null;
     const makespans = ref([]);
     const rewards = ref([]);
     const episodeCount = ref(0);
@@ -1505,7 +1506,16 @@ createApp({
     const refreshFactory = () => loadFactoryData();
     const refreshAGV = () => loadFactoryData();
 
+    function applyExampleMaterials(example) {
+      const definition = example.definition, supply = example.supply;
+      if (!definition || !supply) {readinessData.value=null;integrationMaterialsOverview.value=[];purchasedPartsCatalog.value={parts:[]};return;}
+      readinessData.value = {plan_name:example.name, product_units:definition.units, status:'planned', self_made_parts:definition.factories.map(f => ({job_name:f.job_names.join('、'), mapped_part_name:f.spec, mapped_workstation:'总装合箱', source:'self_made'}))};
+      purchasedPartsCatalog.value = {parts:supply.catalog};
+      integrationMaterialsOverview.value = supply.catalog.map(p => ({...p, on_hand:Number(supply.state.materials[p.id]?.on_hand || 0), in_transit_qty:0, stock_status:'按案例采购计划到货'}));
+      supplySummary.value = null; supplyInTransit.value = [];
+    }
     async function loadReadinessIntegration() {
+      if (selectedExample) { applyExampleMaterials(selectedExample); return; }
       try {
         const resp = await axios.get('/api/integrations/readiness/latest');
         readinessData.value = resp.data;
@@ -1550,9 +1560,11 @@ createApp({
           integrationMaterialsOverview.value = [];
         }
       }
+      if (selectedExample) applyExampleMaterials(selectedExample);
     }
     
     const submit = async () => {
+      if (selectedExample) { error.value = '请返回当前结果后再运行QMIX评估'; return; }
       error.value = '';
       result.value = null;
       makespans.value = [];
@@ -1649,7 +1661,7 @@ createApp({
         ganttError.value = '暂无甘特数据';
         return;
       }
-      if (preferLocal && Array.isArray(ganttData.value) && ganttData.value.length) {
+      if ((preferLocal || result.value?.example_id) && Array.isArray(ganttData.value) && ganttData.value.length) {
         const idx = selectedEpisode.value - 1;
         if (idx >= 0 && idx < ganttData.value.length && Array.isArray(ganttData.value[idx])) {
           ganttSvg.value = buildGantt(ganttData.value[idx]);
@@ -1900,6 +1912,13 @@ createApp({
     
     // 加载演示数据
     const initDemoData = async () => {
+      if (selectedExample) {
+        if(selectedExample.compatible===false || selectedExample.payload?.compatibility?.[selectedEpisode.value-1]){error.value='该旧模型尚未适配当前工艺，可查看原始甘特';return;}
+        dynamicStop(); currentGanttData = (ganttData.value[selectedEpisode.value-1] || selectedExample.assembly.rows).map(r => [...r]);
+        dynamicMaxTime.value = Math.max(...currentGanttData.map(r => Number(r[0])+Number(r[1])));
+        processDefinitions.value = Object.fromEntries(selectedExample.processes.map(p => [p.id,{name:p.name,standard_time:p.minutes}]));
+        dynamicCurrentTime.value = 0; updateStateLocally(); return;
+      }
       dynamicLoading.value = true;
       try {
         const resp = await axios.get(`${apiBase.value}/api/production/demo-data?n_jobs=8`, {timeout: 10000});
@@ -1977,6 +1996,7 @@ createApp({
     
     // 获取工位对应的工序ID
     const getProcessForWorkstation = (wsId) => {
+      if (selectedExample) return selectedExample.processes.find(p => p.workstations.includes(wsId))?.id ?? 0;
       const mapping = [0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8];
       return mapping[wsId] ?? 0;
     };
@@ -2002,7 +2022,7 @@ createApp({
       
       // 初始化8个作业
       const jobs = [];
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < (selectedExample?.assembly?.units || 8); i++) {
         jobs.push({
           id: i,
           name: `冰箱${i + 1}`,
@@ -2388,6 +2408,25 @@ createApp({
     };
 
     const onTabMessage = (event) => {
+      if (event.origin !== window.location.origin || event.source !== window.parent) return;
+      if (['masa-qmix-example','masa-qmix-history'].includes(event.data?.type)) {
+        const example = event.data.record || event.data.example, data = example?.assembly;
+        if (!example?.id) return;
+        if (!data?.rows) {
+          const evaluation=example.payload?.evaluation;if(!evaluation)return;
+          result.value={...evaluation,example_id:example.id,example_name:example.name,algorithm:example.algorithm,is_qmix:true};selectedExample=example;dynamicStop();currentGanttData=[];dynamicWorkstations.value=[];dynamicJobs.value=[];dynamicGanttSvg.value='';
+          makespans.value=evaluation.makespans || [];rewards.value=evaluation.rewards || [];ganttData.value=[];episodeCount.value=0;ganttSvg.value='';ganttError.value='该历史结果仅含评估指标，无排程甘特';applyExampleMaterials(example);return;
+        }
+        if (result.value?.example_id === example.id && result.value?.version === data.version) return;
+        result.value = {example_id:example.id, example_name:example.name, algorithm:data.algorithm, version:data.version, n_agents:data.units, model_num:data.mode==='saved_qmix' ? 'QMIX历史' : '规则排程', is_qmix:data.mode==='saved_qmix', evaluate_epoch:1};
+        ganttData.value = example.payload?.episodes || [data.rows]; episodeCount.value = ganttData.value.length; selectedEpisode.value = example.selected_episode || 1;
+        makespans.value = ganttData.value.map(rows=>Math.max(...rows.map(r=>Number(r[0])+Number(r[1])))); rewards.value = example.payload?.evaluation?.rewards || [];
+        selectedExample = example; applyExampleMaterials(example);
+        dynamicStop(); currentGanttData = []; dynamicWorkstations.value = []; dynamicJobs.value=[];dynamicGanttSvg.value='';
+        if (activeTab.value === 'dynamic') initDemoData();
+        ganttError.value = ''; nextTick(() => loadGantt(true));
+        return;
+      }
       if (!event.data || event.data.type !== 'masa-qmix-tab') return;
       switchTab(event.data.tab);
     };

@@ -2,10 +2,7 @@
   <div class="page">
     <el-card shadow="never" class="head-card">
       <div class="head-row">
-        <div>
-          <div class="title">外协供应商调度</div>
-          <div class="sub">编辑外购/外协库存数量，模拟供应商发运与到货入库</div>
-        </div>
+        <div class="sub">编辑外购/外协库存数量，模拟供应商发运与到货入库</div>
         <div class="actions">
           <el-button :loading="loading" @click="loadAll">刷新</el-button>
           <el-button type="warning" :loading="simulating" @click="simulateAdvance">模拟推进 30 分钟</el-button>
@@ -280,14 +277,8 @@ onMounted(loadAll)
   flex-wrap: wrap;
 }
 
-.title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1e293b;
-}
-
 .sub {
-  margin-top: 4px;
+  margin-top: 0;
   font-size: 13px;
   color: #64748b;
 }

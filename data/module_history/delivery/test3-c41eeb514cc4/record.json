@@ -1,0 +1,15 @@
+{
+  "id": "test3-c41eeb514cc4",
+  "module": "delivery",
+  "name": "test3",
+  "created_at": "2026-11-17T09:48:43.242271+00:00",
+  "version": "e9f66834237a00f8204ba52e1a5f9b4b30ab955650e256348c26e79224df2dc5",
+  "algorithm": "CCDR-PSO + MO-ALNS",
+  "units": 5,
+  "task_count": 4,
+  "compatible": true,
+  "test_case": true,
+  "case_id": "chain-demo-transport",
+  "horizon_days": 28,
+  "span_minutes": 32833.66333333254
+}

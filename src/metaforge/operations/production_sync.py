@@ -19,6 +19,8 @@ class NewRunRequired(ValueError):
 
 
 def source_link(plan):
+    if plan.get('production_sources'):
+        return None  # A multi-factory revision requires joint validation, never update only the first factory.
     if plan.get('production_link'):
         return copy.deepcopy(plan['production_link'])
     source = next((s for s in plan.get('source_manifest', []) if s.get('module') == 'production'), None)
@@ -70,6 +72,8 @@ def synchronize(state, native, now):
         incoming_orders = {o['name']: o for o in native['orders']}
         for order in plan['orders']:
             base = order.get('source_baseline')
+            if order['name'] in incoming_orders and order.get('business_source', {}) != incoming_orders[order['name']].get('business_source', {}):
+                raise NewRunRequired('生产来源的工厂、物料或规格身份发生变化，请重新校验BOM及运输关联')
             if base and order['name'] in incoming_orders and base.get('quantity') != incoming_orders[order['name']]['quantity']:
                 raise NewRunRequired('生产工单数量已变更，请在计划衔接中重新确认部件产出、组装与配送数量')
     identity = {t['id']: old_by_name[t['name']]['id'] for t in native['tasks']}

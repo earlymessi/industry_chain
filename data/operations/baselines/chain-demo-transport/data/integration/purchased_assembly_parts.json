@@ -1,0 +1,114 @@
+{
+  "parts": [
+    {
+      "id": "compressor",
+      "name": "压缩机",
+      "category": "外购",
+      "supplier": "压缩机供应商",
+      "workstation": "压缩机安装",
+      "safety_stock": 20,
+      "spec": "案例冰箱A型配套件",
+      "unit": "件",
+      "case_source": "原目录编码、名称、供应商和消耗工序；规格/单位为本案例显式配置"
+    },
+    {
+      "id": "circuit_board",
+      "name": "主控板",
+      "category": "外购",
+      "supplier": "电气元件供应商",
+      "workstation": "电气元件装配",
+      "safety_stock": 30,
+      "spec": "案例冰箱A型配套件",
+      "unit": "件",
+      "case_source": "原目录编码、名称、供应商和消耗工序；规格/单位为本案例显式配置"
+    },
+    {
+      "id": "sensor",
+      "name": "温度传感器",
+      "category": "外购",
+      "supplier": "电气元件供应商",
+      "workstation": "电气元件装配",
+      "safety_stock": 40,
+      "spec": "案例冰箱A型配套件",
+      "unit": "件",
+      "case_source": "原目录编码、名称、供应商和消耗工序；规格/单位为本案例显式配置"
+    },
+    {
+      "id": "wire_harness",
+      "name": "线束总成",
+      "category": "外协",
+      "supplier": "电气元件供应商",
+      "workstation": "电气元件装配",
+      "safety_stock": 25,
+      "spec": "案例冰箱A型配套件",
+      "unit": "件",
+      "case_source": "原目录编码、名称、供应商和消耗工序；规格/单位为本案例显式配置"
+    },
+    {
+      "id": "foam_material",
+      "name": "聚氨酯发泡料",
+      "category": "外购",
+      "supplier": "发泡料供应商",
+      "workstation": "发泡填充",
+      "safety_stock": 15,
+      "spec": "聚氨酯A组分",
+      "unit": "kg",
+      "case_source": "原目录编码、名称、供应商和消耗工序；规格/单位为本案例显式配置"
+    },
+    {
+      "id": "door_gasket",
+      "name": "门体密封条",
+      "category": "外购",
+      "supplier": "门体配件供应商",
+      "workstation": "总装合箱",
+      "safety_stock": 50,
+      "spec": "案例冰箱A型配套件",
+      "unit": "件",
+      "case_source": "原目录编码、名称、供应商和消耗工序；规格/单位为本案例显式配置"
+    },
+    {
+      "id": "hinge_kit",
+      "name": "门体铰链组件",
+      "category": "外购",
+      "supplier": "门体配件供应商",
+      "workstation": "总装合箱",
+      "safety_stock": 35,
+      "spec": "案例冰箱A型配套件",
+      "unit": "件",
+      "case_source": "原目录编码、名称、供应商和消耗工序；规格/单位为本案例显式配置"
+    },
+    {
+      "id": "metal_panel",
+      "name": "钣金外协件",
+      "category": "外协",
+      "supplier": "钣金件供应商",
+      "workstation": "钣金成型",
+      "safety_stock": 40,
+      "spec": "案例冰箱A型外壳坯件",
+      "unit": "件",
+      "case_source": "原目录编码、名称、供应商和消耗工序；规格/单位为本案例显式配置"
+    },
+    {
+      "id": "copper_tube",
+      "name": "铜管组件",
+      "category": "外购",
+      "supplier": "压缩机供应商",
+      "workstation": "管路焊接",
+      "safety_stock": 30,
+      "spec": "案例冰箱A型配套件",
+      "unit": "件",
+      "case_source": "原目录编码、名称、供应商和消耗工序；规格/单位为本案例显式配置"
+    },
+    {
+      "id": "packing_box",
+      "name": "包装箱",
+      "category": "外购",
+      "supplier": "包装材料供应商",
+      "workstation": "检测打包",
+      "safety_stock": 60,
+      "spec": "案例冰箱A型配套件",
+      "unit": "件",
+      "case_source": "原目录编码、名称、供应商和消耗工序；规格/单位为本案例显式配置"
+    }
+  ]
+}

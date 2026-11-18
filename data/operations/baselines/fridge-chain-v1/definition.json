@@ -1,0 +1,51 @@
+{
+  "id": "fridge-chain-v1",
+  "name": "冰箱产业链完整基线 · 5台",
+  "product_id": "CASE-FRIDGE-01",
+  "spec": "案例冰箱A型",
+  "units": 5,
+  "production_plan_id": "693c1376a4c27d96652ad849",
+  "solver_id": "q",
+  "time_unit": "hours",
+  "factories": [
+    {
+      "factory_id": "CASE-FACTORY-A",
+      "name": "自有工厂A · 内部层架",
+      "job_indices": [
+        8
+      ],
+      "job_names": [
+        "订单109-内部层架"
+      ],
+      "source_zero_offset_hours": 30,
+      "material_id": "CASE-SHELF-SET",
+      "spec": "案例冰箱A型层架总成",
+      "uom": "件",
+      "process_id": 6
+    },
+    {
+      "factory_id": "CASE-FACTORY-B",
+      "name": "自有工厂B · 制冰机支架",
+      "job_indices": [
+        11
+      ],
+      "job_names": [
+        "订单112-制冰机支架"
+      ],
+      "source_zero_offset_hours": 32,
+      "material_id": "CASE-ICE-BRACKET",
+      "spec": "案例冰箱A型支架",
+      "uom": "件",
+      "process_id": 6
+    }
+  ],
+  "assumptions": [
+    "生产工序、工时和机器ID取自库内已保存Q排程，只选择原工单8与11；不复制物理设备、不缩放原工时。",
+    "原工单未标件数；本案例确认每个自制部件批次产出5件，每台消耗1件。工厂归属、物料身份和运输参数是显式案例主数据，不冒充ERP现场采集。",
+    "两份来源分别以原甘特第30/32小时为零点，保留各自所有工序间隔；其他未选工单不进入本执行批次。",
+    "原9工序/18工位用于组装；自制层架与支架在总装合箱消耗，前序加工工序不重复生成。",
+    "外购目录沿用原编码与供应商，规格、每台用量、期初库存、采购单和装卸/行驶耗时为案例配置。",
+    "成品配送使用原物流算法在独立目录重新求解；客户36/38的坐标、需求、服务和窗口来自原CSV，案例成品身份及客户承诺交期另行明确。",
+    "资源采用7天连续作业日历；真实时钟不加速。全程在离线验收中按事件推进验证，页面运行依旧遵循当前时间。"
+  ]
+}

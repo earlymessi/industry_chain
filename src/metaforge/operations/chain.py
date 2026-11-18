@@ -188,31 +188,17 @@ def build_chain(native, config, supply, assembly=None, logistics=None):
         factor = UNITS.get(config.get('assembly_time_unit'))
         if factor is None:
             raise ValueError('请确认组装评估时间单位')
-        process_by_ws = {ws: pid for pid, d in defs.items() for ws in d.workstation_ids}
-        found, slots = set(), []
-        for row in assembly['rows']:
-            if len(row) not in (4, 5):
-                raise ValueError('组装甘特须包含开始/持续/工位/产品，可附明确工序ID')
-            offset, duration, ws, unit = row[:4]
-            if int(ws) != ws or int(unit) != unit or int(ws) not in process_by_ws or not 0 <= int(unit) < units:
-                raise ValueError('组装评估的工位/产品标识无法对应原工艺')
-            pid = process_by_ws[int(ws)]
-            if len(row) == 5 and (int(row[4]) != row[4] or int(row[4]) != pid):
-                raise ValueError('组装评估的明确工序ID与当前工位能力不一致，请使用原工艺补排或适配来源模型')
-            tid = f'chain:unit:{int(unit)}:process:{pid}'
-            if tid in found:
-                raise ValueError('组装评估的工位能力与当前9工序定义不一致，无法唯一映射；请用原工艺补排，不复制旧模型任务')
-            found.add(tid)
-            seconds = number(duration, '评估持续时间', .000001) * factor
+        from .chain_sources import mapped_assembly_rows
+        slots = []
+        for row in mapped_assembly_rows(assembly['rows'], units):
+            tid = f'chain:unit:{row["unit"]}:process:{row["process"]}'
+            seconds = row['duration'] * factor
             task = next(t for t in assembly_tasks if t['id'] == tid)
-            # Source duration contains its own transport/service. Only the recorded resource is authorized by this result.
-            task['alternatives'] = [{'resource_id': f'assembly:workstation:{int(ws)}', 'unit_seconds': seconds}]
-            task['source_ref'].update(mode='saved_qmix', evaluation_id=assembly['id'], duration_note='来源记录含其运输/服务耗时')
+            task['alternatives'] = [{'resource_id': f'assembly:workstation:{row["workstation"]}', 'unit_seconds': seconds}]
+            task['source_ref'].update(mode=assembly.get('mode', 'saved_qmix'), evaluation_id=assembly['id'], algorithm=assembly.get('algorithm', 'QMIX'), duration_note=assembly.get('duration_note', '来源记录含其运输/服务耗时'))
             slots.append({'task_id': tid, 'resource_id': task['alternatives'][0]['resource_id'],
-                          'start_at': origin + number(offset, '评估开始偏移') * factor,
-                          'end_at': origin + (float(offset) + float(duration)) * factor})
-        if found != {t['id'] for t in assembly_tasks}:
-            raise ValueError('组装评估未覆盖当前产品的全部9道工序')
+                          'start_at': origin + row['offset'] * factor,
+                          'end_at': origin + (row['offset'] + row['duration']) * factor})
         validate_assembly_slots(assembly_tasks, slots)
         source_schedule = slots
         p['schedule'] += slots
@@ -238,6 +224,11 @@ def build_chain(native, config, supply, assembly=None, logistics=None):
         versions['logistics'] = logistics['version']
     p['source_manifest'].append({'module': 'material', 'sha256': supply['version'], 'snapshot_at': supply['state'].get('updated_at')})
     p['chain_source_versions'] = versions
+    if config.get('coherence_version') == 1:
+        from .coherence import apply_coherence
+        apply_coherence(p, config, supply, logistics)
+    else:
+        p['business_validation'] = {'passed': False, 'status': 'legacy', 'note': '仅完成技术排程校验，尚未确认独立BOM、工厂、采购与入厂运输关系'}
     p = normalize_plan(p)
     candidate = schedule(new_state(p, start), start, 'original')
     actual = {s['task_id']: s for s in candidate['schedule']}
@@ -253,8 +244,11 @@ def build_chain(native, config, supply, assembly=None, logistics=None):
                if any(abs(row[k] - actual[row['task_id']][k]) > 1e-4 for k in ('start_at', 'end_at'))]
     p['schedule'], p['routes'] = candidate['schedule'], candidate['routes']
     p['source_schedule'] = source_schedule
+    from .temporal import temporal_report
+    p['time_validation'] = temporal_report(p)
     p['chain_summary'] = {'supplemental_tasks': supplements, 'assembly_changes': changes, 'units': units,
                           'delivery_bound': bool(logistics), 'source_versions': versions,
+                          'business_validation': p['business_validation'], 'time_validation': p['time_validation'],
                           'note': '规则补排验证可行性，不宣称联合最优；执行仍为模拟'}
     return p
 
@@ -277,7 +271,9 @@ def add_route(p, config, source, batch, finished, windows):
     if len(stops) < 3 or stops[0]['node_type'] != 'depot_start' or stops[-1]['node_type'] != 'depot_end':
         raise ValueError('路线缺少完整出发、客户或到仓时间')
     date = datetime.strptime(config['delivery_date'], '%Y-%m-%d').replace(tzinfo=BEIJING)
-    origin = date.replace(hour=8).timestamp()
+    origin = timestamp(config['delivery_origin_at']) if config.get('delivery_origin_at') is not None else date.replace(hour=8).timestamp()
+    if datetime.fromtimestamp(origin, BEIJING).date() != date.date():
+        raise ValueError('配送日期与配送时间原点不一致，请重新确认映射')
     dispatch = origin + float(route['start_time_min']) * 60
     vehicle = f'logistics:vehicle:{route["vehicle_id"]}'
     depot, end_depot = f'logistics:depot:{route["start_depot"]}', f'logistics:depot:{route["end_depot"]}'
@@ -285,7 +281,7 @@ def add_route(p, config, source, batch, finished, windows):
     if batch['quantity'] > cap:
         raise ValueError('组装批量超过所选车辆容量，请先确认拆批或另一条路线')
     p['resources'].append({'id': vehicle, 'name': f'车辆{route["vehicle_id"]}', 'kind': 'vehicle', 'capacity': cap,
-                           'location': depot, 'working_windows': copy.deepcopy(windows), 'source_ref': {'module': 'logistics', 'id': route['vehicle_id']}})
+                           'capacity_uom': config.get('dispatch_uom') or '整机件', 'location': depot, 'working_windows': copy.deepcopy(windows), 'source_ref': {'module': 'logistics', 'id': route['vehicle_id']}})
     rid = 'chain:route:' + source['route']['id']; load, ret = rid + ':load', rid + ':return'
     customer_map = {str(int(float(c['cust_id']))): c for c in source['customers']}
     delivery_ids, quantity = [], 0
@@ -340,4 +336,4 @@ def add_route(p, config, source, batch, finished, windows):
     batch['role'] = 'component'
     p['source_manifest'].append({'module': 'logistics', 'id': route['id'], 'sha256': source['version'], 'day_date': config['delivery_date']})
     p['time_mapping'].append({'module': 'logistics', 'origin_at': origin, 'departure_at': dispatch,
-                              'rule': '来源第N天明确映射到选定日期08:00；发车和窗口不随上游延期平移'})
+                              'rule': '来源分钟偏移映射到明确的配送时间原点；发车和窗口不随上游延期平移'})

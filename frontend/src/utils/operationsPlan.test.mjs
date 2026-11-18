@@ -74,3 +74,23 @@ test('实时运维仍能看到超过原计划时刻的中断/阻塞任务', () =
   assert.deepEqual(visiblePlanRows(st, planWindow(now, 4), 'all', now).map(t => t.id), ['P', 'A'])
   assert.equal(visiblePlanRows(st, planWindow(now, 24)).length, 0)
 })
+
+
+test('只有本轮当前变化的未应用方案属于当前调整',async()=>{
+  const {hasPendingOperationsChange,isCurrentOperationsAdjustment}=await import('./operationsPlan.js')
+  const current={run_id:'R',event_seq:0,constraint_version:1,last_event:null}
+  const baseline={id:'B',run_id:'R',status:'done',trigger:{kind:'baseline',event_seq:0,constraint_version:1}}
+  assert.equal(hasPendingOperationsChange(current),false)
+  assert.equal(isCurrentOperationsAdjustment(baseline,current),false)
+  current.event_seq=1;current.constraint_version=2;current.last_event={type:'duration_change',applied_at:100}
+  const job={id:'J',run_id:'R',trigger:{kind:'event',event_seq:1,constraint_version:2}}
+  assert.equal(isCurrentOperationsAdjustment(job,current),true)
+  assert.equal(isCurrentOperationsAdjustment({...job,applied_at:110},current),false)
+  assert.equal(isCurrentOperationsAdjustment({...job,run_id:'other'},current),false)
+  assert.equal(isCurrentOperationsAdjustment({...job,trigger:{...job.trigger,event_seq:0}},current),false)
+  assert.equal(isCurrentOperationsAdjustment({...job,trigger:{...job.trigger,constraint_version:1}},current),false)
+  current.last_adjustment={source_event_seq:1,applied_at:100}
+  assert.equal(hasPendingOperationsChange(current),false)
+  current.event_seq=2
+  assert.equal(hasPendingOperationsChange(current),true)
+})

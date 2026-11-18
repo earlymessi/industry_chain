@@ -13,7 +13,7 @@
       <el-table-column label="结果预览" width="110">
         <template #default="{ row }">
           <el-button v-if="row.chart_image" text type="primary" @click="showImage(row.chart_image)">查看</el-button>
-          <span v-else class="muted">-</span>
+          <el-button v-else-if="hasSchedule(row)" text type="primary" @click="previewPlan(row)">查看</el-button><span v-else class="muted">-</span>
         </template>
       </el-table-column>
       <el-table-column label="工单数量" width="100" align="right">
@@ -33,9 +33,9 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right">
+      <el-table-column label="操作" width="340" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" type="primary" @click="loadToAPS(row)">导入排程</el-button>
+          <el-button v-if="row.example_case_id" size="small" @click="openOperations(row)">运维配置</el-button><el-button size="small" type="primary" @click="loadToAPS(row)">导入排程</el-button>
           <el-button v-if="hasSchedule(row)" size="small" plain @click="openReports(row)">分析报表</el-button>
           <el-button size="small" type="success" plain @click="openAssistant(row)">智能助手</el-button>
           <el-button size="small" type="danger" plain @click="deleteOrder(row.id)">删除</el-button>
@@ -44,6 +44,7 @@
     </el-table>
   </el-card>
 
+  <el-dialog v-model="timelineOpen" :title="previewName" width="min(1150px,96vw)"><SavedResultTimeline :rows="previewRows" :origin-at="previewOrigin" /></el-dialog>
   <el-dialog v-model="imageDialogVisible" title="排程快照预览" width="75%">
     <div class="img-wrap">
       <img v-if="imageBase64" :src="imageBase64" class="snapshot" alt="schedule snapshot" />
@@ -59,6 +60,7 @@ import { api } from '../api/client'
 import { useWorkContextStore } from '../stores/useWorkContextStore'
 import { useAssistantStore } from '../stores/useAssistantStore'
 import { useResultsStore } from '../stores/useResultsStore'
+import SavedResultTimeline from '../components/operations/SavedResultTimeline.vue'
 import { productionPath } from '../utils/productionRoutes'
 import {
   hasPlanSchedule,
@@ -74,6 +76,10 @@ const resultsStore = useResultsStore()
 function hasSchedule(row) {
   return hasPlanSchedule(row)
 }
+const previewOrigin=ref(Date.now()/1000)
+const timelineOpen=ref(false),previewName=ref(''),previewRows=ref([])
+function previewPlan(row){const result=Object.values(row.schedule_results || {}).find(r=>r.gantt_data?.length) || row.schedule_result || {};const unit=result.time_unit || row.time_unit || 'hours';const factor=unit==='minutes'?1:unit==='seconds'?1/60:60;previewRows.value=(result.gantt_data || []).map((r,i)=>({id:String(i),name:`${r.job_name || r.job_id} · ${r.operation_name || r.operation_id}`,resource:`机器${r.machine_id}`,start:Number(r.start)*factor,end:Number(r.end)*factor}));previewName.value=row.plan_name;previewOrigin.value=Date.now()/1000;timelineOpen.value=true}
+async function openOperations(row){try{const {data}=await api.get('/api/operations-tools/data-center/production');const record=data.records.filter(r=>r.case_id===row.example_case_id).sort((a,b)=>b.created_at.localeCompare(a.created_at))[0];if(!record)throw Error('此计划尚未保存全链路关联');router.push({path:'/home/operations-tools',query:{history_record:record.id,history_module:'production'}})}catch(e){ElMessage.error(String(e.response?.data?.detail||e.message))}}
 const orders = ref([])
 const loading = ref(false)
 const imageDialogVisible = ref(false)

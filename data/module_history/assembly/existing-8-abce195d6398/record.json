@@ -1,0 +1,13 @@
+{
+  "id": "existing-8-abce195d6398",
+  "module": "assembly",
+  "name": "QMIX 8台 · 已有结果",
+  "created_at": "2026-11-17T10:02:25.658901+00:00",
+  "version": "abce195d6398e41555663c2c6ce3bb12a332e8e6f2dd265f345fe2580aa88b6a",
+  "legacy_key": "existing-8",
+  "algorithm": "QMIX",
+  "units": 8,
+  "task_count": 72,
+  "episode_count": 20,
+  "compatible": false
+}

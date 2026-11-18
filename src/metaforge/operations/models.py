@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-KINDS = {"production": "生产", "assembly": "组装", "loading": "装车", "delivery": "配送", "return": "返场"}
+KINDS = {"production": "生产", "assembly": "组装", "transport": "入厂运输", "loading": "装车", "delivery": "配送", "return": "返场"}
 PARAMETERS = [
     {"type": "resource_unavailable", "label": "资源不可用", "target": "resource", "fields": ["expected_recovery_at"]},
     {"type": "resource_recovered", "label": "确认恢复可用", "target": "resource", "fields": []},
@@ -96,6 +96,7 @@ def public_state(state: dict | None, now: float, health: dict | None = None) -> 
     if not state:
         return response
     snapshot = copy.deepcopy(state)
+    snapshot.pop('case_seed', None)
     snapshot["tasks"] = [{**t, **state["tasks"][t["id"]]} for t in state["plan"]["tasks"]]
     snapshot["resources"] = list(snapshot["resources"].values())
     snapshot["last_sync_at"] = iso(state["last_tick_at"])

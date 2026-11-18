@@ -12,6 +12,7 @@ from .models import timestamp
 from .plans import prepare_standard
 from .service import OperationsService
 from .store import MongoStore, Conflict
+from .adjustments import adjustment_trigger
 
 
 def install(app, db, assembly_reader=None):
@@ -25,7 +26,7 @@ def create_router(service, production_collection=None, machine_collection=None, 
     router = APIRouter(prefix="/api/operations-tools", tags=["产业链运维系统"])
 
     async def native_plan(raw, start):
-        from .sources import production_plan
+        from .sources import production_plan, select_production_jobs
         if production_collection is None or machine_collection is None:
             raise ValueError('原生产计划与设备目录未配置')
         try:
@@ -37,13 +38,20 @@ def create_router(service, production_collection=None, machine_collection=None, 
             raise ValueError('原生产计划不存在')
         machines = await machine_collection.find().to_list(500)
         materials = await material_collection.find().to_list(500) if material_collection is not None else []
-        plan = production_plan(doc, machines, materials, start, solver=raw.get('solver_id'), time_unit=raw.get('time_unit', 'hours'))
+        offset = float(raw.get('source_zero_offset_hours') or 0)
+        if not 0 <= offset <= 672:
+            raise ValueError('原甘特零点偏移须为0至672小时')
+        plan = production_plan(doc, machines, materials, start - offset * 3600, solver=raw.get('solver_id'), time_unit=raw.get('time_unit', 'hours'))
+        plan = select_production_jobs(plan, raw.get('job_indices'), offset)
+        plan['source_manifest'][0]['origin_at'] = start - offset * 3600
+        plan['start_at'] = start
         expected = raw.get('source_version')
         if expected and expected != plan['source_manifest'][0]['sha256']:
             raise Conflict('预览后原计划或算法结果已变化，请重新预览')
         return plan
 
     service.production_loader = native_plan
+    service.case_seed_factory = standard_factory
     from .chain_api import attach
     from .sources import ROOT
     attach(router, service, native_plan, assembly_reader, chain_source_root or ROOT)
@@ -51,9 +59,11 @@ def create_router(service, production_collection=None, machine_collection=None, 
     @router.get('/plans/production/status')
     async def production_status():
         from .production_sync import source_link
-        from .sources import selected_result, fingerprint
+        from .sources import selected_result, production_fingerprint
         state, _ = await service.store.read()
         link = source_link(state['plan']) if state else None
+        if state and state['plan'].get('production_sources'):
+            return {'status': 'joint', 'name': f"{len(state['plan']['production_sources'])}个自有工厂联合计划", 'has_updates': False, 'message': '多工厂来源须在计划衔接中统一校验更新'}
         if not link:
             return {'status': 'unbound', 'has_updates': False, 'message': '请选择库内已排程计划作为生产来源'}
         if production_collection is None:
@@ -63,7 +73,7 @@ def create_router(service, production_collection=None, machine_collection=None, 
             if not doc:
                 return {**link, 'status': 'missing', 'has_updates': False, 'message': '来源计划已删除，当前运行保留，请重新选择来源'}
             solver, result = selected_result(doc, link['solver_id'])
-            version = fingerprint({'jobs': doc.get('jobs') or [], 'gantt': result.get('gantt_data')})
+            version = production_fingerprint(doc, result)
             changed = version != link.get('source_version')
             return {**link, 'name': doc.get('plan_name', ''), 'status': 'changed' if changed else 'synced',
                     'has_updates': changed, 'latest_version': version, 'solver_id': solver,
@@ -131,6 +141,7 @@ def create_router(service, production_collection=None, machine_collection=None, 
             if not solvers:
                 continue
             result.append({'id': str(doc['_id']), 'name': doc.get('plan_name', ''), 'job_count': len(doc.get('jobs') or []),
+                           'jobs': [{'index': i, 'name': j.get('name') or f'工单{i + 1}'} for i, j in enumerate(doc.get('jobs') or [])],
                            'solvers': solvers, 'recommended_solver': doc.get('recommended_solver') or single.get('solver_id'), 'can_preview': bool(solvers)})
         return {'plans': result}
 
@@ -159,6 +170,28 @@ def create_router(service, production_collection=None, machine_collection=None, 
 
     def mapped_error(exc):
         return HTTPException(409 if isinstance(exc, Conflict) else 422, str(exc))
+
+    @router.post('/cases/reload')
+    async def reload_case(body: dict = Body(...)):
+        async def payload(raw):
+            if not raw.get('run_id') or raw.get('confirmed') is not True:
+                raise ValueError('请明确确认重新加载当前模拟案例')
+            return raw
+        try:
+            return await send('reload_case', body, payload)
+        except (ValueError, KeyError, TypeError) as exc:
+            raise mapped_error(exc)
+
+    @router.get('/cases/archives')
+    async def archives():
+        from .cases import archive_summary
+        return {'runs': [archive_summary(s) for s in await service.store.archives_list()]}
+
+    @router.get('/cases/archives/{run_id}/history')
+    async def archive_history(run_id: str):
+        if not await service.store.archived(run_id):
+            raise HTTPException(404, '未找到已归档案例')
+        return await service.store.history(run_id, 500)
 
     @router.get("/current")
     async def current():
@@ -246,7 +279,7 @@ def create_router(service, production_collection=None, machine_collection=None, 
     async def adjustment(body: dict = Body(...)):
         try:
             job = await service.request_adjustment(body["run_id"], body.get("request_id"))
-            return {"id": job["_id"], "status": job["status"], "message": "后台计算，当前运行与时钟继续"}
+            return {"id": job["_id"], "run_id":job["run_id"], "trigger":job.get("trigger") or adjustment_trigger(job["snapshot"]), "status": job["status"], "message": "后台计算，当前运行与时钟继续"}
         except (ValueError, KeyError, TypeError) as exc:
             raise mapped_error(exc)
 
@@ -257,6 +290,7 @@ def create_router(service, production_collection=None, machine_collection=None, 
             raise HTTPException(404, "调整任务不存在")
         result = {k: v for k, v in job.items() if k not in {"snapshot", "_id"}}
         result["id"] = jid
+        result["trigger"] = job.get("trigger") or adjustment_trigger(job["snapshot"])
         current, _ = await service.store.read()
         result["stale"] = not current or current["run_id"] != job["run_id"] or current["constraint_version"] != job["snapshot"]["constraint_version"]
         return result
@@ -277,22 +311,42 @@ def create_router(service, production_collection=None, machine_collection=None, 
             return {"events": [], "adjustments": []}
         result = await service.store.history(state["run_id"], max(1, min(limit, 500)))
         for job in result["adjustments"]:
+            job['trigger']=job.get('trigger') or adjustment_trigger(job.get('snapshot') or {})
             job.pop("snapshot", None)
-        return result
+        return {**result,'run_id':state['run_id']}
 
+    @router.get('/agent')
+    async def agent_metadata():
+        from .assistant import AGENT
+        from metaforge.orchestrator.llm_config import llm_enabled, llm_model_name, llm_provider
+        return {**AGENT,'llm':{'enabled':llm_enabled(),'provider':llm_provider(),
+                              'model':llm_model_name(),'role':'运行问答与工具结果解释'}}
+
+    @router.post('/agent/run')
     @router.post("/assistant")
     async def assistant(body: dict = Body(...)):
         from .assistant import assist
         state, _ = await service.store.read()
         if not state:
             raise HTTPException(409, "请先启用运行计划")
+        if body.get('run_id') and body['run_id'] != state['run_id']:
+            raise HTTPException(409,'运行实例已变化，请重新分析')
+        if body.get('constraint_version') is not None and body['constraint_version'] != state['constraint_version']:
+            raise HTTPException(409,'运行约束已变化，请重新分析')
         message = str(body.get("message", "")).strip()
         if not message or len(message) > 4000:
             raise HTTPException(422, "请输入1至4000字的描述")
         result = await asyncio.to_thread(assist, state, message, service.clock(), bool(body.get("use_llm", True)))
+        latest,_ = await service.store.read()
+        if not latest or latest['run_id'] != state['run_id'] or latest['constraint_version'] != state['constraint_version']:
+            raise HTTPException(409,'分析期间运行实例或约束已变化，请重新分析')
         if result.get("plan_request") and not result.get("prepared_event", {}).get("draft"):
-            job = await service.request_adjustment(state["run_id"])
+            try:
+                job = await service.request_adjustment(state["run_id"],expected_constraint_version=state['constraint_version'])
+            except Conflict as exc: raise HTTPException(409,str(exc))
             result["adjustment_id"] = job["_id"]
+            result['status'] = 'solving'
+            result['summary'] += '已提交候选计算，完成后可查看资源、顺序和时间安排。'
         return result
 
     return router

@@ -40,6 +40,12 @@ class MongoStore:
     async def archive(self, state):
         await self.db.operations_runs.update_one({"_id": state["run_id"]}, {"$setOnInsert": {"state": state}}, upsert=True)
 
+    async def archives_list(self):
+        return [r['state'] for r in await self.db.operations_runs.find({}, {'state': 1}).sort('state.archived_at', -1).limit(20).to_list(20)]
+
+    async def archived(self, run_id):
+        return await self.db.operations_runs.find_one({'_id': run_id}, {'_id': 1})
+
     async def put_preview(self, preview):
         doc = copy.deepcopy(preview)
         if doc.get('expires_at'):
@@ -158,6 +164,10 @@ class MongoStore:
         rows = await self.logs.find({"run_id": run_id}, {"_id": 0}).sort("at", -1).limit(limit).to_list(limit)
         jobs = await self.jobs.find({"run_id": run_id}, {"snapshot": 0}).sort("created_at", -1).limit(20).to_list(20)
         for j in jobs:
+            if not j.get('trigger'):
+                from .adjustments import adjustment_trigger
+                evidence=await self.jobs.find_one({'_id':j['_id']},{'snapshot.event_seq':1,'snapshot.last_event':1,'snapshot.last_adjustment':1,'snapshot.constraint_version':1})
+                j['trigger']=adjustment_trigger((evidence or {}).get('snapshot') or {})
             j["id"] = j.pop("_id")
         return {"events": rows, "adjustments": jobs}
 
@@ -177,6 +187,12 @@ class MemoryStore:
 
     async def archive(self, state):
         self.archives[state['run_id']] = copy.deepcopy(state)
+
+    async def archives_list(self):
+        return sorted(copy.deepcopy(list(self.archives.values())), key=lambda s: s.get('archived_at', 0), reverse=True)[:20]
+
+    async def archived(self, run_id):
+        return copy.deepcopy(self.archives.get(run_id))
 
     async def put_preview(self, preview):
         self.previews[preview['_id']] = copy.deepcopy(preview)

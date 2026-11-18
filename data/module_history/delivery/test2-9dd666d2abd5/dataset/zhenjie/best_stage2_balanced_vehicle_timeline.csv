@@ -1,0 +1,5 @@
+﻿scheme,day,route_id,vehicle_id,stop_order,node_type,node_id,cust_id,arrive_min,start_service_min,finish_min,late_min,cum_dist_km,cum_load,arrive_clock,start_service_clock,finish_clock
+Stage2_Balanced,1,0,1,0,depot_start,3,,0.0,0.0,0.0,0.0,0.0,0.0,08:00,08:00,08:00
+Stage2_Balanced,1,0,1,1,customer,1,38.0,9.585,80.0,140.0,0.0,8.9095,2.0,08:10,09:20,10:20
+Stage2_Balanced,1,0,1,2,customer,0,36.0,143.785,143.785,183.785,0.0,11.665799999999999,5.0,10:24,10:24,11:04
+Stage2_Balanced,1,0,1,3,depot_end,3,,193.66333333333333,193.66333333333333,193.66333333333333,0.0,21.4594,5.0,11:14,11:14,11:14

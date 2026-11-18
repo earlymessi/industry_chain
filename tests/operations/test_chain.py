@@ -184,7 +184,8 @@ def test_chain_api_saves_draft_checks_source_version_and_archives_explicitly(tmp
     app.include_router(create_router(service, docs, Collection(MACHINES), Collection([]), chain_source_root=tmp_path))
     with TestClient(app) as client:
         assert client.get('/api/operations-tools/plans/chain/sources').status_code == 200
-        c = config(native(start=NOW + 120))
+        from .test_coherence import contract
+        c = contract(config(native(start=NOW + 120)))
         assert client.put('/api/operations-tools/plans/chain/draft', json=c).status_code == 200
         assert client.get('/api/operations-tools/plans/chain/draft').json()['config'] == c
         def preview():
